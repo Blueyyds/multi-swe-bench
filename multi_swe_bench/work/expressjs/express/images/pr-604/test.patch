@@ -1,0 +1,29 @@
+diff --git a/test/response.test.js b/test/response.test.js
+index c98a195476..ef3acef660 100644
+--- a/test/response.test.js
++++ b/test/response.test.js
+@@ -50,6 +50,10 @@ module.exports = {
+       res.send();
+     });
+     
++    app.get('/undefined', function(req, res, next){
++      res.send(undefined);
++    });
++
+     app.get('/bool', function(req, res, next){
+       res.send(true);
+     });
+@@ -148,6 +152,13 @@ module.exports = {
+         assert.equal(undefined, res.headers['content-type']);
+         assert.equal(undefined, res.headers['content-length']);
+       });
++
++    assert.response(app,
++      { url: '/undefined' },
++      { status: 204 }, function(res){
++        assert.equal(undefined, res.headers['content-type']);
++        assert.equal(undefined, res.headers['content-length']);
++      });
+   },
+   
+   'test #contentType()': function(){

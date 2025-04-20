@@ -1,0 +1,32 @@
+diff --git a/test/req.path.js b/test/req.path.js
+index 3ff6177c74..43e49fe636 100644
+--- a/test/req.path.js
++++ b/test/req.path.js
+@@ -4,12 +4,12 @@ var express = require('../')
+   , request = require('supertest');
+ 
+ describe('req', function(){
+-  describe('.path', function(){
++  describe('.pathname', function(){
+     it('should return the parsed pathname', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.end(req.path);
++        res.end(req.pathname);
+       });
+ 
+       request(app)
+diff --git a/test/req.signedCookies.js b/test/req.signedCookies.js
+index db56195166..e651662cb2 100644
+--- a/test/req.signedCookies.js
++++ b/test/req.signedCookies.js
+@@ -12,7 +12,7 @@ describe('req', function(){
+       app.use(cookieParser('secret'));
+ 
+       app.use(function(req, res){
+-        if (req.path === '/set') {
++        if (req.pathname === '/set') {
+           res.cookie('obj', { foo: 'bar' }, { signed: true });
+           res.end();
+         } else {

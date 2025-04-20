@@ -1,0 +1,323 @@
+diff --git a/test/app.param.js b/test/app.param.js
+index 858ea2d5f6..30885bcdc8 100644
+--- a/test/app.param.js
++++ b/test/app.param.js
+@@ -303,5 +303,65 @@ describe('app', function(){
+       .get('/user/new')
+       .expect('get.new', done);
+     })
++
++    it('should not call when values differ on error', function(done) {
++      var app = express();
++      var called = 0;
++      var count = 0;
++
++      app.param('user', function(req, res, next, user) {
++        called++;
++        if (user === 'foo') throw new Error('err!');
++        req.user = user;
++        next();
++      });
++
++      app.get('/:user/bob', function(req, res, next) {
++        count++;
++        next();
++      });
++      app.get('/foo/:user', function(req, res, next) {
++        count++;
++        next();
++      });
++
++      app.use(function(err, req, res, next) {
++        res.status(500);
++        res.send([count, called, err.message].join(' '));
++      });
++
++      request(app)
++      .get('/foo/bob')
++      .expect(500, '0 1 err!', done)
++    });
++
++    it('should call when values differ when using "next"', function(done) {
++      var app = express();
++      var called = 0;
++      var count = 0;
++
++      app.param('user', function(req, res, next, user) {
++        called++;
++        if (user === 'foo') return next('route');
++        req.user = user;
++        next();
++      });
++
++      app.get('/:user/bob', function(req, res, next) {
++        count++;
++        next();
++      });
++      app.get('/foo/:user', function(req, res, next) {
++        count++;
++        next();
++      });
++      app.use(function(req, res) {
++        res.end([count, called, req.user].join(' '));
++      });
++
++      request(app)
++      .get('/foo/bob')
++      .expect('1 2 bob', done);
++    })
+   })
+ })
+diff --git a/test/app.router.js b/test/app.router.js
+index def50da34f..491de358f0 100644
+--- a/test/app.router.js
++++ b/test/app.router.js
+@@ -641,6 +641,30 @@ describe('app.router', function(){
+       .get('/file')
+       .expect(404, done);
+     })
++
++    it('should keep correct parameter indexes', function(done){
++      var app = express();
++
++      app.get('/*/user/:id', function (req, res) {
++        res.send(req.params);
++      });
++
++      request(app)
++      .get('/1/user/2')
++      .expect(200, '{"0":"1","id":"2"}', done);
++    })
++
++    it('should work within arrays', function(done){
++      var app = express();
++
++      app.get(['/user/:id', '/foo/*', '/:bar'], function (req, res) {
++        res.send(req.params.bar);
++      });
++
++      request(app)
++      .get('/test')
++      .expect(200, 'test', done);
++    })
+   })
+ 
+   describe(':name', function(){
+@@ -680,6 +704,23 @@ describe('app.router', function(){
+       .expect('editing tj', done);
+     })
+ 
++    it('should work following a partial capture group', function(done){
++      var app = express();
++      var cb = after(2, done);
++
++      app.get('/user(s)?/:user/:op', function(req, res){
++        res.end(req.params.op + 'ing ' + req.params.user + (req.params[0] ? ' (old)' : ''));
++      });
++
++      request(app)
++      .get('/user/tj/edit')
++      .expect('editing tj', cb);
++
++      request(app)
++      .get('/users/tj/edit')
++      .expect('editing tj (old)', cb);
++    })
++
+     it('should work in array of paths', function(done){
+       var app = express();
+       var cb = after(2, done);
+diff --git a/test/res.format.js b/test/res.format.js
+index 28534a199a..2b0dfd517e 100644
+--- a/test/res.format.js
++++ b/test/res.format.js
+@@ -67,6 +67,14 @@ app4.use(function(err, req, res, next){
+   res.send(err.status, 'Supports: ' + err.types.join(', '));
+ })
+ 
++var app5 = express();
++
++app5.use(function (req, res, next) {
++  res.format({
++    default: function () { res.send('hey') }
++  });
++});
++
+ describe('res', function(){
+   describe('.format(obj)', function(){
+     describe('with canonicalized mime types', function(){
+@@ -102,6 +110,13 @@ describe('res', function(){
+         .set('Accept', 'text/html')
+         .expect('default', done);
+       })
++
++      it('should work when only .default is provided', function (done) {
++        request(app5)
++        .get('/')
++        .set('Accept', '*/*')
++        .expect('hey', done);
++      })
+     })
+ 
+     describe('in router', function(){
+diff --git a/test/res.render.js b/test/res.render.js
+index a843b2af15..d4d2a7616d 100644
+--- a/test/res.render.js
++++ b/test/res.render.js
+@@ -34,6 +34,20 @@ describe('res', function(){
+       .expect('<p>tobi</p>', done);
+     })
+ 
++    it('should error without "view engine" set and no file extension', function (done) {
++      var app = createApp();
++
++      app.locals.user = { name: 'tobi' };
++
++      app.use(function(req, res){
++        res.render(__dirname + '/fixtures/user');
++      });
++
++      request(app)
++      .get('/')
++      .expect(500, /No default engine was specified/, done);
++    })
++
+     it('should expose app.locals', function(done){
+       var app = createApp();
+ 
+diff --git a/test/res.send.js b/test/res.send.js
+index c5040631fe..23aa5f7911 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -122,7 +122,7 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"3e7-8084ccd1"')
++      .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
+       .expect(200, done);
+     })
+ 
+@@ -194,7 +194,7 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"3e7-8084ccd1"')
++      .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
+       .expect(200, done);
+     })
+ 
+@@ -358,7 +358,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"c-5aee35d8"')
++        .expect('ETag', 'W/"c-ZUfd0NJ26qwjlKF4r8qb2g"')
+         .expect(200, done);
+       });
+ 
+@@ -374,7 +374,7 @@ describe('res', function(){
+ 
+           request(app)
+           [method]('/')
+-          .expect('ETag', 'W/"c-5aee35d8"')
++          .expect('ETag', 'W/"c-ZUfd0NJ26qwjlKF4r8qb2g"')
+           .expect(200, done);
+         })
+       });
+@@ -390,7 +390,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"0-0"')
++        .expect('ETag', 'W/"0-1B2M2Y8AsgTpgAmY7PhCfg"')
+         .expect(200, done);
+       })
+ 
+@@ -406,7 +406,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"3e7-8084ccd1"')
++        .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
+         .expect(200, done);
+       });
+ 
+@@ -488,7 +488,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', '"Otu60XkfuuPskIiUxJY4cA=="')
++        .expect('ETag', '"d-Otu60XkfuuPskIiUxJY4cA"')
+         .expect(200, done);
+       })
+     })
+@@ -505,7 +505,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"d-58988d13"')
++        .expect('ETag', 'W/"d-Otu60XkfuuPskIiUxJY4cA"')
+         .expect(200, done)
+       })
+     })
+diff --git a/test/utils.js b/test/utils.js
+index ef5a0706eb..b7e8b52009 100644
+--- a/test/utils.js
++++ b/test/utils.js
+@@ -5,23 +5,23 @@ var utils = require('../lib/utils');
+ describe('utils.etag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.etag('express!')
+-    .should.eql('"zZdv4imtWD49AHEviejT6A=="')
++    .should.eql('"8-zZdv4imtWD49AHEviejT6A"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.etag('express❤', 'utf8')
+-    .should.eql('"fsFba4IxwQS6h6Umb+FNxw=="')
++    .should.eql('"a-fsFba4IxwQS6h6Umb+FNxw"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.etag(buf)
+-    .should.eql('"zZdv4imtWD49AHEviejT6A=="');
++    .should.eql('"8-zZdv4imtWD49AHEviejT6A"');
+   })
+ 
+   it('should support empty string', function(){
+     utils.etag('')
+-    .should.eql('"1B2M2Y8AsgTpgAmY7PhCfg=="');
++    .should.eql('"0-1B2M2Y8AsgTpgAmY7PhCfg"');
+   })
+ })
+ 
+@@ -50,23 +50,23 @@ describe('utils.setCharset(type, charset)', function () {
+ describe('utils.wetag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.wetag('express!')
+-    .should.eql('W/"8-b8aabac7"')
++    .should.eql('W/"8-zZdv4imtWD49AHEviejT6A"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.wetag('express❤', 'utf8')
+-    .should.eql('W/"a-686b0af1"')
++    .should.eql('W/"a-fsFba4IxwQS6h6Umb+FNxw"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.wetag(buf)
+-    .should.eql('W/"8-b8aabac7"');
++    .should.eql('W/"8-zZdv4imtWD49AHEviejT6A"');
+   })
+ 
+   it('should support empty string', function(){
+     utils.wetag('')
+-    .should.eql('W/"0-0"');
++    .should.eql('W/"0-1B2M2Y8AsgTpgAmY7PhCfg"');
+   })
+ })
+ 

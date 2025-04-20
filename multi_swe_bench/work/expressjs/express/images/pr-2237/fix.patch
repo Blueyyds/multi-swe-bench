@@ -1,0 +1,3076 @@
+diff --git a/.eslintrc.yml b/.eslintrc.yml
+index 587169c533..70bc9a6e7e 100644
+--- a/.eslintrc.yml
++++ b/.eslintrc.yml
+@@ -1,5 +1,7 @@
+ root: true
+-
++env:
++  es2022: true
++  node: true
+ rules:
+   eol-last: error
+   eqeqeq: [error, allow-null]
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index b3ddd6b23a..e73fbce8ca 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -7,6 +7,7 @@ on:
+       - develop
+       - '4.x'
+       - '5.x'
++      - '5.0'
+     paths-ignore:
+       - '*.md'
+   pull_request:
+@@ -38,77 +39,14 @@ jobs:
+         run: npm run lint
+ 
+   test:
+-    name: Run tests
+     strategy:
+       fail-fast: false
+       matrix:
+         os: [ubuntu-latest, windows-latest]
+-        node-version:
+-          - "0.10"
+-          - "0.12"
+-          - "4"
+-          - "5"
+-          - "6"
+-          - "7"
+-          - "8"
+-          - "9"
+-          - "10"
+-          - "11"
+-          - "12"
+-          - "13"
+-          - "14"
+-          - "15"
+-          - "16"
+-          - "17"
+-          - "18"
+-          - "19"
+-          - "20"
+-          - "21"
+-          - "22"
+-        # Use supported versions of our testing tools under older versions of Node
+-        # Install npm in some specific cases where we need to
+-        include:
+-          - node-version: "0.10"
+-            npm-i: "mocha@3.5.3 nyc@10.3.2 supertest@2.0.0"
+-            # Npm isn't being installed on windows w/ setup-node for
+-            # 0.10 and 0.12, which will end up choking when npm uses es6
+-            npm-version: "npm@2.15.1"
+-
+-          - node-version: "0.12"
+-            npm-i: "mocha@3.5.3 nyc@10.3.2 supertest@2.0.0"
+-            npm-version: "npm@2.15.11"
+-
+-          - node-version: "4"
+-            npm-i: "mocha@5.2.0 nyc@11.9.0 supertest@3.4.2"
+-
+-          - node-version: "5"
+-            npm-i: "mocha@5.2.0 nyc@11.9.0 supertest@3.4.2"
+-            # fixes https://github.com/npm/cli/issues/681
+-            npm-version: "npm@3.10.10"
+-
+-          - node-version: "6"
+-            npm-i: "mocha@6.2.2 nyc@14.1.1 supertest@3.4.2"
+-
+-          - node-version: "7"
+-            npm-i: "mocha@6.2.2 nyc@14.1.1 supertest@6.1.6"
+-
+-          - node-version: "8"
+-            npm-i: "mocha@7.2.0 nyc@14.1.1"
+-
+-          - node-version: "9"
+-            npm-i: "mocha@7.2.0 nyc@14.1.1"
+-
+-          - node-version: "10"
+-            npm-i: "mocha@8.4.0"
+-
+-          - node-version: "11"
+-            npm-i: "mocha@8.4.0"
+-
+-          - node-version: "12"
+-            npm-i: "mocha@9.2.2"
+-
+-          - node-version: "13"
+-            npm-i: "mocha@9.2.2"
++        node-version: [18, 19, 20, 21, 22]
++        # Node.js release schedule: https://nodejs.org/en/about/releases/
++
++    name: Node.js ${{ matrix.node-version }} - ${{matrix.os}}
+ 
+     runs-on: ${{ matrix.os }}
+     steps:
+@@ -121,10 +59,6 @@ jobs:
+         with:
+           node-version: ${{ matrix.node-version }}
+ 
+-      - name: Npm version fixes
+-        if: ${{matrix.npm-version != ''}}
+-        run: npm install -g ${{ matrix.npm-version }}
+-
+       - name: Configure npm loglevel
+         run: |
+           npm config set loglevel error
+@@ -133,13 +67,6 @@ jobs:
+       - name: Install dependencies
+         run: npm install
+ 
+-      - name: Install Node version specific dev deps
+-        if: ${{ matrix.npm-i != '' }}
+-        run: npm install --save-dev ${{ matrix.npm-i }}
+-
+-      - name: Remove non-test dependencies
+-        run: npm rm --silent --save-dev connect-redis
+-
+       - name: Output Node and NPM versions
+         run: |
+           echo "Node.js version: $(node -v)"
+diff --git a/.github/workflows/iojs.yml b/.github/workflows/iojs.yml
+deleted file mode 100644
+index c1268abd68..0000000000
+--- a/.github/workflows/iojs.yml
++++ /dev/null
+@@ -1,69 +0,0 @@
+-name: iojs-ci
+-
+-on:
+-  push:
+-    branches:
+-      - master
+-      - '4.x'
+-    paths-ignore:
+-      - '*.md'
+-  pull_request:
+-    paths-ignore:
+-      - '*.md'
+-
+-concurrency:
+-  group: "${{ github.workflow }} ✨ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
+-  cancel-in-progress: true
+-
+-jobs:
+-  test:
+-    runs-on: ubuntu-latest
+-    strategy:
+-      fail-fast: false
+-      matrix:
+-        node-version: ["1.8", "2.5", "3.3"]
+-        include:
+-          - node-version: "1.8"
+-            npm-i: "mocha@3.5.3 nyc@10.3.2 supertest@2.0.0"
+-          - node-version: "2.5"
+-            npm-i: "mocha@3.5.3 nyc@10.3.2 supertest@2.0.0"
+-          - node-version: "3.3"
+-            npm-i: "mocha@3.5.3 nyc@10.3.2 supertest@2.0.0"
+-
+-    steps:
+-    - uses: actions/checkout@v4
+-
+-    - name: Install iojs ${{ matrix.node-version }}
+-      shell: bash -eo pipefail -l {0}
+-      run: |
+-        nvm install --default ${{ matrix.node-version }}
+-        dirname "$(nvm which ${{ matrix.node-version }})" >> "$GITHUB_PATH"
+-
+-    - name: Configure npm
+-      run: |
+-        npm config set loglevel error
+-        npm config set shrinkwrap false
+-
+-    - name: Install npm module(s) ${{ matrix.npm-i }}
+-      run: npm install --save-dev ${{ matrix.npm-i }}
+-      if: matrix.npm-i != ''
+-
+-    - name: Remove non-test dependencies
+-      run: npm rm --silent --save-dev connect-redis
+-
+-    - name: Install Node.js dependencies
+-      run: npm install
+-
+-    - name: List environment
+-      id: list_env
+-      shell: bash
+-      run: |
+-        echo "node@$(node -v)"
+-        echo "npm@$(npm -v)"
+-        npm -s ls ||:
+-        (npm -s ls --depth=0 ||:) | awk -F'[ @]' 'NR>1 && $2 { print $2 "=" $3 }' >> "$GITHUB_OUTPUT"
+-
+-    - name: Run tests
+-      shell: bash
+-      run: npm run test
+-
+diff --git a/.github/workflows/legacy.yml b/.github/workflows/legacy.yml
+new file mode 100644
+index 0000000000..d26d6df34d
+--- /dev/null
++++ b/.github/workflows/legacy.yml
+@@ -0,0 +1,100 @@
++name: legacy
++
++on:
++  push:
++    branches:
++      - master
++      - develop
++      - '4.x'
++      - '5.x'
++      - '5.0'
++    paths-ignore:
++      - '*.md'
++  pull_request:
++    paths-ignore:
++      - '*.md'
++
++# Cancel in progress workflows
++# in the scenario where we already had a run going for that PR/branch/tag but then triggered a new run
++concurrency:
++  group: "${{ github.workflow }} ✨ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
++  cancel-in-progress: true
++
++jobs:
++  test:
++    strategy:
++      fail-fast: false
++      matrix:
++        os: [ubuntu-latest, windows-latest]
++        node-version: [16, 17]
++        # Node.js release schedule: https://nodejs.org/en/about/releases/
++
++    name: Node.js ${{ matrix.node-version }} - ${{matrix.os}}
++
++    runs-on: ${{ matrix.os }}
++    steps:
++      - uses: actions/checkout@v4
++        with:
++          persist-credentials: false
++
++      - name: Setup Node.js ${{ matrix.node-version }}
++        uses: actions/setup-node@v4
++        with:
++          node-version: ${{ matrix.node-version }}
++
++      - name: Configure npm loglevel
++        run: |
++          npm config set loglevel error
++        shell: bash
++
++      - name: Install dependencies
++        run: npm install
++
++      - name: Output Node and NPM versions
++        run: |
++          echo "Node.js version: $(node -v)"
++          echo "NPM version: $(npm -v)"
++
++      - name: Run tests
++        shell: bash
++        run: |
++          npm run test-ci
++          cp coverage/lcov.info "coverage/${{ matrix.node-version }}.lcov"
++
++      - name: Collect code coverage
++        run: |
++          mv ./coverage "./${{ matrix.node-version }}"
++          mkdir ./coverage
++          mv "./${{ matrix.node-version }}" "./coverage/${{ matrix.node-version }}"
++
++      - name: Upload code coverage
++        uses: actions/upload-artifact@v3
++        with:
++          name: coverage
++          path: ./coverage
++          retention-days: 1
++
++  coverage:
++    needs: test
++    runs-on: ubuntu-latest
++    steps:
++    - uses: actions/checkout@v4
++
++    - name: Install lcov
++      shell: bash
++      run: sudo apt-get -y install lcov
++
++    - name: Collect coverage reports
++      uses: actions/download-artifact@v3
++      with:
++        name: coverage
++        path: ./coverage
++
++    - name: Merge coverage reports
++      shell: bash
++      run: find ./coverage -name lcov.info -exec printf '-a %q\n' {} \; | xargs lcov -o ./coverage/lcov.info
++
++    - name: Upload coverage report
++      uses: coverallsapp/github-action@master
++      with:
++        github-token: ${{ secrets.GITHUB_TOKEN }}
+diff --git a/History.md b/History.md
+index 887a38f182..2592c976bf 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,199 @@
++5.0.0 / 2024-09-10
++=========================
++* remove:
++  - `path-is-absolute` dependency - use `path.isAbsolute` instead
++* breaking:
++  * `res.status()` accepts only integers, and input must be greater than 99 and less than 1000
++    * will throw a `RangeError: Invalid status code: ${code}. Status code must be greater than 99 and less than 1000.` for inputs outside this range
++    * will throw a `TypeError: Invalid status code: ${code}. Status code must be an integer.` for non integer inputs
++  * deps: send@1.0.0
++  * `res.redirect('back')` and `res.location('back')` is no longer a supported magic string, explicitly use `req.get('Referrer') || '/'`.
++* change:
++  - `res.clearCookie` will ignore user provided `maxAge` and `expires` options
++* deps: cookie-signature@^1.2.1
++* deps: debug@4.3.6
++* deps: merge-descriptors@^2.0.0
++* deps: serve-static@^2.1.0
++* deps: qs@6.13.0
++* deps: accepts@^2.0.0
++* deps: mime-types@^3.0.0
++  - `application/javascript` => `text/javascript`
++* deps: type-is@^2.0.0
++* deps: content-disposition@^1.0.0
++* deps: finalhandler@^2.0.0
++* deps: fresh@^2.0.0
++* deps: body-parser@^2.0.1
++* deps: send@^1.1.0
++
++5.0.0-beta.3 / 2024-03-25
++=========================
++
++This incorporates all changes after 4.19.1 up to 4.19.2.
++
++5.0.0-beta.2 / 2024-03-20
++=========================
++
++This incorporates all changes after 4.17.2 up to 4.19.1.
++
++5.0.0-beta.1 / 2022-02-14
++=========================
++
++This is the first Express 5.0 beta release, based off 4.17.2 and includes
++changes from 5.0.0-alpha.8.
++
++  * change:
++    - Default "query parser" setting to `'simple'`
++    - Requires Node.js 4+
++    - Use `mime-types` for file to content type mapping
++  * deps: array-flatten@3.0.0
++  * deps: body-parser@2.0.0-beta.1
++    - `req.body` is no longer always initialized to `{}`
++    - `urlencoded` parser now defaults `extended` to `false`
++    - Use `on-finished` to determine when body read
++  * deps: router@2.0.0-beta.1
++    - Add new `?`, `*`, and `+` parameter modifiers
++    - Internalize private `router.process_params` method
++    - Matching group expressions are only RegExp syntax
++    - Named matching groups no longer available by position in `req.params`
++    - Regular expressions can only be used in a matching group
++    - Remove `debug` dependency
++    - Special `*` path segment behavior removed
++    - deps: array-flatten@3.0.0
++    - deps: parseurl@~1.3.3
++    - deps: path-to-regexp@3.2.0
++    - deps: setprototypeof@1.2.0
++  * deps: send@1.0.0-beta.1
++    - Change `dotfiles` option default to `'ignore'`
++    - Remove `hidden` option; use `dotfiles` option instead
++    - Use `mime-types` for file to content type mapping
++    - deps: debug@3.1.0
++  * deps: serve-static@2.0.0-beta.1
++    - Change `dotfiles` option default to `'ignore'`
++    - Remove `hidden` option; use `dotfiles` option instead
++    - Use `mime-types` for file to content type mapping
++    - deps: send@1.0.0-beta.1
++
++5.0.0-alpha.8 / 2020-03-25
++==========================
++
++This is the eighth Express 5.0 alpha release, based off 4.17.1 and includes
++changes from 5.0.0-alpha.7.
++
++5.0.0-alpha.7 / 2018-10-26
++==========================
++
++This is the seventh Express 5.0 alpha release, based off 4.16.4 and includes
++changes from 5.0.0-alpha.6.
++
++The major change with this alpha is the basic support for returned, rejected
++Promises in the router.
++
++  * remove:
++    - `path-to-regexp` dependency
++  * deps: debug@3.1.0
++    - Add `DEBUG_HIDE_DATE` environment variable
++    - Change timer to per-namespace instead of global
++    - Change non-TTY date format
++    - Remove `DEBUG_FD` environment variable support
++    - Support 256 namespace colors
++  * deps: router@2.0.0-alpha.1
++    - Add basic support for returned, rejected Promises
++    - Fix JSDoc for `Router` constructor
++    - deps: debug@3.1.0
++    - deps: parseurl@~1.3.2
++    - deps: setprototypeof@1.1.0
++    - deps: utils-merge@1.0.1
++
++5.0.0-alpha.6 / 2017-09-24
++==========================
++
++This is the sixth Express 5.0 alpha release, based off 4.15.5 and includes
++changes from 5.0.0-alpha.5.
++
++  * remove:
++    - `res.redirect(url, status)` signature - use `res.redirect(status, url)`
++    - `res.send(status, body)` signature - use `res.status(status).send(body)`
++  * deps: router@~1.3.1
++    - deps: debug@2.6.8
++
++5.0.0-alpha.5 / 2017-03-06
++==========================
++
++This is the fifth Express 5.0 alpha release, based off 4.15.2 and includes
++changes from 5.0.0-alpha.4.
++
++5.0.0-alpha.4 / 2017-03-01
++==========================
++
++This is the fourth Express 5.0 alpha release, based off 4.15.0 and includes
++changes from 5.0.0-alpha.3.
++
++  * remove:
++    - Remove Express 3.x middleware error stubs
++  * deps: router@~1.3.0
++    - Add `next("router")` to exit from router
++    - Fix case where `router.use` skipped requests routes did not
++    - Skip routing when `req.url` is not set
++    - Use `%o` in path debug to tell types apart
++    - deps: debug@2.6.1
++    - deps: setprototypeof@1.0.3
++    - perf: add fast match path for `*` route
++
++5.0.0-alpha.3 / 2017-01-28
++==========================
++
++This is the third Express 5.0 alpha release, based off 4.14.1 and includes
++changes from 5.0.0-alpha.2.
++
++  * remove:
++    - `res.json(status, obj)` signature - use `res.status(status).json(obj)`
++    - `res.jsonp(status, obj)` signature - use `res.status(status).jsonp(obj)`
++    - `res.vary()` (no arguments) -- provide a field name as an argument
++  * deps: array-flatten@2.1.1
++  * deps: path-is-absolute@1.0.1
++  * deps: router@~1.1.5
++    - deps: array-flatten@2.0.1
++    - deps: methods@~1.1.2
++    - deps: parseurl@~1.3.1
++    - deps: setprototypeof@1.0.2
++
++5.0.0-alpha.2 / 2015-07-06
++==========================
++
++This is the second Express 5.0 alpha release, based off 4.13.1 and includes
++changes from 5.0.0-alpha.1.
++
++  * remove:
++    - `app.param(fn)`
++    - `req.param()` -- use `req.params`, `req.body`, or `req.query` instead
++  * change:
++    - `res.render` callback is always async, even for sync view engines
++    - The leading `:` character in `name` for `app.param(name, fn)` is no longer removed
++    - Use `router` module for routing
++    - Use `path-is-absolute` module for absolute path detection
++
++5.0.0-alpha.1 / 2014-11-06
++==========================
++
++This is the first Express 5.0 alpha release, based off 4.10.1.
++
++  * remove:
++    - `app.del` - use `app.delete`
++    - `req.acceptsCharset` - use `req.acceptsCharsets`
++    - `req.acceptsEncoding` - use `req.acceptsEncodings`
++    - `req.acceptsLanguage` - use `req.acceptsLanguages`
++    - `res.json(obj, status)` signature - use `res.json(status, obj)`
++    - `res.jsonp(obj, status)` signature - use `res.jsonp(status, obj)`
++    - `res.send(body, status)` signature - use `res.send(status, body)`
++    - `res.send(status)` signature - use `res.sendStatus(status)`
++    - `res.sendfile` - use `res.sendFile` instead
++    - `express.query` middleware
++  * change:
++    - `req.host` now returns host (`hostname:port`) - use `req.hostname` for only hostname
++    - `req.query` is now a getter instead of a plain property
++  * add:
++    - `app.router` is a reference to the base router
++
+ 4.20.0 / 2024-09-10
+ ==========
+   * deps: serve-static@0.16.0
+diff --git a/appveyor.yml b/appveyor.yml
+deleted file mode 100644
+index 629499bf37..0000000000
+--- a/appveyor.yml
++++ /dev/null
+@@ -1,113 +0,0 @@
+-environment:
+-  matrix:
+-    - nodejs_version: "0.10"
+-    - nodejs_version: "0.12"
+-    - nodejs_version: "1.8"
+-    - nodejs_version: "2.5"
+-    - nodejs_version: "3.3"
+-    - nodejs_version: "4.9"
+-    - nodejs_version: "5.12"
+-    - nodejs_version: "6.17"
+-    - nodejs_version: "7.10"
+-    - nodejs_version: "8.17"
+-    - nodejs_version: "9.11"
+-    - nodejs_version: "10.24"
+-    - nodejs_version: "11.15"
+-    - nodejs_version: "12.22"
+-    - nodejs_version: "13.14"
+-    - nodejs_version: "14.20"
+-    - nodejs_version: "15.14"
+-    - nodejs_version: "16.20"
+-    - nodejs_version: "17.9"
+-    - nodejs_version: "18.19"
+-    - nodejs_version: "19.9"
+-    - nodejs_version: "20.11"
+-    - nodejs_version: "21.6"
+-    - nodejs_version: "22.0"
+-cache:
+-  - node_modules
+-install:
+-  # Install Node.js
+-  - ps: >-
+-      try { Install-Product node $env:nodejs_version -ErrorAction Stop }
+-      catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) x64 }
+-  # Configure npm
+-  - ps: |
+-      npm config set loglevel error
+-      if ((npm config get package-lock) -eq "true") {
+-        npm config set package-lock false
+-      } else {
+-        npm config set shrinkwrap false
+-      }
+-  # Remove all non-test dependencies
+-  - ps: |
+-      # Remove example dependencies
+-      npm rm --silent --save-dev connect-redis
+-      # Remove lint dependencies
+-      cmd.exe /c "node -pe `"Object.keys(require('./package').devDependencies).join('\n')`"" | `
+-        sls "^eslint(-|$)" | `
+-        %{ npm rm --silent --save-dev $_ }
+-  # Setup Node.js version-specific dependencies
+-  - ps: |
+-      # mocha for testing
+-      # - use 3.x for Node.js < 4
+-      # - use 5.x for Node.js < 6
+-      # - use 6.x for Node.js < 8
+-      # - use 7.x for Node.js < 10
+-      # - use 8.x for Node.js < 12
+-      # - use 9.x for Node.js < 14
+-      if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
+-        npm install --silent --save-dev mocha@3.5.3
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 6) {
+-        npm install --silent --save-dev mocha@5.2.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 8) {
+-        npm install --silent --save-dev mocha@6.2.2
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 10) {
+-        npm install --silent --save-dev mocha@7.2.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 12) {
+-        npm install --silent --save-dev mocha@8.4.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 14) {
+-        npm install --silent --save-dev mocha@9.2.2
+-      }
+-  - ps: |
+-      # nyc for test coverage
+-      # - use 10.3.2 for Node.js < 4
+-      # - use 11.9.0 for Node.js < 6
+-      # - use 14.1.1 for Node.js < 10
+-      if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
+-        npm install --silent --save-dev nyc@10.3.2
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 6) {
+-        npm install --silent --save-dev nyc@11.9.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 10) {
+-        npm install --silent --save-dev nyc@14.1.1
+-      }
+-  - ps: |
+-      # supertest for http calls
+-      # - use 2.0.0 for Node.js < 4
+-      # - use 3.4.2 for Node.js < 7
+-      # - use 6.1.6 for Node.js < 8
+-      if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
+-        npm install --silent --save-dev supertest@2.0.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 7) {
+-        npm install --silent --save-dev supertest@3.4.2
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 8) {
+-        npm install --silent --save-dev supertest@6.1.6
+-      }
+-  # Update Node.js modules
+-  - ps: |
+-      # Prune & rebuild node_modules
+-      if (Test-Path -Path node_modules) {
+-        npm prune
+-        npm rebuild
+-      }
+-  # Install Node.js modules
+-  - npm install
+-build: off
+-test_script:
+-  # Output version data
+-  - ps: |
+-      node --version
+-      npm --version
+-  # Run test script
+-  - npm run test-ci
+-version: "{build}"
+diff --git a/examples/auth/index.js b/examples/auth/index.js
+index 36205d0f99..2884ca4e17 100644
+--- a/examples/auth/index.js
++++ b/examples/auth/index.js
+@@ -18,7 +18,7 @@ app.set('views', path.join(__dirname, 'views'));
+ 
+ // middleware
+ 
+-app.use(express.urlencoded({ extended: false }))
++app.use(express.urlencoded())
+ app.use(session({
+   resave: false, // don't save session if unmodified
+   saveUninitialized: false, // don't create session until something stored
+@@ -102,6 +102,7 @@ app.get('/login', function(req, res){
+ });
+ 
+ app.post('/login', function (req, res, next) {
++  if (!req.body) return res.sendStatus(400)
+   authenticate(req.body.username, req.body.password, function(err, user){
+     if (err) return next(err)
+     if (user) {
+@@ -115,7 +116,7 @@ app.post('/login', function (req, res, next) {
+         req.session.success = 'Authenticated as ' + user.name
+           + ' click to <a href="/logout">logout</a>. '
+           + ' You may now access <a href="/restricted">/restricted</a>.';
+-        res.redirect('back');
++        res.redirect(req.get('Referrer') || '/');
+       });
+     } else {
+       req.session.error = 'Authentication failed, please check your '
+diff --git a/examples/cookies/index.js b/examples/cookies/index.js
+index 04093591f7..0620cb40e4 100644
+--- a/examples/cookies/index.js
++++ b/examples/cookies/index.js
+@@ -19,7 +19,7 @@ if (process.env.NODE_ENV !== 'test') app.use(logger(':method :url'))
+ app.use(cookieParser('my secret here'));
+ 
+ // parses x-www-form-urlencoded
+-app.use(express.urlencoded({ extended: false }))
++app.use(express.urlencoded())
+ 
+ app.get('/', function(req, res){
+   if (req.cookies.remember) {
+@@ -33,13 +33,17 @@ app.get('/', function(req, res){
+ 
+ app.get('/forget', function(req, res){
+   res.clearCookie('remember');
+-  res.redirect('back');
++  res.redirect(req.get('Referrer') || '/');
+ });
+ 
+ app.post('/', function(req, res){
+   var minute = 60000;
+-  if (req.body.remember) res.cookie('remember', 1, { maxAge: minute });
+-  res.redirect('back');
++
++  if (req.body && req.body.remember) {
++    res.cookie('remember', 1, { maxAge: minute })
++  }
++
++  res.redirect(req.get('Referrer') || '/');
+ });
+ 
+ /* istanbul ignore next */
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index 6b67e0c886..c47dddd738 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -23,8 +23,8 @@ app.get('/', function(req, res){
+ 
+ // /files/* is accessed via req.params[0]
+ // but here we name it :file
+-app.get('/files/:file(*)', function(req, res, next){
+-  res.download(req.params.file, { root: FILES_DIR }, function (err) {
++app.get('/files/*file', function (req, res, next) {
++  res.download(req.params.file.join('/'), { root: FILES_DIR }, function (err) {
+     if (!err) return; // file sent
+     if (err.status !== 404) return next(err); // non-404 error
+     // file for download not found
+diff --git a/examples/resource/index.js b/examples/resource/index.js
+index ff1f6fe11f..627ab24c5a 100644
+--- a/examples/resource/index.js
++++ b/examples/resource/index.js
+@@ -12,7 +12,7 @@ var app = module.exports = express();
+ 
+ app.resource = function(path, obj) {
+   this.get(path, obj.index);
+-  this.get(path + '/:a..:b.:format?', function(req, res){
++  this.get(path + '/:a..:b{.:format}', function(req, res){
+     var a = parseInt(req.params.a, 10);
+     var b = parseInt(req.params.b, 10);
+     var format = req.params.format;
+diff --git a/examples/route-separation/index.js b/examples/route-separation/index.js
+index 5d48381111..a471a4b091 100644
+--- a/examples/route-separation/index.js
++++ b/examples/route-separation/index.js
+@@ -38,7 +38,7 @@ app.get('/', site.index);
+ // User
+ 
+ app.get('/users', user.list);
+-app.all('/user/:id/:op?', user.load);
++app.all('/user/:id{/:op}', user.load);
+ app.get('/user/:id', user.view);
+ app.get('/user/:id/view', user.view);
+ app.get('/user/:id/edit', user.edit);
+diff --git a/examples/route-separation/user.js b/examples/route-separation/user.js
+index 1c2aec7cd2..bc6fbd7baf 100644
+--- a/examples/route-separation/user.js
++++ b/examples/route-separation/user.js
+@@ -43,5 +43,5 @@ exports.update = function(req, res){
+   var user = req.body.user;
+   req.user.name = user.name;
+   req.user.email = user.email;
+-  res.redirect('back');
++  res.redirect(req.get('Referrer') || '/');
+ };
+diff --git a/examples/search/index.js b/examples/search/index.js
+index 0d19444e52..4b57168987 100644
+--- a/examples/search/index.js
++++ b/examples/search/index.js
+@@ -35,10 +35,10 @@ db.sadd('cat', 'luna');
+  * GET search for :query.
+  */
+ 
+-app.get('/search/:query?', function(req, res){
++app.get('/search/:query?', function(req, res, next){
+   var query = req.params.query;
+   db.smembers(query, function(err, vals){
+-    if (err) return res.send(500);
++    if (err) return next(err);
+     res.send(vals);
+   });
+ });
+diff --git a/lib/application.js b/lib/application.js
+index ebb30b51b3..ecfe2186db 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -14,20 +14,17 @@
+  */
+ 
+ var finalhandler = require('finalhandler');
+-var Router = require('./router');
+ var methods = require('methods');
+-var middleware = require('./middleware/init');
+-var query = require('./middleware/query');
+ var debug = require('debug')('express:application');
+ var View = require('./view');
+ var http = require('http');
+ var compileETag = require('./utils').compileETag;
+ var compileQueryParser = require('./utils').compileQueryParser;
+ var compileTrust = require('./utils').compileTrust;
+-var deprecate = require('depd')('express');
+-var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
++var once = require('once')
++var Router = require('router');
+ var setPrototypeOf = require('setprototypeof')
+ 
+ /**
+@@ -35,8 +32,8 @@ var setPrototypeOf = require('setprototypeof')
+  * @private
+  */
+ 
+-var hasOwnProperty = Object.prototype.hasOwnProperty
+ var slice = Array.prototype.slice;
++var flatten = Array.prototype.flat;
+ 
+ /**
+  * Application prototype.
+@@ -62,11 +59,29 @@ var trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';
+  */
+ 
+ app.init = function init() {
+-  this.cache = {};
+-  this.engines = {};
+-  this.settings = {};
++  var router = null;
++
++  this.cache = Object.create(null);
++  this.engines = Object.create(null);
++  this.settings = Object.create(null);
+ 
+   this.defaultConfiguration();
++
++  // Setup getting to lazily add base router
++  Object.defineProperty(this, 'router', {
++    configurable: true,
++    enumerable: true,
++    get: function getrouter() {
++      if (router === null) {
++        router = new Router({
++          caseSensitive: this.enabled('case sensitive routing'),
++          strict: this.enabled('strict routing')
++        });
++      }
++
++      return router;
++    }
++  });
+ };
+ 
+ /**
+@@ -81,7 +96,7 @@ app.defaultConfiguration = function defaultConfiguration() {
+   this.enable('x-powered-by');
+   this.set('etag', 'weak');
+   this.set('env', env);
+-  this.set('query parser', 'extended');
++  this.set('query parser', 'simple')
+   this.set('subdomain offset', 2);
+   this.set('trust proxy', false);
+ 
+@@ -125,32 +140,6 @@ app.defaultConfiguration = function defaultConfiguration() {
+   if (env === 'production') {
+     this.enable('view cache');
+   }
+-
+-  Object.defineProperty(this, 'router', {
+-    get: function() {
+-      throw new Error('\'app.router\' is deprecated!\nPlease see the 3.x to 4.x migration guide for details on how to update your app.');
+-    }
+-  });
+-};
+-
+-/**
+- * lazily adds the base router if it has not yet been added.
+- *
+- * We cannot add the base router in the defaultConfiguration because
+- * it reads app settings which might be set after that has run.
+- *
+- * @private
+- */
+-app.lazyrouter = function lazyrouter() {
+-  if (!this._router) {
+-    this._router = new Router({
+-      caseSensitive: this.enabled('case sensitive routing'),
+-      strict: this.enabled('strict routing')
+-    });
+-
+-    this._router.use(query(this.get('query parser fn')));
+-    this._router.use(middleware.init(this));
+-  }
+ };
+ 
+ /**
+@@ -163,22 +152,31 @@ app.lazyrouter = function lazyrouter() {
+  */
+ 
+ app.handle = function handle(req, res, callback) {
+-  var router = this._router;
+-
+   // final handler
+   var done = callback || finalhandler(req, res, {
+     env: this.get('env'),
+     onerror: logerror.bind(this)
+   });
+ 
+-  // no routes
+-  if (!router) {
+-    debug('no routes defined on app');
+-    done();
+-    return;
++  // set powered by header
++  if (this.enabled('x-powered-by')) {
++    res.setHeader('X-Powered-By', 'Express');
++  }
++
++  // set circular references
++  req.res = res;
++  res.req = req;
++
++  // alter the prototypes
++  setPrototypeOf(req, this.request)
++  setPrototypeOf(res, this.response)
++
++  // setup locals
++  if (!res.locals) {
++    res.locals = Object.create(null);
+   }
+ 
+-  router.handle(req, res, done);
++  this.router.handle(req, res, done);
+ };
+ 
+ /**
+@@ -211,15 +209,14 @@ app.use = function use(fn) {
+     }
+   }
+ 
+-  var fns = flatten(slice.call(arguments, offset));
++  var fns = flatten.call(slice.call(arguments, offset), Infinity);
+ 
+   if (fns.length === 0) {
+     throw new TypeError('app.use() requires a middleware function')
+   }
+ 
+-  // setup router
+-  this.lazyrouter();
+-  var router = this._router;
++  // get router
++  var router = this.router;
+ 
+   fns.forEach(function (fn) {
+     // non-express app
+@@ -259,8 +256,7 @@ app.use = function use(fn) {
+  */
+ 
+ app.route = function route(path) {
+-  this.lazyrouter();
+-  return this._router.route(path);
++  return this.router.route(path);
+ };
+ 
+ /**
+@@ -326,8 +322,6 @@ app.engine = function engine(ext, fn) {
+  */
+ 
+ app.param = function param(name, fn) {
+-  this.lazyrouter();
+-
+   if (Array.isArray(name)) {
+     for (var i = 0; i < name.length; i++) {
+       this.param(name[i], fn);
+@@ -336,7 +330,7 @@ app.param = function param(name, fn) {
+     return this;
+   }
+ 
+-  this._router.param(name, fn);
++  this.router.param(name, fn);
+ 
+   return this;
+ };
+@@ -359,17 +353,7 @@ app.param = function param(name, fn) {
+ app.set = function set(setting, val) {
+   if (arguments.length === 1) {
+     // app.get(setting)
+-    var settings = this.settings
+-
+-    while (settings && settings !== Object.prototype) {
+-      if (hasOwnProperty.call(settings, setting)) {
+-        return settings[setting]
+-      }
+-
+-      settings = Object.getPrototypeOf(settings)
+-    }
+-
+-    return undefined
++    return this.settings[setting];
+   }
+ 
+   debug('set "%s" to %o', setting, val);
+@@ -493,9 +477,7 @@ methods.forEach(function(method){
+       return this.set(path);
+     }
+ 
+-    this.lazyrouter();
+-
+-    var route = this._router.route(path);
++    var route = this.route(path);
+     route[method].apply(route, slice.call(arguments, 1));
+     return this;
+   };
+@@ -512,9 +494,7 @@ methods.forEach(function(method){
+  */
+ 
+ app.all = function all(path) {
+-  this.lazyrouter();
+-
+-  var route = this._router.route(path);
++  var route = this.route(path);
+   var args = slice.call(arguments, 1);
+ 
+   for (var i = 0; i < methods.length; i++) {
+@@ -524,10 +504,6 @@ app.all = function all(path) {
+   return this;
+ };
+ 
+-// del -> delete alias
+-
+-app.del = deprecate.function(app.delete, 'app.del: Use app.delete instead');
+-
+ /**
+  * Render the given view `name` name with `options`
+  * and a callback accepting an error and the
+@@ -630,10 +606,15 @@ app.render = function render(name, options, callback) {
+  * @public
+  */
+ 
+-app.listen = function listen() {
+-  var server = http.createServer(this);
+-  return server.listen.apply(server, arguments);
+-};
++app.listen = function listen () {
++  var server = http.createServer(this)
++  var args = Array.prototype.slice.call(arguments)
++  if (typeof args[args.length - 1] === 'function') {
++    var done = args[args.length - 1] = once(args[args.length - 1])
++    server.once('error', done)
++  }
++  return server.listen.apply(server, args)
++}
+ 
+ /**
+  * Log error using console.error.
+diff --git a/lib/express.js b/lib/express.js
+index d188a16db7..b4ef299636 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -16,8 +16,7 @@ var bodyParser = require('body-parser')
+ var EventEmitter = require('events').EventEmitter;
+ var mixin = require('merge-descriptors');
+ var proto = require('./application');
+-var Route = require('./router/route');
+-var Router = require('./router');
++var Router = require('router');
+ var req = require('./request');
+ var res = require('./response');
+ 
+@@ -68,7 +67,7 @@ exports.response = res;
+  * Expose constructors.
+  */
+ 
+-exports.Route = Route;
++exports.Route = Router.Route;
+ exports.Router = Router;
+ 
+ /**
+@@ -76,41 +75,7 @@ exports.Router = Router;
+  */
+ 
+ exports.json = bodyParser.json
+-exports.query = require('./middleware/query');
+ exports.raw = bodyParser.raw
+ exports.static = require('serve-static');
+ exports.text = bodyParser.text
+ exports.urlencoded = bodyParser.urlencoded
+-
+-/**
+- * Replace removed middleware with an appropriate error message.
+- */
+-
+-var removedMiddlewares = [
+-  'bodyParser',
+-  'compress',
+-  'cookieSession',
+-  'session',
+-  'logger',
+-  'cookieParser',
+-  'favicon',
+-  'responseTime',
+-  'errorHandler',
+-  'timeout',
+-  'methodOverride',
+-  'vhost',
+-  'csrf',
+-  'directory',
+-  'limit',
+-  'multipart',
+-  'staticCache'
+-]
+-
+-removedMiddlewares.forEach(function (name) {
+-  Object.defineProperty(exports, name, {
+-    get: function () {
+-      throw new Error('Most middleware (like ' + name + ') is no longer bundled with Express and must be installed separately. Please see https://github.com/senchalabs/connect#middleware.');
+-    },
+-    configurable: true
+-  });
+-});
+diff --git a/lib/middleware/init.js b/lib/middleware/init.js
+deleted file mode 100644
+index dfd042747b..0000000000
+--- a/lib/middleware/init.js
++++ /dev/null
+@@ -1,43 +0,0 @@
+-/*!
+- * express
+- * Copyright(c) 2009-2013 TJ Holowaychuk
+- * Copyright(c) 2013 Roman Shtylman
+- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+- * MIT Licensed
+- */
+-
+-'use strict';
+-
+-/**
+- * Module dependencies.
+- * @private
+- */
+-
+-var setPrototypeOf = require('setprototypeof')
+-
+-/**
+- * Initialization middleware, exposing the
+- * request and response to each other, as well
+- * as defaulting the X-Powered-By header field.
+- *
+- * @param {Function} app
+- * @return {Function}
+- * @api private
+- */
+-
+-exports.init = function(app){
+-  return function expressInit(req, res, next){
+-    if (app.enabled('x-powered-by')) res.setHeader('X-Powered-By', 'Express');
+-    req.res = res;
+-    res.req = req;
+-    req.next = next;
+-
+-    setPrototypeOf(req, app.request)
+-    setPrototypeOf(res, app.response)
+-
+-    res.locals = res.locals || Object.create(null);
+-
+-    next();
+-  };
+-};
+-
+diff --git a/lib/middleware/query.js b/lib/middleware/query.js
+deleted file mode 100644
+index 7e9166947a..0000000000
+--- a/lib/middleware/query.js
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/*!
+- * express
+- * Copyright(c) 2009-2013 TJ Holowaychuk
+- * Copyright(c) 2013 Roman Shtylman
+- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+- * MIT Licensed
+- */
+-
+-'use strict';
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var merge = require('utils-merge')
+-var parseUrl = require('parseurl');
+-var qs = require('qs');
+-
+-/**
+- * @param {Object} options
+- * @return {Function}
+- * @api public
+- */
+-
+-module.exports = function query(options) {
+-  var opts = merge({}, options)
+-  var queryparse = qs.parse;
+-
+-  if (typeof options === 'function') {
+-    queryparse = options;
+-    opts = undefined;
+-  }
+-
+-  if (opts !== undefined && opts.allowPrototypes === undefined) {
+-    // back-compat for qs module
+-    opts.allowPrototypes = true;
+-  }
+-
+-  return function query(req, res, next){
+-    if (!req.query) {
+-      var val = parseUrl(req).query;
+-      req.query = queryparse(val, opts);
+-    }
+-
+-    next();
+-  };
+-};
+diff --git a/lib/request.js b/lib/request.js
+index 3f1eeca6c1..372a9915e9 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -14,7 +14,6 @@
+  */
+ 
+ var accepts = require('accepts');
+-var deprecate = require('depd')('express');
+ var isIP = require('net').isIP;
+ var typeis = require('type-is');
+ var http = require('http');
+@@ -147,9 +146,6 @@ req.acceptsEncodings = function(){
+   return accept.encodings.apply(accept, arguments);
+ };
+ 
+-req.acceptsEncoding = deprecate.function(req.acceptsEncodings,
+-  'req.acceptsEncoding: Use acceptsEncodings instead');
+-
+ /**
+  * Check if the given `charset`s are acceptable,
+  * otherwise you should respond with 406 "Not Acceptable".
+@@ -164,9 +160,6 @@ req.acceptsCharsets = function(){
+   return accept.charsets.apply(accept, arguments);
+ };
+ 
+-req.acceptsCharset = deprecate.function(req.acceptsCharsets,
+-  'req.acceptsCharset: Use acceptsCharsets instead');
+-
+ /**
+  * Check if the given `lang`s are acceptable,
+  * otherwise you should respond with 406 "Not Acceptable".
+@@ -181,9 +174,6 @@ req.acceptsLanguages = function(){
+   return accept.languages.apply(accept, arguments);
+ };
+ 
+-req.acceptsLanguage = deprecate.function(req.acceptsLanguages,
+-  'req.acceptsLanguage: Use acceptsLanguages instead');
+-
+ /**
+  * Parse Range header field, capping to the given `size`.
+  *
+@@ -216,38 +206,27 @@ req.range = function range(size, options) {
+ };
+ 
+ /**
+- * Return the value of param `name` when present or `defaultValue`.
+- *
+- *  - Checks route placeholders, ex: _/user/:id_
+- *  - Checks body params, ex: id=12, {"id":12}
+- *  - Checks query string params, ex: ?id=12
++ * Parse the query string of `req.url`.
+  *
+- * To utilize request bodies, `req.body`
+- * should be an object. This can be done by using
+- * the `bodyParser()` middleware.
++ * This uses the "query parser" setting to parse the raw
++ * string into an object.
+  *
+- * @param {String} name
+- * @param {Mixed} [defaultValue]
+  * @return {String}
+- * @public
++ * @api public
+  */
+ 
+-req.param = function param(name, defaultValue) {
+-  var params = this.params || {};
+-  var body = this.body || {};
+-  var query = this.query || {};
++defineGetter(req, 'query', function query(){
++  var queryparse = this.app.get('query parser fn');
+ 
+-  var args = arguments.length === 1
+-    ? 'name'
+-    : 'name, default';
+-  deprecate('req.param(' + args + '): Use req.params, req.body, or req.query instead');
++  if (!queryparse) {
++    // parsing is disabled
++    return Object.create(null);
++  }
+ 
+-  if (null != params[name] && params.hasOwnProperty(name)) return params[name];
+-  if (null != body[name]) return body[name];
+-  if (null != query[name]) return query[name];
++  var querystring = parse(this).query;
+ 
+-  return defaultValue;
+-};
++  return queryparse(querystring);
++});
+ 
+ /**
+  * Check if the incoming request contains the "Content-Type"
+@@ -414,7 +393,7 @@ defineGetter(req, 'path', function path() {
+ });
+ 
+ /**
+- * Parse the "Host" header field to a hostname.
++ * Parse the "Host" header field to a host.
+  *
+  * When the "trust proxy" setting trusts the socket
+  * address, the "X-Forwarded-Host" header field will
+@@ -424,18 +403,35 @@ defineGetter(req, 'path', function path() {
+  * @public
+  */
+ 
+-defineGetter(req, 'hostname', function hostname(){
++defineGetter(req, 'host', function host(){
+   var trust = this.app.get('trust proxy fn');
+-  var host = this.get('X-Forwarded-Host');
++  var val = this.get('X-Forwarded-Host');
+ 
+-  if (!host || !trust(this.connection.remoteAddress, 0)) {
+-    host = this.get('Host');
+-  } else if (host.indexOf(',') !== -1) {
++  if (!val || !trust(this.connection.remoteAddress, 0)) {
++    val = this.get('Host');
++  } else if (val.indexOf(',') !== -1) {
+     // Note: X-Forwarded-Host is normally only ever a
+     //       single value, but this is to be safe.
+-    host = host.substring(0, host.indexOf(',')).trimRight()
++    val = val.substring(0, val.indexOf(',')).trimRight()
+   }
+ 
++  return val || undefined;
++});
++
++/**
++ * Parse the "Host" header field to a hostname.
++ *
++ * When the "trust proxy" setting trusts the socket
++ * address, the "X-Forwarded-Host" header field will
++ * be trusted.
++ *
++ * @return {String}
++ * @api public
++ */
++
++defineGetter(req, 'hostname', function hostname(){
++  var host = this.host;
++
+   if (!host) return;
+ 
+   // IPv6 literal support
+@@ -449,15 +445,9 @@ defineGetter(req, 'hostname', function hostname(){
+     : host;
+ });
+ 
+-// TODO: change req.host to return host in next major
+-
+-defineGetter(req, 'host', deprecate.function(function host(){
+-  return this.hostname;
+-}, 'req.host: Use req.hostname instead'));
+-
+ /**
+  * Check if the request is fresh, aka
+- * Last-Modified and/or the ETag
++ * Last-Modified or the ETag
+  * still match.
+  *
+  * @return {Boolean}
+diff --git a/lib/response.js b/lib/response.js
+index 76b6b54a3b..937e985853 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -15,13 +15,13 @@
+ var Buffer = require('safe-buffer').Buffer
+ var contentDisposition = require('content-disposition');
+ var createError = require('http-errors')
+-var deprecate = require('depd')('express');
+ var encodeUrl = require('encodeurl');
+ var escapeHtml = require('escape-html');
+ var http = require('http');
+-var isAbsolute = require('./utils').isAbsolute;
+ var onFinished = require('on-finished');
++var mime = require('mime-types')
+ var path = require('path');
++var pathIsAbsolute = require('path').isAbsolute;
+ var statuses = require('statuses')
+ var merge = require('utils-merge');
+ var sign = require('cookie-signature').sign;
+@@ -31,7 +31,6 @@ var setCharset = require('./utils').setCharset;
+ var cookie = require('cookie');
+ var send = require('send');
+ var extname = path.extname;
+-var mime = send.mime;
+ var resolve = path.resolve;
+ var vary = require('vary');
+ 
+@@ -50,24 +49,28 @@ var res = Object.create(http.ServerResponse.prototype)
+ module.exports = res
+ 
+ /**
+- * Module variables.
+- * @private
+- */
+-
+-var charsetRegExp = /;\s*charset\s*=/;
+-
+-/**
+- * Set status `code`.
++ * Set the HTTP status code for the response.
+  *
+- * @param {Number} code
+- * @return {ServerResponse}
++ * Expects an integer value between 100 and 999 inclusive.
++ * Throws an error if the provided status code is not an integer or if it's outside the allowable range.
++ *
++ * @param {number} code - The HTTP status code to set.
++ * @return {ServerResponse} - Returns itself for chaining methods.
++ * @throws {TypeError} If `code` is not an integer.
++ * @throws {RangeError} If `code` is outside the range 100 to 999.
+  * @public
+  */
+ 
+ res.status = function status(code) {
+-  if ((typeof code === 'string' || Math.floor(code) !== code) && code > 99 && code < 1000) {
+-    deprecate('res.status(' + JSON.stringify(code) + '): use res.status(' + Math.floor(code) + ') instead')
++  // Check if the status code is not an integer
++  if (!Number.isInteger(code)) {
++    throw new TypeError(`Invalid status code: ${JSON.stringify(code)}. Status code must be an integer.`);
+   }
++  // Check if the status code is outside of Node's valid range
++  if (code < 100 || code > 999) {
++    throw new RangeError(`Invalid status code: ${JSON.stringify(code)}. Status code must be greater than 99 and less than 1000.`);
++  }
++
+   this.statusCode = code;
+   return this;
+ };
+@@ -117,31 +120,6 @@ res.send = function send(body) {
+   // settings
+   var app = this.app;
+ 
+-  // allow status / body
+-  if (arguments.length === 2) {
+-    // res.send(body, status) backwards compat
+-    if (typeof arguments[0] !== 'number' && typeof arguments[1] === 'number') {
+-      deprecate('res.send(body, status): Use res.status(status).send(body) instead');
+-      this.statusCode = arguments[1];
+-    } else {
+-      deprecate('res.send(status, body): Use res.status(status).send(body) instead');
+-      this.statusCode = arguments[0];
+-      chunk = arguments[1];
+-    }
+-  }
+-
+-  // disambiguate res.send(status) and res.send(status, num)
+-  if (typeof chunk === 'number' && arguments.length === 1) {
+-    // res.send(status) will set status message as text string
+-    if (!this.get('Content-Type')) {
+-      this.type('txt');
+-    }
+-
+-    deprecate('res.send(status): Use res.sendStatus(status) instead');
+-    this.statusCode = chunk;
+-    chunk = statuses.message[chunk]
+-  }
+-
+   switch (typeof chunk) {
+     // string defaulting to html
+     case 'string':
+@@ -207,7 +185,7 @@ res.send = function send(body) {
+   }
+ 
+   // freshness
+-  if (req.fresh) this.statusCode = 304;
++  if (req.fresh) this.status(304);
+ 
+   // strip irrelevant headers
+   if (204 === this.statusCode || 304 === this.statusCode) {
+@@ -248,27 +226,12 @@ res.send = function send(body) {
+  */
+ 
+ res.json = function json(obj) {
+-  var val = obj;
+-
+-  // allow status / body
+-  if (arguments.length === 2) {
+-    // res.json(body, status) backwards compat
+-    if (typeof arguments[1] === 'number') {
+-      deprecate('res.json(obj, status): Use res.status(status).json(obj) instead');
+-      this.statusCode = arguments[1];
+-    } else {
+-      deprecate('res.json(status, obj): Use res.status(status).json(obj) instead');
+-      this.statusCode = arguments[0];
+-      val = arguments[1];
+-    }
+-  }
+-
+   // settings
+   var app = this.app;
+   var escape = app.get('json escape')
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = stringify(val, replacer, spaces, escape)
++  var body = stringify(obj, replacer, spaces, escape)
+ 
+   // content-type
+   if (!this.get('Content-Type')) {
+@@ -291,27 +254,12 @@ res.json = function json(obj) {
+  */
+ 
+ res.jsonp = function jsonp(obj) {
+-  var val = obj;
+-
+-  // allow status / body
+-  if (arguments.length === 2) {
+-    // res.jsonp(body, status) backwards compat
+-    if (typeof arguments[1] === 'number') {
+-      deprecate('res.jsonp(obj, status): Use res.status(status).jsonp(obj) instead');
+-      this.statusCode = arguments[1];
+-    } else {
+-      deprecate('res.jsonp(status, obj): Use res.status(status).jsonp(obj) instead');
+-      this.statusCode = arguments[0];
+-      val = arguments[1];
+-    }
+-  }
+-
+   // settings
+   var app = this.app;
+   var escape = app.get('json escape')
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = stringify(val, replacer, spaces, escape)
++  var body = stringify(obj, replacer, spaces, escape)
+   var callback = this.req.query[app.get('jsonp callback name')];
+ 
+   // content-type
+@@ -369,7 +317,7 @@ res.jsonp = function jsonp(obj) {
+ res.sendStatus = function sendStatus(statusCode) {
+   var body = statuses.message[statusCode] || String(statusCode)
+ 
+-  this.statusCode = statusCode;
++  this.status(statusCode);
+   this.type('txt');
+ 
+   return this.send(body);
+@@ -437,7 +385,7 @@ res.sendFile = function sendFile(path, options, callback) {
+     opts = {};
+   }
+ 
+-  if (!opts.root && !isAbsolute(path)) {
++  if (!opts.root && !pathIsAbsolute(path)) {
+     throw new TypeError('path must be absolute or specify root to res.sendFile');
+   }
+ 
+@@ -457,78 +405,6 @@ res.sendFile = function sendFile(path, options, callback) {
+   });
+ };
+ 
+-/**
+- * Transfer the file at the given `path`.
+- *
+- * Automatically sets the _Content-Type_ response header field.
+- * The callback `callback(err)` is invoked when the transfer is complete
+- * or when an error occurs. Be sure to check `res.headersSent`
+- * if you wish to attempt responding, as the header and some data
+- * may have already been transferred.
+- *
+- * Options:
+- *
+- *   - `maxAge`   defaulting to 0 (can be string converted by `ms`)
+- *   - `root`     root directory for relative filenames
+- *   - `headers`  object of headers to serve with file
+- *   - `dotfiles` serve dotfiles, defaulting to false; can be `"allow"` to send them
+- *
+- * Other options are passed along to `send`.
+- *
+- * Examples:
+- *
+- *  The following example illustrates how `res.sendfile()` may
+- *  be used as an alternative for the `static()` middleware for
+- *  dynamic situations. The code backing `res.sendfile()` is actually
+- *  the same code, so HTTP cache support etc is identical.
+- *
+- *     app.get('/user/:uid/photos/:file', function(req, res){
+- *       var uid = req.params.uid
+- *         , file = req.params.file;
+- *
+- *       req.user.mayViewFilesFrom(uid, function(yes){
+- *         if (yes) {
+- *           res.sendfile('/uploads/' + uid + '/' + file);
+- *         } else {
+- *           res.send(403, 'Sorry! you cant see that.');
+- *         }
+- *       });
+- *     });
+- *
+- * @public
+- */
+-
+-res.sendfile = function (path, options, callback) {
+-  var done = callback;
+-  var req = this.req;
+-  var res = this;
+-  var next = req.next;
+-  var opts = options || {};
+-
+-  // support function as second arg
+-  if (typeof options === 'function') {
+-    done = options;
+-    opts = {};
+-  }
+-
+-  // create file stream
+-  var file = send(req, path, opts);
+-
+-  // transfer
+-  sendfile(res, file, opts, function (err) {
+-    if (done) return done(err);
+-    if (err && err.code === 'EISDIR') return next();
+-
+-    // next() all but write errors
+-    if (err && err.code !== 'ECONNABORTED' && err.syscall !== 'write') {
+-      next(err);
+-    }
+-  });
+-};
+-
+-res.sendfile = deprecate.function(res.sendfile,
+-  'res.sendfile: Use res.sendFile instead');
+-
+ /**
+  * Transfer the file at the given `path` as an attachment.
+  *
+@@ -599,8 +475,10 @@ res.download = function download (path, filename, options, callback) {
+ };
+ 
+ /**
+- * Set _Content-Type_ response header with `type` through `mime.lookup()`
++ * Set _Content-Type_ response header with `type` through `mime.contentType()`
+  * when it does not contain "/", or set the Content-Type to `type` otherwise.
++ * When no mapping is found though `mime.contentType()`, the type is set to
++ * "application/octet-stream".
+  *
+  * Examples:
+  *
+@@ -618,7 +496,7 @@ res.download = function download (path, filename, options, callback) {
+ res.contentType =
+ res.type = function contentType(type) {
+   var ct = type.indexOf('/') === -1
+-    ? mime.lookup(type)
++    ? (mime.contentType(type) || 'application/octet-stream')
+     : type;
+ 
+   return this.set('Content-Type', ct);
+@@ -767,6 +645,9 @@ res.append = function append(field, val) {
+  *
+  * Aliased as `res.header()`.
+  *
++ * When the set header is "Content-Type", the type is expanded to include
++ * the charset if not present using `mime.contentType()`.
++ *
+  * @param {String|Object} field
+  * @param {String|Array} val
+  * @return {ServerResponse} for chaining
+@@ -785,10 +666,7 @@ res.header = function header(field, val) {
+       if (Array.isArray(value)) {
+         throw new TypeError('Content-Type cannot be set to an Array');
+       }
+-      if (!charsetRegExp.test(value)) {
+-        var charset = mime.charsets.lookup(value.split(';')[0]);
+-        if (charset) value += '; charset=' + charset.toLowerCase();
+-      }
++      value = mime.contentType(value)
+     }
+ 
+     this.setHeader(field, value);
+@@ -822,15 +700,10 @@ res.get = function(field){
+  */
+ 
+ res.clearCookie = function clearCookie(name, options) {
+-  if (options) {
+-    if (options.maxAge) {
+-      deprecate('res.clearCookie: Passing "options.maxAge" is deprecated. In v5.0.0 of Express, this option will be ignored, as res.clearCookie will automatically set cookies to expire immediately. Please update your code to omit this option.');
+-    }
+-    if (options.expires) {
+-      deprecate('res.clearCookie: Passing "options.expires" is deprecated. In v5.0.0 of Express, this option will be ignored, as res.clearCookie will automatically set cookies to expire immediately. Please update your code to omit this option.');
+-    }
+-  }
+-  var opts = merge({ expires: new Date(1), path: '/' }, options);
++  // Force cookie expiration by setting expires to the past
++  const opts = { path: '/', ...options, expires: new Date(1)};
++  // ensure maxAge is not passed
++  delete opts.maxAge
+ 
+   return this.cookie(name, '', opts);
+ };
+@@ -912,26 +785,13 @@ res.cookie = function (name, value, options) {
+  */
+ 
+ res.location = function location(url) {
+-  var loc;
+-
+-  // "back" is an alias for the referrer
+-  if (url === 'back') {
+-    loc = this.req.get('Referrer') || '/';
+-  } else {
+-    loc = String(url);
+-  }
+-
+-  return this.set('Location', encodeUrl(loc));
++  return this.set('Location', encodeUrl(url));
+ };
+ 
+ /**
+  * Redirect to the given `url` with optional response `status`
+  * defaulting to 302.
+  *
+- * The resulting `url` is determined by `res.location()`, so
+- * it will play nicely with mounted apps, relative paths,
+- * `"back"` etc.
+- *
+  * Examples:
+  *
+  *    res.redirect('/foo/bar');
+@@ -949,13 +809,8 @@ res.redirect = function redirect(url) {
+ 
+   // allow status / url
+   if (arguments.length === 2) {
+-    if (typeof arguments[0] === 'number') {
+-      status = arguments[0];
+-      address = arguments[1];
+-    } else {
+-      deprecate('res.redirect(url, status): Use res.redirect(status, url) instead');
+-      status = arguments[1];
+-    }
++    status = arguments[0]
++    address = arguments[1]
+   }
+ 
+   // Set location header
+@@ -978,7 +833,7 @@ res.redirect = function redirect(url) {
+   });
+ 
+   // Respond
+-  this.statusCode = status;
++  this.status(status);
+   this.set('Content-Length', Buffer.byteLength(body));
+ 
+   if (this.req.method === 'HEAD') {
+@@ -998,12 +853,6 @@ res.redirect = function redirect(url) {
+  */
+ 
+ res.vary = function(field){
+-  // checks for back-compat
+-  if (!field || (Array.isArray(field) && !field.length)) {
+-    deprecate('res.vary(): Provide a field name');
+-    return this;
+-  }
+-
+   vary(this, field);
+ 
+   return this;
+diff --git a/lib/router/index.js b/lib/router/index.js
+deleted file mode 100644
+index abb3a6f589..0000000000
+--- a/lib/router/index.js
++++ /dev/null
+@@ -1,673 +0,0 @@
+-/*!
+- * express
+- * Copyright(c) 2009-2013 TJ Holowaychuk
+- * Copyright(c) 2013 Roman Shtylman
+- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+- * MIT Licensed
+- */
+-
+-'use strict';
+-
+-/**
+- * Module dependencies.
+- * @private
+- */
+-
+-var Route = require('./route');
+-var Layer = require('./layer');
+-var methods = require('methods');
+-var mixin = require('utils-merge');
+-var debug = require('debug')('express:router');
+-var deprecate = require('depd')('express');
+-var flatten = require('array-flatten');
+-var parseUrl = require('parseurl');
+-var setPrototypeOf = require('setprototypeof')
+-
+-/**
+- * Module variables.
+- * @private
+- */
+-
+-var objectRegExp = /^\[object (\S+)\]$/;
+-var slice = Array.prototype.slice;
+-var toString = Object.prototype.toString;
+-
+-/**
+- * Initialize a new `Router` with the given `options`.
+- *
+- * @param {Object} [options]
+- * @return {Router} which is a callable function
+- * @public
+- */
+-
+-var proto = module.exports = function(options) {
+-  var opts = options || {};
+-
+-  function router(req, res, next) {
+-    router.handle(req, res, next);
+-  }
+-
+-  // mixin Router class functions
+-  setPrototypeOf(router, proto)
+-
+-  router.params = {};
+-  router._params = [];
+-  router.caseSensitive = opts.caseSensitive;
+-  router.mergeParams = opts.mergeParams;
+-  router.strict = opts.strict;
+-  router.stack = [];
+-
+-  return router;
+-};
+-
+-/**
+- * Map the given param placeholder `name`(s) to the given callback.
+- *
+- * Parameter mapping is used to provide pre-conditions to routes
+- * which use normalized placeholders. For example a _:user_id_ parameter
+- * could automatically load a user's information from the database without
+- * any additional code,
+- *
+- * The callback uses the same signature as middleware, the only difference
+- * being that the value of the placeholder is passed, in this case the _id_
+- * of the user. Once the `next()` function is invoked, just like middleware
+- * it will continue on to execute the route, or subsequent parameter functions.
+- *
+- * Just like in middleware, you must either respond to the request or call next
+- * to avoid stalling the request.
+- *
+- *  app.param('user_id', function(req, res, next, id){
+- *    User.find(id, function(err, user){
+- *      if (err) {
+- *        return next(err);
+- *      } else if (!user) {
+- *        return next(new Error('failed to load user'));
+- *      }
+- *      req.user = user;
+- *      next();
+- *    });
+- *  });
+- *
+- * @param {String} name
+- * @param {Function} fn
+- * @return {app} for chaining
+- * @public
+- */
+-
+-proto.param = function param(name, fn) {
+-  // param logic
+-  if (typeof name === 'function') {
+-    deprecate('router.param(fn): Refactor to use path params');
+-    this._params.push(name);
+-    return;
+-  }
+-
+-  // apply param functions
+-  var params = this._params;
+-  var len = params.length;
+-  var ret;
+-
+-  if (name[0] === ':') {
+-    deprecate('router.param(' + JSON.stringify(name) + ', fn): Use router.param(' + JSON.stringify(name.slice(1)) + ', fn) instead')
+-    name = name.slice(1)
+-  }
+-
+-  for (var i = 0; i < len; ++i) {
+-    if (ret = params[i](name, fn)) {
+-      fn = ret;
+-    }
+-  }
+-
+-  // ensure we end up with a
+-  // middleware function
+-  if ('function' !== typeof fn) {
+-    throw new Error('invalid param() call for ' + name + ', got ' + fn);
+-  }
+-
+-  (this.params[name] = this.params[name] || []).push(fn);
+-  return this;
+-};
+-
+-/**
+- * Dispatch a req, res into the router.
+- * @private
+- */
+-
+-proto.handle = function handle(req, res, out) {
+-  var self = this;
+-
+-  debug('dispatching %s %s', req.method, req.url);
+-
+-  var idx = 0;
+-  var protohost = getProtohost(req.url) || ''
+-  var removed = '';
+-  var slashAdded = false;
+-  var sync = 0
+-  var paramcalled = {};
+-
+-  // store options for OPTIONS request
+-  // only used if OPTIONS request
+-  var options = [];
+-
+-  // middleware and routes
+-  var stack = self.stack;
+-
+-  // manage inter-router variables
+-  var parentParams = req.params;
+-  var parentUrl = req.baseUrl || '';
+-  var done = restore(out, req, 'baseUrl', 'next', 'params');
+-
+-  // setup next layer
+-  req.next = next;
+-
+-  // for options requests, respond with a default if nothing else responds
+-  if (req.method === 'OPTIONS') {
+-    done = wrap(done, function(old, err) {
+-      if (err || options.length === 0) return old(err);
+-      sendOptionsResponse(res, options, old);
+-    });
+-  }
+-
+-  // setup basic req values
+-  req.baseUrl = parentUrl;
+-  req.originalUrl = req.originalUrl || req.url;
+-
+-  next();
+-
+-  function next(err) {
+-    var layerError = err === 'route'
+-      ? null
+-      : err;
+-
+-    // remove added slash
+-    if (slashAdded) {
+-      req.url = req.url.slice(1)
+-      slashAdded = false;
+-    }
+-
+-    // restore altered req.url
+-    if (removed.length !== 0) {
+-      req.baseUrl = parentUrl;
+-      req.url = protohost + removed + req.url.slice(protohost.length)
+-      removed = '';
+-    }
+-
+-    // signal to exit router
+-    if (layerError === 'router') {
+-      setImmediate(done, null)
+-      return
+-    }
+-
+-    // no more matching layers
+-    if (idx >= stack.length) {
+-      setImmediate(done, layerError);
+-      return;
+-    }
+-
+-    // max sync stack
+-    if (++sync > 100) {
+-      return setImmediate(next, err)
+-    }
+-
+-    // get pathname of request
+-    var path = getPathname(req);
+-
+-    if (path == null) {
+-      return done(layerError);
+-    }
+-
+-    // find next matching layer
+-    var layer;
+-    var match;
+-    var route;
+-
+-    while (match !== true && idx < stack.length) {
+-      layer = stack[idx++];
+-      match = matchLayer(layer, path);
+-      route = layer.route;
+-
+-      if (typeof match !== 'boolean') {
+-        // hold on to layerError
+-        layerError = layerError || match;
+-      }
+-
+-      if (match !== true) {
+-        continue;
+-      }
+-
+-      if (!route) {
+-        // process non-route handlers normally
+-        continue;
+-      }
+-
+-      if (layerError) {
+-        // routes do not match with a pending error
+-        match = false;
+-        continue;
+-      }
+-
+-      var method = req.method;
+-      var has_method = route._handles_method(method);
+-
+-      // build up automatic options response
+-      if (!has_method && method === 'OPTIONS') {
+-        appendMethods(options, route._options());
+-      }
+-
+-      // don't even bother matching route
+-      if (!has_method && method !== 'HEAD') {
+-        match = false;
+-      }
+-    }
+-
+-    // no match
+-    if (match !== true) {
+-      return done(layerError);
+-    }
+-
+-    // store route for dispatch on change
+-    if (route) {
+-      req.route = route;
+-    }
+-
+-    // Capture one-time layer values
+-    req.params = self.mergeParams
+-      ? mergeParams(layer.params, parentParams)
+-      : layer.params;
+-    var layerPath = layer.path;
+-
+-    // this should be done for the layer
+-    self.process_params(layer, paramcalled, req, res, function (err) {
+-      if (err) {
+-        next(layerError || err)
+-      } else if (route) {
+-        layer.handle_request(req, res, next)
+-      } else {
+-        trim_prefix(layer, layerError, layerPath, path)
+-      }
+-
+-      sync = 0
+-    });
+-  }
+-
+-  function trim_prefix(layer, layerError, layerPath, path) {
+-    if (layerPath.length !== 0) {
+-      // Validate path is a prefix match
+-      if (layerPath !== path.slice(0, layerPath.length)) {
+-        next(layerError)
+-        return
+-      }
+-
+-      // Validate path breaks on a path separator
+-      var c = path[layerPath.length]
+-      if (c && c !== '/' && c !== '.') return next(layerError)
+-
+-      // Trim off the part of the url that matches the route
+-      // middleware (.use stuff) needs to have the path stripped
+-      debug('trim prefix (%s) from url %s', layerPath, req.url);
+-      removed = layerPath;
+-      req.url = protohost + req.url.slice(protohost.length + removed.length)
+-
+-      // Ensure leading slash
+-      if (!protohost && req.url[0] !== '/') {
+-        req.url = '/' + req.url;
+-        slashAdded = true;
+-      }
+-
+-      // Setup base URL (no trailing slash)
+-      req.baseUrl = parentUrl + (removed[removed.length - 1] === '/'
+-        ? removed.substring(0, removed.length - 1)
+-        : removed);
+-    }
+-
+-    debug('%s %s : %s', layer.name, layerPath, req.originalUrl);
+-
+-    if (layerError) {
+-      layer.handle_error(layerError, req, res, next);
+-    } else {
+-      layer.handle_request(req, res, next);
+-    }
+-  }
+-};
+-
+-/**
+- * Process any parameters for the layer.
+- * @private
+- */
+-
+-proto.process_params = function process_params(layer, called, req, res, done) {
+-  var params = this.params;
+-
+-  // captured parameters from the layer, keys and values
+-  var keys = layer.keys;
+-
+-  // fast track
+-  if (!keys || keys.length === 0) {
+-    return done();
+-  }
+-
+-  var i = 0;
+-  var name;
+-  var paramIndex = 0;
+-  var key;
+-  var paramVal;
+-  var paramCallbacks;
+-  var paramCalled;
+-
+-  // process params in order
+-  // param callbacks can be async
+-  function param(err) {
+-    if (err) {
+-      return done(err);
+-    }
+-
+-    if (i >= keys.length ) {
+-      return done();
+-    }
+-
+-    paramIndex = 0;
+-    key = keys[i++];
+-    name = key.name;
+-    paramVal = req.params[name];
+-    paramCallbacks = params[name];
+-    paramCalled = called[name];
+-
+-    if (paramVal === undefined || !paramCallbacks) {
+-      return param();
+-    }
+-
+-    // param previously called with same value or error occurred
+-    if (paramCalled && (paramCalled.match === paramVal
+-      || (paramCalled.error && paramCalled.error !== 'route'))) {
+-      // restore value
+-      req.params[name] = paramCalled.value;
+-
+-      // next param
+-      return param(paramCalled.error);
+-    }
+-
+-    called[name] = paramCalled = {
+-      error: null,
+-      match: paramVal,
+-      value: paramVal
+-    };
+-
+-    paramCallback();
+-  }
+-
+-  // single param callbacks
+-  function paramCallback(err) {
+-    var fn = paramCallbacks[paramIndex++];
+-
+-    // store updated value
+-    paramCalled.value = req.params[key.name];
+-
+-    if (err) {
+-      // store error
+-      paramCalled.error = err;
+-      param(err);
+-      return;
+-    }
+-
+-    if (!fn) return param();
+-
+-    try {
+-      fn(req, res, paramCallback, paramVal, key.name);
+-    } catch (e) {
+-      paramCallback(e);
+-    }
+-  }
+-
+-  param();
+-};
+-
+-/**
+- * Use the given middleware function, with optional path, defaulting to "/".
+- *
+- * Use (like `.all`) will run for any http METHOD, but it will not add
+- * handlers for those methods so OPTIONS requests will not consider `.use`
+- * functions even if they could respond.
+- *
+- * The other difference is that _route_ path is stripped and not visible
+- * to the handler function. The main effect of this feature is that mounted
+- * handlers can operate without any code changes regardless of the "prefix"
+- * pathname.
+- *
+- * @public
+- */
+-
+-proto.use = function use(fn) {
+-  var offset = 0;
+-  var path = '/';
+-
+-  // default path to '/'
+-  // disambiguate router.use([fn])
+-  if (typeof fn !== 'function') {
+-    var arg = fn;
+-
+-    while (Array.isArray(arg) && arg.length !== 0) {
+-      arg = arg[0];
+-    }
+-
+-    // first arg is the path
+-    if (typeof arg !== 'function') {
+-      offset = 1;
+-      path = fn;
+-    }
+-  }
+-
+-  var callbacks = flatten(slice.call(arguments, offset));
+-
+-  if (callbacks.length === 0) {
+-    throw new TypeError('Router.use() requires a middleware function')
+-  }
+-
+-  for (var i = 0; i < callbacks.length; i++) {
+-    var fn = callbacks[i];
+-
+-    if (typeof fn !== 'function') {
+-      throw new TypeError('Router.use() requires a middleware function but got a ' + gettype(fn))
+-    }
+-
+-    // add the middleware
+-    debug('use %o %s', path, fn.name || '<anonymous>')
+-
+-    var layer = new Layer(path, {
+-      sensitive: this.caseSensitive,
+-      strict: false,
+-      end: false
+-    }, fn);
+-
+-    layer.route = undefined;
+-
+-    this.stack.push(layer);
+-  }
+-
+-  return this;
+-};
+-
+-/**
+- * Create a new Route for the given path.
+- *
+- * Each route contains a separate middleware stack and VERB handlers.
+- *
+- * See the Route api documentation for details on adding handlers
+- * and middleware to routes.
+- *
+- * @param {String} path
+- * @return {Route}
+- * @public
+- */
+-
+-proto.route = function route(path) {
+-  var route = new Route(path);
+-
+-  var layer = new Layer(path, {
+-    sensitive: this.caseSensitive,
+-    strict: this.strict,
+-    end: true
+-  }, route.dispatch.bind(route));
+-
+-  layer.route = route;
+-
+-  this.stack.push(layer);
+-  return route;
+-};
+-
+-// create Router#VERB functions
+-methods.concat('all').forEach(function(method){
+-  proto[method] = function(path){
+-    var route = this.route(path)
+-    route[method].apply(route, slice.call(arguments, 1));
+-    return this;
+-  };
+-});
+-
+-// append methods to a list of methods
+-function appendMethods(list, addition) {
+-  for (var i = 0; i < addition.length; i++) {
+-    var method = addition[i];
+-    if (list.indexOf(method) === -1) {
+-      list.push(method);
+-    }
+-  }
+-}
+-
+-// get pathname of request
+-function getPathname(req) {
+-  try {
+-    return parseUrl(req).pathname;
+-  } catch (err) {
+-    return undefined;
+-  }
+-}
+-
+-// Get get protocol + host for a URL
+-function getProtohost(url) {
+-  if (typeof url !== 'string' || url.length === 0 || url[0] === '/') {
+-    return undefined
+-  }
+-
+-  var searchIndex = url.indexOf('?')
+-  var pathLength = searchIndex !== -1
+-    ? searchIndex
+-    : url.length
+-  var fqdnIndex = url.slice(0, pathLength).indexOf('://')
+-
+-  return fqdnIndex !== -1
+-    ? url.substring(0, url.indexOf('/', 3 + fqdnIndex))
+-    : undefined
+-}
+-
+-// get type for error message
+-function gettype(obj) {
+-  var type = typeof obj;
+-
+-  if (type !== 'object') {
+-    return type;
+-  }
+-
+-  // inspect [[Class]] for objects
+-  return toString.call(obj)
+-    .replace(objectRegExp, '$1');
+-}
+-
+-/**
+- * Match path to a layer.
+- *
+- * @param {Layer} layer
+- * @param {string} path
+- * @private
+- */
+-
+-function matchLayer(layer, path) {
+-  try {
+-    return layer.match(path);
+-  } catch (err) {
+-    return err;
+-  }
+-}
+-
+-// merge params with parent params
+-function mergeParams(params, parent) {
+-  if (typeof parent !== 'object' || !parent) {
+-    return params;
+-  }
+-
+-  // make copy of parent for base
+-  var obj = mixin({}, parent);
+-
+-  // simple non-numeric merging
+-  if (!(0 in params) || !(0 in parent)) {
+-    return mixin(obj, params);
+-  }
+-
+-  var i = 0;
+-  var o = 0;
+-
+-  // determine numeric gaps
+-  while (i in params) {
+-    i++;
+-  }
+-
+-  while (o in parent) {
+-    o++;
+-  }
+-
+-  // offset numeric indices in params before merge
+-  for (i--; i >= 0; i--) {
+-    params[i + o] = params[i];
+-
+-    // create holes for the merge when necessary
+-    if (i < o) {
+-      delete params[i];
+-    }
+-  }
+-
+-  return mixin(obj, params);
+-}
+-
+-// restore obj props after function
+-function restore(fn, obj) {
+-  var props = new Array(arguments.length - 2);
+-  var vals = new Array(arguments.length - 2);
+-
+-  for (var i = 0; i < props.length; i++) {
+-    props[i] = arguments[i + 2];
+-    vals[i] = obj[props[i]];
+-  }
+-
+-  return function () {
+-    // restore vals
+-    for (var i = 0; i < props.length; i++) {
+-      obj[props[i]] = vals[i];
+-    }
+-
+-    return fn.apply(this, arguments);
+-  };
+-}
+-
+-// send an OPTIONS response
+-function sendOptionsResponse(res, options, next) {
+-  try {
+-    var body = options.join(',');
+-    res.set('Allow', body);
+-    res.send(body);
+-  } catch (err) {
+-    next(err);
+-  }
+-}
+-
+-// wrap a function
+-function wrap(old, fn) {
+-  return function proxy() {
+-    var args = new Array(arguments.length + 1);
+-
+-    args[0] = old;
+-    for (var i = 0, len = arguments.length; i < len; i++) {
+-      args[i + 1] = arguments[i];
+-    }
+-
+-    fn.apply(this, args);
+-  };
+-}
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+deleted file mode 100644
+index 4dc8e86d4f..0000000000
+--- a/lib/router/layer.js
++++ /dev/null
+@@ -1,181 +0,0 @@
+-/*!
+- * express
+- * Copyright(c) 2009-2013 TJ Holowaychuk
+- * Copyright(c) 2013 Roman Shtylman
+- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+- * MIT Licensed
+- */
+-
+-'use strict';
+-
+-/**
+- * Module dependencies.
+- * @private
+- */
+-
+-var pathRegexp = require('path-to-regexp');
+-var debug = require('debug')('express:router:layer');
+-
+-/**
+- * Module variables.
+- * @private
+- */
+-
+-var hasOwnProperty = Object.prototype.hasOwnProperty;
+-
+-/**
+- * Module exports.
+- * @public
+- */
+-
+-module.exports = Layer;
+-
+-function Layer(path, options, fn) {
+-  if (!(this instanceof Layer)) {
+-    return new Layer(path, options, fn);
+-  }
+-
+-  debug('new %o', path)
+-  var opts = options || {};
+-
+-  this.handle = fn;
+-  this.name = fn.name || '<anonymous>';
+-  this.params = undefined;
+-  this.path = undefined;
+-  this.regexp = pathRegexp(path, this.keys = [], opts);
+-
+-  // set fast path flags
+-  this.regexp.fast_star = path === '*'
+-  this.regexp.fast_slash = path === '/' && opts.end === false
+-}
+-
+-/**
+- * Handle the error for the layer.
+- *
+- * @param {Error} error
+- * @param {Request} req
+- * @param {Response} res
+- * @param {function} next
+- * @api private
+- */
+-
+-Layer.prototype.handle_error = function handle_error(error, req, res, next) {
+-  var fn = this.handle;
+-
+-  if (fn.length !== 4) {
+-    // not a standard error handler
+-    return next(error);
+-  }
+-
+-  try {
+-    fn(error, req, res, next);
+-  } catch (err) {
+-    next(err);
+-  }
+-};
+-
+-/**
+- * Handle the request for the layer.
+- *
+- * @param {Request} req
+- * @param {Response} res
+- * @param {function} next
+- * @api private
+- */
+-
+-Layer.prototype.handle_request = function handle(req, res, next) {
+-  var fn = this.handle;
+-
+-  if (fn.length > 3) {
+-    // not a standard request handler
+-    return next();
+-  }
+-
+-  try {
+-    fn(req, res, next);
+-  } catch (err) {
+-    next(err);
+-  }
+-};
+-
+-/**
+- * Check if this route matches `path`, if so
+- * populate `.params`.
+- *
+- * @param {String} path
+- * @return {Boolean}
+- * @api private
+- */
+-
+-Layer.prototype.match = function match(path) {
+-  var match
+-
+-  if (path != null) {
+-    // fast path non-ending match for / (any path matches)
+-    if (this.regexp.fast_slash) {
+-      this.params = {}
+-      this.path = ''
+-      return true
+-    }
+-
+-    // fast path for * (everything matched in a param)
+-    if (this.regexp.fast_star) {
+-      this.params = {'0': decode_param(path)}
+-      this.path = path
+-      return true
+-    }
+-
+-    // match the path
+-    match = this.regexp.exec(path)
+-  }
+-
+-  if (!match) {
+-    this.params = undefined;
+-    this.path = undefined;
+-    return false;
+-  }
+-
+-  // store values
+-  this.params = {};
+-  this.path = match[0]
+-
+-  var keys = this.keys;
+-  var params = this.params;
+-
+-  for (var i = 1; i < match.length; i++) {
+-    var key = keys[i - 1];
+-    var prop = key.name;
+-    var val = decode_param(match[i])
+-
+-    if (val !== undefined || !(hasOwnProperty.call(params, prop))) {
+-      params[prop] = val;
+-    }
+-  }
+-
+-  return true;
+-};
+-
+-/**
+- * Decode param value.
+- *
+- * @param {string} val
+- * @return {string}
+- * @private
+- */
+-
+-function decode_param(val) {
+-  if (typeof val !== 'string' || val.length === 0) {
+-    return val;
+-  }
+-
+-  try {
+-    return decodeURIComponent(val);
+-  } catch (err) {
+-    if (err instanceof URIError) {
+-      err.message = 'Failed to decode param \'' + val + '\'';
+-      err.status = err.statusCode = 400;
+-    }
+-
+-    throw err;
+-  }
+-}
+diff --git a/lib/router/route.js b/lib/router/route.js
+deleted file mode 100644
+index a65756d6de..0000000000
+--- a/lib/router/route.js
++++ /dev/null
+@@ -1,230 +0,0 @@
+-/*!
+- * express
+- * Copyright(c) 2009-2013 TJ Holowaychuk
+- * Copyright(c) 2013 Roman Shtylman
+- * Copyright(c) 2014-2015 Douglas Christopher Wilson
+- * MIT Licensed
+- */
+-
+-'use strict';
+-
+-/**
+- * Module dependencies.
+- * @private
+- */
+-
+-var debug = require('debug')('express:router:route');
+-var flatten = require('array-flatten');
+-var Layer = require('./layer');
+-var methods = require('methods');
+-
+-/**
+- * Module variables.
+- * @private
+- */
+-
+-var slice = Array.prototype.slice;
+-var toString = Object.prototype.toString;
+-
+-/**
+- * Module exports.
+- * @public
+- */
+-
+-module.exports = Route;
+-
+-/**
+- * Initialize `Route` with the given `path`,
+- *
+- * @param {String} path
+- * @public
+- */
+-
+-function Route(path) {
+-  this.path = path;
+-  this.stack = [];
+-
+-  debug('new %o', path)
+-
+-  // route handlers for various http methods
+-  this.methods = {};
+-}
+-
+-/**
+- * Determine if the route handles a given method.
+- * @private
+- */
+-
+-Route.prototype._handles_method = function _handles_method(method) {
+-  if (this.methods._all) {
+-    return true;
+-  }
+-
+-  // normalize name
+-  var name = typeof method === 'string'
+-    ? method.toLowerCase()
+-    : method
+-
+-  if (name === 'head' && !this.methods['head']) {
+-    name = 'get';
+-  }
+-
+-  return Boolean(this.methods[name]);
+-};
+-
+-/**
+- * @return {Array} supported HTTP methods
+- * @private
+- */
+-
+-Route.prototype._options = function _options() {
+-  var methods = Object.keys(this.methods);
+-
+-  // append automatic head
+-  if (this.methods.get && !this.methods.head) {
+-    methods.push('head');
+-  }
+-
+-  for (var i = 0; i < methods.length; i++) {
+-    // make upper case
+-    methods[i] = methods[i].toUpperCase();
+-  }
+-
+-  return methods;
+-};
+-
+-/**
+- * dispatch req, res into this route
+- * @private
+- */
+-
+-Route.prototype.dispatch = function dispatch(req, res, done) {
+-  var idx = 0;
+-  var stack = this.stack;
+-  var sync = 0
+-
+-  if (stack.length === 0) {
+-    return done();
+-  }
+-  var method = typeof req.method === 'string'
+-    ? req.method.toLowerCase()
+-    : req.method
+-
+-  if (method === 'head' && !this.methods['head']) {
+-    method = 'get';
+-  }
+-
+-  req.route = this;
+-
+-  next();
+-
+-  function next(err) {
+-    // signal to exit route
+-    if (err && err === 'route') {
+-      return done();
+-    }
+-
+-    // signal to exit router
+-    if (err && err === 'router') {
+-      return done(err)
+-    }
+-
+-    // max sync stack
+-    if (++sync > 100) {
+-      return setImmediate(next, err)
+-    }
+-
+-    var layer = stack[idx++]
+-
+-    // end of layers
+-    if (!layer) {
+-      return done(err)
+-    }
+-
+-    if (layer.method && layer.method !== method) {
+-      next(err)
+-    } else if (err) {
+-      layer.handle_error(err, req, res, next);
+-    } else {
+-      layer.handle_request(req, res, next);
+-    }
+-
+-    sync = 0
+-  }
+-};
+-
+-/**
+- * Add a handler for all HTTP verbs to this route.
+- *
+- * Behaves just like middleware and can respond or call `next`
+- * to continue processing.
+- *
+- * You can use multiple `.all` call to add multiple handlers.
+- *
+- *   function check_something(req, res, next){
+- *     next();
+- *   };
+- *
+- *   function validate_user(req, res, next){
+- *     next();
+- *   };
+- *
+- *   route
+- *   .all(validate_user)
+- *   .all(check_something)
+- *   .get(function(req, res, next){
+- *     res.send('hello world');
+- *   });
+- *
+- * @param {function} handler
+- * @return {Route} for chaining
+- * @api public
+- */
+-
+-Route.prototype.all = function all() {
+-  var handles = flatten(slice.call(arguments));
+-
+-  for (var i = 0; i < handles.length; i++) {
+-    var handle = handles[i];
+-
+-    if (typeof handle !== 'function') {
+-      var type = toString.call(handle);
+-      var msg = 'Route.all() requires a callback function but got a ' + type
+-      throw new TypeError(msg);
+-    }
+-
+-    var layer = Layer('/', {}, handle);
+-    layer.method = undefined;
+-
+-    this.methods._all = true;
+-    this.stack.push(layer);
+-  }
+-
+-  return this;
+-};
+-
+-methods.forEach(function(method){
+-  Route.prototype[method] = function(){
+-    var handles = flatten(slice.call(arguments));
+-
+-    for (var i = 0; i < handles.length; i++) {
+-      var handle = handles[i];
+-
+-      if (typeof handle !== 'function') {
+-        var type = toString.call(handle);
+-        var msg = 'Route.' + method + '() requires a callback function but got a ' + type
+-        throw new Error(msg);
+-      }
+-
+-      debug('%s %o', method, this.path)
+-
+-      var layer = Layer('/', {}, handle);
+-      layer.method = method;
+-
+-      this.methods[method] = true;
+-      this.stack.push(layer);
+-    }
+-
+-    return this;
+-  };
+-});
+diff --git a/lib/utils.js b/lib/utils.js
+index 56e12b9b54..f66760a17c 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -13,12 +13,9 @@
+  */
+ 
+ var Buffer = require('safe-buffer').Buffer
+-var contentDisposition = require('content-disposition');
+ var contentType = require('content-type');
+-var deprecate = require('depd')('express');
+-var flatten = require('array-flatten');
+-var mime = require('send').mime;
+ var etag = require('etag');
++var mime = require('mime-types')
+ var proxyaddr = require('proxy-addr');
+ var qs = require('qs');
+ var querystring = require('querystring');
+@@ -45,31 +42,6 @@ exports.etag = createETagGenerator({ weak: false })
+ 
+ exports.wetag = createETagGenerator({ weak: true })
+ 
+-/**
+- * Check if `path` looks absolute.
+- *
+- * @param {String} path
+- * @return {Boolean}
+- * @api private
+- */
+-
+-exports.isAbsolute = function(path){
+-  if ('/' === path[0]) return true;
+-  if (':' === path[1] && ('\\' === path[2] || '/' === path[2])) return true; // Windows device path
+-  if ('\\\\' === path.substring(0, 2)) return true; // Microsoft Azure absolute path
+-};
+-
+-/**
+- * Flatten the given `arr`.
+- *
+- * @param {Array} arr
+- * @return {Array}
+- * @api private
+- */
+-
+-exports.flatten = deprecate.function(flatten,
+-  'utils.flatten: use array-flatten npm module instead');
+-
+ /**
+  * Normalize the given `type`, for example "html" becomes "text/html".
+  *
+@@ -81,7 +53,7 @@ exports.flatten = deprecate.function(flatten,
+ exports.normalizeType = function(type){
+   return ~type.indexOf('/')
+     ? acceptParams(type)
+-    : { value: mime.lookup(type), params: {} };
++    : { value: (mime.lookup(type) || 'application/octet-stream'), params: {} }
+ };
+ 
+ /**
+@@ -102,18 +74,6 @@ exports.normalizeTypes = function(types){
+   return ret;
+ };
+ 
+-/**
+- * Generate Content-Disposition header appropriate for the filename.
+- * non-ascii filenames are urlencoded and a filename* parameter is added
+- *
+- * @param {String} filename
+- * @return {String}
+- * @api private
+- */
+-
+-exports.contentDisposition = deprecate.function(contentDisposition,
+-  'utils.contentDisposition: use content-disposition npm module instead');
+-
+ /**
+  * Parse accept params `str` returning an
+  * object with `.value`, `.quality` and `.params`.
+@@ -192,7 +152,6 @@ exports.compileQueryParser = function compileQueryParser(val) {
+       fn = querystring.parse;
+       break;
+     case false:
+-      fn = newObject;
+       break;
+     case 'extended':
+       fn = parseExtendedQueryString;
+@@ -290,14 +249,3 @@ function parseExtendedQueryString(str) {
+     allowPrototypes: true
+   });
+ }
+-
+-/**
+- * Return new empty object.
+- *
+- * @return {Object}
+- * @api private
+- */
+-
+-function newObject() {
+-  return {};
+-}
+diff --git a/lib/view.js b/lib/view.js
+index c08ab4d8d5..6beffca6e2 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -131,8 +131,31 @@ View.prototype.lookup = function lookup(name) {
+  */
+ 
+ View.prototype.render = function render(options, callback) {
++  var sync = true;
++
+   debug('render "%s"', this.path);
+-  this.engine(this.path, options, callback);
++
++  // render, normalizing sync callbacks
++  this.engine(this.path, options, function onRender() {
++    if (!sync) {
++      return callback.apply(this, arguments);
++    }
++
++    // copy arguments
++    var args = new Array(arguments.length);
++    var cntx = this;
++
++    for (var i = 0; i < arguments.length; i++) {
++      args[i] = arguments[i];
++    }
++
++    // force callback to be async
++    return process.nextTick(function renderTick() {
++      return callback.apply(cntx, args);
++    });
++  });
++
++  sync = false;
+ };
+ 
+ /**
+diff --git a/package.json b/package.json
+index bffa70a6f1..c1eff78d97 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Fast, unopinionated, minimalist web framework",
+-  "version": "4.20.0",
++  "version": "5.0.0",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [
+     "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+@@ -28,35 +28,36 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.3.8",
+-    "array-flatten": "1.1.1",
+-    "body-parser": "1.20.3",
+-    "content-disposition": "0.5.4",
++    "accepts": "^2.0.0",
++    "body-parser": "^2.0.1",
++    "content-disposition": "^1.0.0",
+     "content-type": "~1.0.4",
+     "cookie": "0.6.0",
+-    "cookie-signature": "1.0.6",
+-    "debug": "2.6.9",
++    "cookie-signature": "^1.2.1",
++    "debug": "4.3.6",
+     "depd": "2.0.0",
+     "encodeurl": "~2.0.0",
+     "escape-html": "~1.0.3",
+     "etag": "~1.8.1",
+-    "finalhandler": "1.2.0",
+-    "fresh": "0.5.2",
++    "finalhandler": "^2.0.0",
++    "fresh": "2.0.0",
+     "http-errors": "2.0.0",
+-    "merge-descriptors": "1.0.3",
++    "merge-descriptors": "^2.0.0",
+     "methods": "~1.1.2",
++    "mime-types": "^3.0.0",
+     "on-finished": "2.4.1",
++    "once": "1.4.0",
+     "parseurl": "~1.3.3",
+-    "path-to-regexp": "0.1.10",
+     "proxy-addr": "~2.0.7",
+-    "qs": "6.11.0",
++    "qs": "6.13.0",
+     "range-parser": "~1.2.1",
++    "router": "^2.0.0",
+     "safe-buffer": "5.2.1",
+-    "send": "0.19.0",
+-    "serve-static": "1.16.0",
++    "send": "^1.1.0",
++    "serve-static": "^2.1.0",
+     "setprototypeof": "1.2.0",
+     "statuses": "2.0.1",
+-    "type-is": "~1.6.18",
++    "type-is": "^2.0.0",
+     "utils-merge": "1.0.1",
+     "vary": "~1.1.2"
+   },
+@@ -79,7 +80,7 @@
+     "vhost": "~3.0.2"
+   },
+   "engines": {
+-    "node": ">= 0.10.0"
++    "node": ">= 18"
+   },
+   "files": [
+     "LICENSE",

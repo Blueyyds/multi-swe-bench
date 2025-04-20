@@ -1,0 +1,70 @@
+diff --git a/examples/static-files/index.js b/examples/static-files/index.js
+index c3b1659d86..04ad869354 100644
+--- a/examples/static-files/index.js
++++ b/examples/static-files/index.js
+@@ -3,6 +3,7 @@
+  */
+ 
+ var express = require('../..');
++var path = require('path');
+ var logger = require('morgan');
+ var app = express();
+ 
+@@ -16,7 +17,7 @@ app.use(logger('dev'));
+ // that you pass it. In this case "GET /js/app.js"
+ // will look for "./public/js/app.js".
+ 
+-app.use(express.static(__dirname + '/public'));
++app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // if you wanted to "prefix" you may use
+ // the mounting feature of Connect, for example
+@@ -24,17 +25,17 @@ app.use(express.static(__dirname + '/public'));
+ // The mount-path "/static" is simply removed before
+ // passing control to the express.static() middleware,
+ // thus it serves the file correctly by ignoring "/static"
+-app.use('/static', express.static(__dirname + '/public'));
++app.use('/static', express.static(path.join(__dirname, 'public')));
+ 
+ // if for some reason you want to serve files from
+ // several directories, you can use express.static()
+ // multiple times! Here we're passing "./public/css",
+ // this will allow "GET /style.css" instead of "GET /css/style.css":
+-app.use(express.static(__dirname + '/public/css'));
++app.use(express.static(path.join(__dirname, 'public', 'css')));
+ 
+ app.listen(3000);
+ console.log('listening on port 3000');
+ console.log('try:');
+ console.log('  GET /hello.txt');
+ console.log('  GET /js/app.js');
+-console.log('  GET /css/style.css');
++console.log('  GET /css/style.css');
+\ No newline at end of file
+diff --git a/lib/router/index.js b/lib/router/index.js
+index dac2514815..b35f86adc3 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -267,6 +267,10 @@ proto.handle = function handle(req, res, out) {
+       : layer.params;
+     var layerPath = layer.path;
+ 
++    // Expose the definition of the route that was hit
++    req.matchedRoutes = req.matchedRoutes ?
++      req.matchedRoutes.concat([layer.pathDefinition]) : [layer.pathDefinition];
++
+     // this should be done for the layer
+     self.process_params(layer, paramcalled, req, res, function (err) {
+       if (err) {
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+index fe9210cb9d..6d4dfc2dae 100644
+--- a/lib/router/layer.js
++++ b/lib/router/layer.js
+@@ -42,6 +42,7 @@ function Layer(path, options, fn) {
+   this.name = fn.name || '<anonymous>';
+   this.params = undefined;
+   this.path = undefined;
++  this.pathDefinition = path;
+   this.regexp = pathRegexp(path, this.keys = [], opts);
+ 
+   if (path === '/' && opts.end === false) {

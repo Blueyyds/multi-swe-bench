@@ -1,0 +1,544 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index d6e1b168ec..9d3663762c 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -27,6 +27,10 @@ jobs:
+         - Node.js 12.x
+         - Node.js 13.x
+         - Node.js 14.x
++        - Node.js 15.x
++        - Node.js 16.x
++        - Node.js 17.x
++        - Node.js 18.x
+ 
+         include:
+         - name: Node.js 0.10
+@@ -59,7 +63,7 @@ jobs:
+ 
+         - name: Node.js 6.x
+           node-version: "6.17"
+-          npm-i: mocha@6.2.2 nyc@14.1.1 supertest@6.1.6
++          npm-i: mocha@6.2.2 nyc@14.1.1 supertest@3.4.2
+ 
+         - name: Node.js 7.x
+           node-version: "7.10"
+@@ -90,6 +94,18 @@ jobs:
+         - name: Node.js 14.x
+           node-version: "14.19"
+ 
++        - name: Node.js 15.x
++          node-version: "15.14"
++
++        - name: Node.js 16.x
++          node-version: "16.14"
++
++        - name: Node.js 17.x
++          node-version: "17.9"
++
++        - name: Node.js 18.x
++          node-version: "18.0"
++
+     steps:
+     - uses: actions/checkout@v2
+ 
+diff --git a/Charter.md b/Charter.md
+index f9647cb734..a906e52909 100644
+--- a/Charter.md
++++ b/Charter.md
+@@ -9,7 +9,7 @@ also easily visible to outsiders.
+ 
+ ## Section 1: Scope
+ 
+-Express is a http web server framework with a simple and expressive API
++Express is a HTTP web server framework with a simple and expressive API
+ which is highly aligned with Node.js core. We aim to be the best in
+ class for writing performant, spec compliant, and powerful web servers
+ in Node.js. As one of the oldest and most popular web frameworks in
+@@ -24,7 +24,7 @@ Express is made of many modules spread between three GitHub Orgs:
+   libraries
+ - [pillarjs](http://github.com/pillarjs/): Components which make up
+   Express but can also be used for other web frameworks
+-- [jshttp](http://github.com/jshttp/): Low level http libraries
++- [jshttp](http://github.com/jshttp/): Low level HTTP libraries
+ 
+ ### 1.2: Out-of-Scope
+ 
+diff --git a/History.md b/History.md
+index 9f3f876512..3f7851ba57 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,52 @@
++unreleased
++==========
++
++  * Add "root" option to `res.download`
++  * Allow `options` without `filename` in `res.download`
++  * Deprecate string and non-integer arguments to `res.status`
++  * Fix behavior of `null`/`undefined` as `maxAge` in `res.cookie`
++  * Fix handling very large stacks of sync middleware
++  * Ignore `Object.prototype` values in settings through `app.set`/`app.get`
++  * Invoke `default` with same arguments as types in `res.format`
++  * Support proper 205 responses using `res.send`
++  * Use `http-errors` for `res.format` error
++  * deps: body-parser@1.20.0
++    - Fix error message for json parse whitespace in `strict`
++    - Fix internal error when inflated body exceeds limit
++    - Prevent loss of async hooks context
++    - Prevent hanging when request already read
++    - deps: depd@2.0.0
++    - deps: http-errors@2.0.0
++    - deps: on-finished@2.4.1
++    - deps: qs@6.10.3
++    - deps: raw-body@2.5.1
++  * deps: cookie@0.5.0
++    - Add `priority` option
++    - Fix `expires` option to reject invalid dates
++  * deps: depd@2.0.0
++    - Replace internal `eval` usage with `Function` constructor
++    - Use instance methods on `process` to check for listeners
++  * deps: finalhandler@1.2.0
++    - Remove set content headers that break response
++    - deps: on-finished@2.4.1
++    - deps: statuses@2.0.1
++  * deps: on-finished@2.4.1
++    - Prevent loss of async hooks context
++  * deps: qs@6.10.3
++  * deps: send@0.18.0
++    - Fix emitted 416 error missing headers property
++    - Limit the headers removed for 304 response
++    - deps: depd@2.0.0
++    - deps: destroy@1.2.0
++    - deps: http-errors@2.0.0
++    - deps: on-finished@2.4.1
++    - deps: statuses@2.0.1
++  * deps: serve-static@1.15.0
++    - deps: send@0.18.0
++  * deps: statuses@2.0.1
++    - Remove code 306
++    - Rename `425 Unordered Collection` to standard `425 Too Early`
++
+ 4.17.3 / 2022-02-16
+ ===================
+ 
+diff --git a/Security.md b/Security.md
+index 858dfffc5b..cdcd7a6e0a 100644
+--- a/Security.md
++++ b/Security.md
+@@ -27,8 +27,7 @@ endeavor to keep you informed of the progress towards a fix and full
+ announcement, and may ask for additional information or guidance.
+ 
+ Report security bugs in third-party modules to the person or team maintaining
+-the module. You can also report a vulnerability through the
+-[Node Security Project](https://nodesecurity.io/report).
++the module.
+ 
+ ## Disclosure Policy
+ 
+diff --git a/appveyor.yml b/appveyor.yml
+index db54a3fdb0..8804cfd398 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -16,13 +16,17 @@ environment:
+     - nodejs_version: "12.22"
+     - nodejs_version: "13.14"
+     - nodejs_version: "14.19"
++    - nodejs_version: "15.14"
++    - nodejs_version: "16.14"
++    - nodejs_version: "17.9"
++    - nodejs_version: "18.0"
+ cache:
+   - node_modules
+ install:
+   # Install Node.js
+   - ps: >-
+       try { Install-Product node $env:nodejs_version -ErrorAction Stop }
+-      catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) }
++      catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) x64 }
+   # Configure npm
+   - ps: |
+       npm config set loglevel error
+@@ -69,11 +73,11 @@ install:
+   - ps: |
+       # supertest for http calls
+       # - use 2.0.0 for Node.js < 4
+-      # - use 3.4.2 for Node.js < 6
++      # - use 3.4.2 for Node.js < 7
+       # - use 6.1.6 for Node.js < 8
+       if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
+         npm install --silent --save-dev supertest@2.0.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 6) {
++      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 7) {
+         npm install --silent --save-dev supertest@3.4.2
+       } elseif ([int]$env:nodejs_version.split(".")[0] -lt 8) {
+         npm install --silent --save-dev supertest@6.1.6
+diff --git a/examples/auth/views/login.ejs b/examples/auth/views/login.ejs
+index 8a20411a2c..181c36caf7 100644
+--- a/examples/auth/views/login.ejs
++++ b/examples/auth/views/login.ejs
+@@ -6,12 +6,12 @@
+ Try accessing <a href="/restricted">/restricted</a>, then authenticate with "tj" and "foobar".
+ <form method="post" action="/login">
+   <p>
+-    <label>Username:</label>
+-    <input type="text" name="username">
++    <label for="username">Username:</label>
++    <input type="text" name="username" id="username">
+   </p>
+   <p>
+-    <label>Password:</label>
+-    <input type="text" name="password">
++    <label for="password">Password:</label>
++    <input type="text" name="password" id="password">
+   </p>
+   <p>
+     <input type="submit" value="Login">
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index 62e7fa6e3e..6b67e0c886 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -6,7 +6,6 @@
+ 
+ var express = require('../../');
+ var path = require('path');
+-var resolvePath = require('resolve-path')
+ 
+ var app = module.exports = express();
+ 
+@@ -25,9 +24,7 @@ app.get('/', function(req, res){
+ // /files/* is accessed via req.params[0]
+ // but here we name it :file
+ app.get('/files/:file(*)', function(req, res, next){
+-  var filePath = resolvePath(FILES_DIR, req.params.file)
+-
+-  res.download(filePath, function (err) {
++  res.download(req.params.file, { root: FILES_DIR }, function (err) {
+     if (!err) return; // file sent
+     if (err.status !== 404) return next(err); // non-404 error
+     // file for download not found
+diff --git a/examples/params/index.js b/examples/params/index.js
+index b153b93b98..b6fc483c8b 100644
+--- a/examples/params/index.js
++++ b/examples/params/index.js
+@@ -4,6 +4,7 @@
+  * Module dependencies.
+  */
+ 
++var createError = require('http-errors')
+ var express = require('../../');
+ var app = module.exports = express();
+ 
+@@ -17,14 +18,6 @@ var users = [
+   , { name: 'bandit' }
+ ];
+ 
+-// Create HTTP error
+-
+-function createError(status, message) {
+-  var err = new Error(message);
+-  err.status = status;
+-  return err;
+-}
+-
+ // Convert :to and :from to integers
+ 
+ app.param(['to', 'from'], function(req, res, next, num, name){
+diff --git a/lib/application.js b/lib/application.js
+index e65ba58895..ebb30b51b3 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -29,6 +29,13 @@ var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
+ var setPrototypeOf = require('setprototypeof')
++
++/**
++ * Module variables.
++ * @private
++ */
++
++var hasOwnProperty = Object.prototype.hasOwnProperty
+ var slice = Array.prototype.slice;
+ 
+ /**
+@@ -352,7 +359,17 @@ app.param = function param(name, fn) {
+ app.set = function set(setting, val) {
+   if (arguments.length === 1) {
+     // app.get(setting)
+-    return this.settings[setting];
++    var settings = this.settings
++
++    while (settings && settings !== Object.prototype) {
++      if (hasOwnProperty.call(settings, setting)) {
++        return settings[setting]
++      }
++
++      settings = Object.getPrototypeOf(settings)
++    }
++
++    return undefined
+   }
+ 
+   debug('set "%s" to %o', setting, val);
+diff --git a/lib/response.js b/lib/response.js
+index ccf8d91b2c..fede486c06 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -14,6 +14,7 @@
+ 
+ var Buffer = require('safe-buffer').Buffer
+ var contentDisposition = require('content-disposition');
++var createError = require('http-errors')
+ var deprecate = require('depd')('express');
+ var encodeUrl = require('encodeurl');
+ var escapeHtml = require('escape-html');
+@@ -64,6 +65,9 @@ var charsetRegExp = /;\s*charset\s*=/;
+  */
+ 
+ res.status = function status(code) {
++  if ((typeof code === 'string' || Math.floor(code) !== code) && code > 99 && code < 1000) {
++    deprecate('res.status(' + JSON.stringify(code) + '): use res.status(' + Math.floor(code) + ') instead')
++  }
+   this.statusCode = code;
+   return this;
+ };
+@@ -135,7 +139,7 @@ res.send = function send(body) {
+ 
+     deprecate('res.send(status): Use res.sendStatus(status) instead');
+     this.statusCode = chunk;
+-    chunk = statuses[chunk]
++    chunk = statuses.message[chunk]
+   }
+ 
+   switch (typeof chunk) {
+@@ -213,6 +217,13 @@ res.send = function send(body) {
+     chunk = '';
+   }
+ 
++  // alter headers for 205
++  if (this.statusCode === 205) {
++    this.set('Content-Length', '0')
++    this.removeHeader('Transfer-Encoding')
++    chunk = ''
++  }
++
+   if (req.method === 'HEAD') {
+     // skip body for HEAD
+     this.end();
+@@ -356,7 +367,7 @@ res.jsonp = function jsonp(obj) {
+  */
+ 
+ res.sendStatus = function sendStatus(statusCode) {
+-  var body = statuses[statusCode] || String(statusCode)
++  var body = statuses.message[statusCode] || String(statusCode)
+ 
+   this.statusCode = statusCode;
+   this.type('txt');
+@@ -551,6 +562,13 @@ res.download = function download (path, filename, options, callback) {
+     opts = null
+   }
+ 
++  // support optional filename, where options may be in it's place
++  if (typeof filename === 'object' &&
++    (typeof options === 'function' || options === undefined)) {
++    name = null
++    opts = filename
++  }
++
+   // set Content-Disposition when file is sent
+   var headers = {
+     'Content-Disposition': contentDisposition(name || path)
+@@ -572,7 +590,9 @@ res.download = function download (path, filename, options, callback) {
+   opts.headers = headers
+ 
+   // Resolve the full path for sendFile
+-  var fullPath = resolve(path);
++  var fullPath = !opts.root
++    ? resolve(path)
++    : path
+ 
+   // send file
+   return this.sendFile(fullPath, opts, done)
+@@ -665,9 +685,8 @@ res.format = function(obj){
+   var req = this.req;
+   var next = req.next;
+ 
+-  var fn = obj.default;
+-  if (fn) delete obj.default;
+-  var keys = Object.keys(obj);
++  var keys = Object.keys(obj)
++    .filter(function (v) { return v !== 'default' })
+ 
+   var key = keys.length > 0
+     ? req.accepts(keys)
+@@ -678,13 +697,12 @@ res.format = function(obj){
+   if (key) {
+     this.set('Content-Type', normalizeType(key).value);
+     obj[key](req, this, next);
+-  } else if (fn) {
+-    fn();
++  } else if (obj.default) {
++    obj.default(req, this, next)
+   } else {
+-    var err = new Error('Not Acceptable');
+-    err.status = err.statusCode = 406;
+-    err.types = normalizeTypes(keys).map(function(o){ return o.value });
+-    next(err);
++    next(createError(406, {
++      types: normalizeTypes(keys).map(function (o) { return o.value })
++    }))
+   }
+ 
+   return this;
+@@ -850,9 +868,13 @@ res.cookie = function (name, value, options) {
+     val = 's:' + sign(val, secret);
+   }
+ 
+-  if ('maxAge' in opts) {
+-    opts.expires = new Date(Date.now() + opts.maxAge);
+-    opts.maxAge /= 1000;
++  if (opts.maxAge != null) {
++    var maxAge = opts.maxAge - 0
++
++    if (!isNaN(maxAge)) {
++      opts.expires = new Date(Date.now() + maxAge)
++      opts.maxAge = Math.floor(maxAge / 1000)
++    }
+   }
+ 
+   if (opts.path == null) {
+@@ -933,12 +955,12 @@ res.redirect = function redirect(url) {
+   // Support text/{plain,html} by default
+   this.format({
+     text: function(){
+-      body = statuses[status] + '. Redirecting to ' + address
++      body = statuses.message[status] + '. Redirecting to ' + address
+     },
+ 
+     html: function(){
+       var u = escapeHtml(address);
+-      body = '<p>' + statuses[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
++      body = '<p>' + statuses.message[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
+     },
+ 
+     default: function(){
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 791a600f86..f4c8c0a79e 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -142,6 +142,7 @@ proto.handle = function handle(req, res, out) {
+   var protohost = getProtohost(req.url) || ''
+   var removed = '';
+   var slashAdded = false;
++  var sync = 0
+   var paramcalled = {};
+ 
+   // store options for OPTIONS request
+@@ -203,6 +204,11 @@ proto.handle = function handle(req, res, out) {
+       return;
+     }
+ 
++    // max sync stack
++    if (++sync > 100) {
++      return setImmediate(next, err)
++    }
++
+     // get pathname of request
+     var path = getPathname(req);
+ 
+@@ -321,6 +327,8 @@ proto.handle = function handle(req, res, out) {
+     } else {
+       layer.handle_request(req, res, next);
+     }
++
++    sync = 0
+   }
+ };
+ 
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 178df0d516..5adaa125e2 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -98,6 +98,8 @@ Route.prototype._options = function _options() {
+ Route.prototype.dispatch = function dispatch(req, res, done) {
+   var idx = 0;
+   var stack = this.stack;
++  var sync = 0
++
+   if (stack.length === 0) {
+     return done();
+   }
+@@ -127,6 +129,11 @@ Route.prototype.dispatch = function dispatch(req, res, done) {
+       return done(err);
+     }
+ 
++    // max sync stack
++    if (++sync > 100) {
++      return setImmediate(next, err)
++    }
++
+     if (layer.method && layer.method !== method) {
+       return next(err);
+     }
+@@ -136,6 +143,8 @@ Route.prototype.dispatch = function dispatch(req, res, done) {
+     } else {
+       layer.handle_request(req, res, next);
+     }
++
++    sync = 0
+   }
+ };
+ 
+diff --git a/package.json b/package.json
+index 7992166629..ede86798cf 100644
+--- a/package.json
++++ b/package.json
+@@ -30,31 +30,32 @@
+   "dependencies": {
+     "accepts": "~1.3.8",
+     "array-flatten": "1.1.1",
+-    "body-parser": "1.19.2",
++    "body-parser": "1.20.0",
+     "content-disposition": "0.5.4",
+     "content-type": "~1.0.4",
+-    "cookie": "0.4.2",
++    "cookie": "0.5.0",
+     "cookie-signature": "1.0.6",
+     "debug": "2.6.9",
+-    "depd": "~1.1.2",
++    "depd": "2.0.0",
+     "encodeurl": "~1.0.2",
+     "escape-html": "~1.0.3",
+     "etag": "~1.8.1",
+-    "finalhandler": "~1.1.2",
++    "finalhandler": "1.2.0",
+     "fresh": "0.5.2",
++    "http-errors": "2.0.0",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+-    "on-finished": "~2.3.0",
++    "on-finished": "2.4.1",
+     "parseurl": "~1.3.3",
+     "path-to-regexp": "0.1.7",
+     "proxy-addr": "~2.0.7",
+-    "qs": "6.9.7",
++    "qs": "6.10.3",
+     "range-parser": "~1.2.1",
+     "safe-buffer": "5.2.1",
+-    "send": "0.17.2",
+-    "serve-static": "1.14.2",
++    "send": "0.18.0",
++    "serve-static": "1.15.0",
+     "setprototypeof": "1.2.0",
+-    "statuses": "~1.5.0",
++    "statuses": "2.0.1",
+     "type-is": "~1.6.18",
+     "utils-merge": "1.0.1",
+     "vary": "~1.1.2"
+@@ -75,7 +76,6 @@
+     "multiparty": "4.2.3",
+     "nyc": "15.1.0",
+     "pbkdf2-password": "1.2.1",
+-    "resolve-path": "1.4.0",
+     "supertest": "6.2.2",
+     "vhost": "~3.0.2"
+   },

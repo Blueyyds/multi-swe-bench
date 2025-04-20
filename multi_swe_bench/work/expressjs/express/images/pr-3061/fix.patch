@@ -1,0 +1,94 @@
+diff --git a/examples/expose-data-to-client/index.js b/examples/expose-data-to-client/index.js
+index 5dd99df682..f927486b06 100644
+--- a/examples/expose-data-to-client/index.js
++++ b/examples/expose-data-to-client/index.js
+@@ -1,7 +1,13 @@
++/**
++ * Module dependencies.
++ */
+ 
+-var express = require('../..');
++var express = require('../../');
+ var logger = require('morgan');
+-var app = express();
++var app = module.exports = express();
++var test = app.get('env') == 'test';
++
++if (!test) app.use(logger('dev'));
+ 
+ app.set('view engine', 'jade');
+ app.set('views', __dirname + '/views');
+@@ -24,8 +30,6 @@ User.prototype.toJSON = function(){
+   };
+ };
+ 
+-app.use(logger('dev'));
+-
+ // earlier on expose an object
+ // that we can tack properties on.
+ // all res.locals props are exposed
+diff --git a/examples/jade/index.js b/examples/jade/index.js
+index 738b382d26..368a52f3f4 100644
+--- a/examples/jade/index.js
++++ b/examples/jade/index.js
+@@ -2,7 +2,7 @@
+  * Module dependencies.
+  */
+ 
+-var express = require('../../lib/express');
++var express = require('../../');
+ 
+ // Path to our public directory
+ 
+@@ -10,7 +10,7 @@ var pub = __dirname + '/public';
+ 
+ // setup middleware
+ 
+-var app = express();
++var app = module.exports = express();
+ app.use(express.static(pub));
+ 
+ // Optional since express defaults to CWD/views
+diff --git a/examples/static-files/index.js b/examples/static-files/index.js
+index c3b1659d86..04ad869354 100644
+--- a/examples/static-files/index.js
++++ b/examples/static-files/index.js
+@@ -3,6 +3,7 @@
+  */
+ 
+ var express = require('../..');
++var path = require('path');
+ var logger = require('morgan');
+ var app = express();
+ 
+@@ -16,7 +17,7 @@ app.use(logger('dev'));
+ // that you pass it. In this case "GET /js/app.js"
+ // will look for "./public/js/app.js".
+ 
+-app.use(express.static(__dirname + '/public'));
++app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // if you wanted to "prefix" you may use
+ // the mounting feature of Connect, for example
+@@ -24,17 +25,17 @@ app.use(express.static(__dirname + '/public'));
+ // The mount-path "/static" is simply removed before
+ // passing control to the express.static() middleware,
+ // thus it serves the file correctly by ignoring "/static"
+-app.use('/static', express.static(__dirname + '/public'));
++app.use('/static', express.static(path.join(__dirname, 'public')));
+ 
+ // if for some reason you want to serve files from
+ // several directories, you can use express.static()
+ // multiple times! Here we're passing "./public/css",
+ // this will allow "GET /style.css" instead of "GET /css/style.css":
+-app.use(express.static(__dirname + '/public/css'));
++app.use(express.static(path.join(__dirname, 'public', 'css')));
+ 
+ app.listen(3000);
+ console.log('listening on port 3000');
+ console.log('try:');
+ console.log('  GET /hello.txt');
+ console.log('  GET /js/app.js');
+-console.log('  GET /css/style.css');
++console.log('  GET /css/style.css');
+\ No newline at end of file

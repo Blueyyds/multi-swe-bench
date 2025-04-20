@@ -1,0 +1,308 @@
+diff --git a/.travis.yml b/.travis.yml
+index 73568f23c8..c6be98178d 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -1,10 +1,7 @@
+ language: node_js
+ node_js:
+   - "0.10"
+-  - "0.11"
+-matrix:
+-  allow_failures:
+-    - node_js: "0.11"
+-  fast_finish: true
++  - "0.12"
++sudo: false
+ script: "npm run-script test-travis"
+ after_script: "npm install coveralls@2.10.0 && cat ./coverage/lcov.info | coveralls"
+diff --git a/History.md b/History.md
+index 6184768c9a..2979b297a8 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,20 @@
++unreleased
++==========
++
++  * Fix `"trust proxy"` setting to inherit when app is mounted
++  * Generate `ETag`s for all request responses
++    - No longer restricted to only responses for `GET` and `HEAD` requests
++  * Use `content-type` to parse `Content-Type` headers
++  * deps: accepts@~1.2.4
++    - Fix preference sorting to be stable for long acceptable lists
++    - deps: mime-types@~2.0.9
++    - deps: negotiator@0.5.1
++  * deps: cookie-signature@1.0.6
++  * deps: send@0.12.1
++    - Always read the stat size from the file
++    - Fix mutating passed-in `options`
++    - deps: mime@1.3.4
++
+ 4.11.2 / 2015-02-01
+ ===================
+ 
+@@ -678,6 +695,34 @@
+    - `app.route()` - Proxy to the app's `Router#route()` method to create a new route
+    - Router & Route - public API
+ 
++3.20.0 / 2015-02-18
++===================
++
++  * Fix `"trust proxy"` setting to inherit when app is mounted
++  * Generate `ETag`s for all request responses
++    - No longer restricted to only responses for `GET` and `HEAD` requests
++  * Use `content-type` to parse `Content-Type` headers
++  * deps: connect@2.29.0
++    - Use `content-type` to parse `Content-Type` headers
++    - deps: body-parser@~1.12.0
++    - deps: compression@~1.4.1
++    - deps: connect-timeout@~1.6.0
++    - deps: cookie-parser@~1.3.4
++    - deps: cookie-signature@1.0.6
++    - deps: csurf@~1.7.0
++    - deps: errorhandler@~1.3.4
++    - deps: express-session@~1.10.3
++    - deps: http-errors@~1.3.1
++    - deps: response-time@~2.3.0
++    - deps: serve-index@~1.6.2
++    - deps: serve-static@~1.9.1
++    - deps: type-is@~1.6.0
++  * deps: cookie-signature@1.0.6
++  * deps: send@0.12.1
++    - Always read the stat size from the file
++    - Fix mutating passed-in `options`
++    - deps: mime@1.3.4
++
+ 3.19.2 / 2015-02-01
+ ===================
+ 
+diff --git a/LICENSE b/LICENSE
+index 0f3c767892..aa927e44e3 100644
+--- a/LICENSE
++++ b/LICENSE
+@@ -1,6 +1,8 @@
+ (The MIT License)
+ 
+ Copyright (c) 2009-2014 TJ Holowaychuk <tj@vision-media.ca>
++Copyright (c) 2013-2014 Roman Shtylman <shtylman+expressjs@gmail.com>
++Copyright (c) 2014-2015 Douglas Christopher Wilson <doug@somethingdoug.com>
+ 
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+diff --git a/lib/application.js b/lib/application.js
+index dc18fe37e3..5ec44248ca 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -1,5 +1,14 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
+ /**
+  * Module dependencies.
++ * @api private
+  */
+ 
+ var finalhandler = require('finalhandler');
+@@ -25,6 +34,13 @@ var slice = Array.prototype.slice;
+ 
+ var app = exports = module.exports = {};
+ 
++/**
++ * Variable for trust proxy inheritance back-compat
++ * @api private
++ */
++
++var trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';
++
+ /**
+  * Initialize the server.
+  *
+@@ -58,10 +74,23 @@ app.defaultConfiguration = function(){
+   this.set('subdomain offset', 2);
+   this.set('trust proxy', false);
+ 
++  // trust proxy inherit back-compat
++  Object.defineProperty(this.settings, trustProxyDefaultSymbol, {
++    configurable: true,
++    value: true
++  });
++
+   debug('booting in %s mode', env);
+ 
+-  // inherit protos
+-  this.on('mount', function(parent){
++  this.on('mount', function onmount(parent) {
++    // inherit trust proxy
++    if (this.settings[trustProxyDefaultSymbol] === true
++      && typeof parent.settings['trust proxy fn'] === 'function') {
++      delete this.settings['trust proxy'];
++      delete this.settings['trust proxy fn'];
++    }
++
++    // inherit protos
+     this.request.__proto__ = parent.request;
+     this.response.__proto__ = parent.response;
+     this.engines.__proto__ = parent.engines;
+@@ -327,6 +356,13 @@ app.set = function(setting, val){
+     case 'trust proxy':
+       debug('compile trust proxy %s', val);
+       this.set('trust proxy fn', compileTrust(val));
++
++      // trust proxy inherit back-compat
++      Object.defineProperty(this.settings, trustProxyDefaultSymbol, {
++        configurable: true,
++        value: false
++      });
++
+       break;
+   }
+ 
+diff --git a/lib/response.js b/lib/response.js
+index 14aa9cab22..d3759713a6 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -1,5 +1,13 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
+ /**
+  * Module dependencies.
++ * @api private
+  */
+ 
+ var contentDisposition = require('content-disposition');
+@@ -159,15 +167,12 @@ res.send = function send(body) {
+     this.set('Content-Length', len);
+   }
+ 
+-  // method check
+-  var isHead = req.method === 'HEAD';
+-
+-  // ETag support
+-  if (len !== undefined && (isHead || req.method === 'GET')) {
+-    var etag = app.get('etag fn');
+-    if (etag && !this.get('ETag')) {
+-      etag = etag(chunk, encoding);
+-      etag && this.set('ETag', etag);
++  // populate ETag
++  var etag;
++  var generateETag = len !== undefined && app.get('etag fn');
++  if (typeof generateETag === 'function' && !this.get('ETag')) {
++    if ((etag = generateETag(chunk, encoding))) {
++      this.set('ETag', etag);
+     }
+   }
+ 
+@@ -182,7 +187,7 @@ res.send = function send(body) {
+     chunk = '';
+   }
+ 
+-  if (isHead) {
++  if (req.method === 'HEAD') {
+     // skip body for HEAD
+     this.end();
+   } else {
+diff --git a/lib/utils.js b/lib/utils.js
+index 9c004cc764..ce53ad8b99 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -1,8 +1,17 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
+ /**
+  * Module dependencies.
++ * @api private
+  */
+ 
+ var contentDisposition = require('content-disposition');
++var contentType = require('content-type');
+ var deprecate = require('depd')('express');
+ var mime = require('send').mime;
+ var basename = require('path').basename;
+@@ -10,7 +19,6 @@ var etag = require('etag');
+ var proxyaddr = require('proxy-addr');
+ var qs = require('qs');
+ var querystring = require('querystring');
+-var typer = require('media-typer');
+ 
+ /**
+  * Return strong ETag for `body`.
+@@ -258,17 +266,19 @@ exports.compileTrust = function(val) {
+  * @api private
+  */
+ 
+-exports.setCharset = function(type, charset){
+-  if (!type || !charset) return type;
++exports.setCharset = function setCharset(type, charset) {
++  if (!type || !charset) {
++    return type;
++  }
+ 
+   // parse type
+-  var parsed = typer.parse(type);
++  var parsed = contentType.parse(type);
+ 
+   // set charset
+   parsed.parameters.charset = charset;
+ 
+   // format type
+-  return typer.format(parsed);
++  return contentType.format(parsed);
+ };
+ 
+ /**
+diff --git a/package.json b/package.json
+index 7179ee7b08..9e9bf1dd0b 100644
+--- a/package.json
++++ b/package.json
+@@ -27,16 +27,16 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.2.3",
++    "accepts": "~1.2.4",
+     "content-disposition": "0.5.0",
+-    "cookie-signature": "1.0.5",
++    "content-type": "~1.0.1",
++    "cookie-signature": "1.0.6",
+     "debug": "~2.1.1",
+     "depd": "~1.0.0",
+     "escape-html": "1.0.1",
+     "etag": "~1.5.1",
+     "finalhandler": "0.3.3",
+     "fresh": "0.2.4",
+-    "media-typer": "0.3.0",
+     "methods": "~1.1.1",
+     "on-finished": "~2.2.0",
+     "parseurl": "~1.3.0",
+@@ -44,7 +44,7 @@
+     "proxy-addr": "~1.0.6",
+     "qs": "2.3.3",
+     "range-parser": "~1.0.2",
+-    "send": "0.11.1",
++    "send": "0.12.1",
+     "serve-static": "~1.8.1",
+     "type-is": "~1.5.6",
+     "vary": "~1.0.0",
+@@ -58,7 +58,7 @@
+     "istanbul": "0.3.5",
+     "marked": "0.3.3",
+     "mocha": "~2.1.0",
+-    "should": "~4.6.2",
++    "should": "~5.0.0",
+     "supertest": "~0.15.0",
+     "hjs": "~0.0.6",
+     "body-parser": "~1.11.0",

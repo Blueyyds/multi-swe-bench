@@ -1,0 +1,40 @@
+diff --git a/test/Router.js b/test/Router.js
+index 21cdff2c6c..3d60d3c6a1 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -68,6 +68,35 @@ describe('Router', function(){
+     router.handle({ url: '/', method: 'GET' }, { end: done });
+   });
+ 
++  it('should expose the matched routes on the req object', function (done) {
++    var router = new Router();
++    var path = '/foo/:num';
++
++    router.use(path, function (req, res) {
++      assert(req.matchedRoutes);
++      assert.deepEqual(req.matchedRoutes, [path]);
++      res.end();
++    });
++
++    router.handle({ url: '/foo/123', method: 'GET' }, {end: done});
++  });
++
++  it('should expose the nested matched routes on the req object', function (done) {
++    var layer1 = new Router();
++    var layer2 = new Router();
++    var layer3 = new Router();
++
++    layer1.use(layer2);
++    layer2.use('/foo/:num', layer3);
++    layer3.get(/[0-9]/, function (req, res) {
++      assert.deepEqual(req.matchedRoutes, ['/', '/foo/:num', /[0-9]/]);
++      res.end();
++    });
++
++    // Simulate request entering "app" or "base" later
++    layer1.handle({ url: '/foo/123/321', method: 'GET' }, {end: done});
++  });
++
+   describe('.handle', function(){
+     it('should dispatch', function(done){
+       var router = new Router();

@@ -1,0 +1,53 @@
+diff --git a/test/app.render.js b/test/app.render.js
+index 4f79e163e3..776ad7265d 100644
+--- a/test/app.render.js
++++ b/test/app.render.js
+@@ -74,7 +74,7 @@ describe('app', function(){
+         app.render('user.jade', function(err, str){
+           // nextTick to prevent cyclic
+           process.nextTick(function(){
+-            err.message.should.match(/user is not defined/);
++            err.message.should.match(/Cannot read property/);
+             done();
+           });
+         })
+diff --git a/test/req.acceptedEncodings.js b/test/req.acceptedEncodings.js
+index b5da9f9024..7413eb17a0 100644
+--- a/test/req.acceptedEncodings.js
++++ b/test/req.acceptedEncodings.js
+@@ -19,11 +19,11 @@ describe('req', function(){
+     })
+ 
+     describe('when Accept-Encoding is not present', function(){
+-      it('should default to []', function(done){
++      it('should default to [\'gzip\', \'deflate\']', function(done){
+         var app = express();
+ 
+         app.use(function(req, res){
+-          req.acceptedEncodings.should.have.length(0);
++          req.acceptedEncodings.should.eql(['gzip', 'deflate']);
+           res.end();
+         });
+ 
+diff --git a/test/res.render.js b/test/res.render.js
+index a865929ffe..57326a6dd8 100644
+--- a/test/res.render.js
++++ b/test/res.render.js
+@@ -79,7 +79,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect(/user is not defined/, done);
++        .expect(/Cannot read property/, done);
+       })
+     })
+   
+@@ -250,7 +250,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect(/is not defined/, done);
++        .expect(/Cannot read property/, done);
+       })
+     })
+   })

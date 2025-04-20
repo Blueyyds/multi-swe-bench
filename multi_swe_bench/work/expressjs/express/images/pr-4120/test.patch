@@ -1,0 +1,17 @@
+diff --git a/test/acceptance/downloads.js b/test/acceptance/downloads.js
+index ae44388354..6db43b351e 100644
+--- a/test/acceptance/downloads.js
++++ b/test/acceptance/downloads.js
+@@ -36,4 +36,12 @@ describe('downloads', function(){
+       .expect(404, done)
+     })
+   })
++
++  describe('GET /files/../index.js', function () {
++    it('should respond with 403', function (done) {
++      request(app)
++        .get('/files/../index.js')
++        .expect(403, done)
++    })
++  })
+ })

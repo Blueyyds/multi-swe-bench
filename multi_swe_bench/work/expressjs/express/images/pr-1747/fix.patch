@@ -1,0 +1,18 @@
+diff --git a/lib/response.js b/lib/response.js
+index 67e1006c7f..db58259339 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -468,7 +468,12 @@ res.format = function(obj){
+   this.vary("Accept");
+ 
+   if (key) {
+-    this.set('Content-Type', normalizeType(key).value);
++    var type = normalizeType(key).value;
++    var charset = mime.charsets.lookup(type);
++    if (charset) {
++      type += '; charset=' + charset;
++    }
++    this.set('Content-Type', type);
+     obj[key](req, this, next);
+   } else if (fn) {
+     fn();

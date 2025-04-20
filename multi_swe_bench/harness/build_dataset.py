@@ -45,9 +45,7 @@ from multi_swe_bench.utils.logger import get_non_propagate_logger, setup_logger
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(
-        description="A command-line tool for processing build dataset."
-    )
+    parser = ArgumentParser(description="A command-line tool for processing build dataset.")
     parser.add_argument(
         "--mode",
         type=str,
@@ -266,6 +264,8 @@ class CliArgs:
         if not self.raw_dataset_files:
             raise ValueError(f"Invalid raw_dataset_files: {self.raw_dataset_files}")
 
+        print(self.raw_dataset_files)
+
         self._expanded_files: list[Path] = []
         for file_pattern in self.raw_dataset_files:
             matched_files = glob.glob(file_pattern)
@@ -323,13 +323,9 @@ class CliArgs:
         if self.max_workers <= 0:
             raise ValueError(f"Invalid max_workers: {self.max_workers}")
         if self.max_workers_build_image <= 0:
-            raise ValueError(
-                f"Invalid max_workers_build_image: {self.max_workers_build_image}"
-            )
+            raise ValueError(f"Invalid max_workers_build_image: {self.max_workers_build_image}")
         if self.max_workers_run_instance <= 0:
-            raise ValueError(
-                f"Invalid max_workers_run_instance: {self.max_workers_run_instance}"
-            )
+            raise ValueError(f"Invalid max_workers_run_instance: {self.max_workers_run_instance}")
 
     @property
     def logger(self) -> logging.Logger:
@@ -405,9 +401,7 @@ class CliArgs:
                 except Exception as e:
                     self.logger.error(f"Error creating instance for {pr.id}: {e}")
 
-            self.logger.info(
-                f"Successfully loaded {len(self._instances)} valid instances."
-            )
+            self.logger.info(f"Successfully loaded {len(self._instances)} valid instances.")
 
         return self._instances
 
@@ -423,14 +417,10 @@ class CliArgs:
                 if repo not in self._repo_commits:
                     self._repo_commits[repo] = repo_commits
 
-                self._repo_commits[repo].commits[
-                    instance.pr.base.sha
-                ] = instance.pr.number
+                self._repo_commits[repo].commits[instance.pr.base.sha] = instance.pr.number
 
             for repo, repo_commits in self._repo_commits.items():
-                self.logger.debug(
-                    f"Repo: {repo.repo_full_name}, commits: {len(repo_commits.commits)}"
-                )
+                self.logger.debug(f"Repo: {repo.repo_full_name}, commits: {len(repo_commits.commits)}")
 
         return self._repo_commits
 
@@ -453,9 +443,7 @@ class CliArgs:
         return self.to_json(ensure_ascii=False)
 
     def check_specific(self, name: str) -> bool:
-        if self.specifics and not any(
-            name in specific or specific in name for specific in self.specifics
-        ):
+        if self.specifics and not any(name in specific or specific in name for specific in self.specifics):
             return False
         return True
 
@@ -466,10 +454,9 @@ class CliArgs:
 
     def check_commit_hashes(self):
         error_happened = False
-        for repo, repo_commits in tqdm(
-            self.repo_commits.items(), desc="Checking commit hashes"
-        ):
+        for repo, repo_commits in tqdm(self.repo_commits.items(), desc="Checking commit hashes"):
             repo_dir = self.repo_dir / repo.repo_full_name
+            print(repo_dir)
             if not git_util.exists(repo_dir):
                 self.logger.warning(f"Repository not found: {repo_dir}")
                 git_util.clone_repository(self.repo_dir / repo.org, repo.org, repo.repo)
@@ -491,9 +478,7 @@ class CliArgs:
                 desc=f"Checking commit hashes for {repo.repo_full_name}",
             ):
                 if commit_hash not in commit_hashes:
-                    self.logger.error(
-                        f"Commit hash not found in {repo.repo_full_name}:pr-{pr_number}: {commit_hash}"
-                    )
+                    self.logger.error(f"Commit hash not found in {repo.repo_full_name}:pr-{pr_number}: {commit_hash}")
                     error_happened = True
 
         if error_happened:
@@ -501,9 +486,7 @@ class CliArgs:
 
     def build_image(self, image: Image):
         if not self.force_build and docker_util.exists(image.image_full_name()):
-            self.logger.debug(
-                f"Image {image.image_full_name()} already exists, skipping..."
-            )
+            self.logger.debug(f"Image {image.image_full_name()} already exists, skipping...")
             return
 
         workdir = self.workdir / image.pr.org / image.pr.repo / BUILD_IMAGE_WORKDIR
@@ -573,29 +556,35 @@ class CliArgs:
 
         with tqdm(total=image_count, desc="Building images") as building_bar:
             while building_images:
-                with concurrent.futures.ThreadPoolExecutor(
-                    max_workers=self.max_workers_build_image
-                ) as executor:
-                    futures = {
-                        executor.submit(self.build_image, image): image
-                        for image in building_images
-                    }
+                with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers_build_image) as executor:
+                    futures = {}
+                    for image in building_images:
+                        future = executor.submit(self.build_image, image)
+                        futures[future] = image
 
                     failed_images: set[Image] = set()
-                    for future in concurrent.futures.as_completed(futures):
-                        image = futures[future]
-                        try:
-                            future.result()
-                        except Exception as e:
-                            self.logger.error(
-                                f"Error building image {image.image_full_name()}: {e}"
-                            )
-                            failed_images.add(image)
-                            if self.stop_on_error:
-                                executor.shutdown(wait=False)
-                                sys.exit(1)
-                        finally:
-                            building_bar.update(1)
+                    try:
+                        # Add timeout to avoid hanging
+                        for future in concurrent.futures.as_completed(futures, timeout=3600):  # 1 hour timeout
+                            image = futures[future]
+                            try:
+                                future.result(timeout=3600)  # 1 hour timeout for each task
+                            except concurrent.futures.TimeoutError:
+                                self.logger.error(f"Timeout building image {image.image_full_name()}")
+                                failed_images.add(image)
+                            except Exception as e:
+                                self.logger.error(f"Error building image {image.image_full_name()}: {e}")
+                                failed_images.add(image)
+                                if self.stop_on_error:
+                                    executor.shutdown(wait=False)
+                                    raise e
+                            finally:
+                                building_bar.update(1)
+                    except concurrent.futures.TimeoutError:
+                        self.logger.error("Global timeout reached while building images")
+                        executor.shutdown(wait=False)
+                        if self.stop_on_error:
+                            raise Exception("Global timeout reached while building images")
 
                 new_building_images: set[Image] = set()
                 for image in building_images:
@@ -613,39 +602,23 @@ class CliArgs:
 
     def run_instance(self, instance: Instance):
         instance_dir = (
-            self.workdir
-            / instance.pr.org
-            / instance.pr.repo
-            / INSTANCE_WORKDIR
-            / instance.dependency().workdir()
+            self.workdir / instance.pr.org / instance.pr.repo / INSTANCE_WORKDIR / instance.dependency().workdir()
         )
         instance_dir.mkdir(parents=True, exist_ok=True)
 
         report_path = instance_dir / REPORT_FILE
         if report_path.exists():
-            self.logger.info(
-                f"Report already exists for {instance.name()}, skipping..."
-            )
+            self.logger.info(f"Report already exists for {instance.name()}, skipping...")
             return
 
-        def run_and_save_output(
-            image_full_name: str, run_command: str, output_path: Path
-        ):
-            self.logger.info(
-                f"Running {image_full_name} with command: {run_command}..."
-            )
-            output = docker_util.run(
-                image_full_name, run_command, output_path, self.global_env
-            )
-            self.logger.info(
-                f"Running {image_full_name} with command: {run_command}... done"
-            )
+        def run_and_save_output(image_full_name: str, run_command: str, output_path: Path):
+            self.logger.info(f"Running {image_full_name} with command: {run_command}...")
+            output = docker_util.run(image_full_name, run_command, output_path, self.global_env)
+            self.logger.info(f"Running {image_full_name} with command: {run_command}... done")
 
             return output
 
-        output_run = run_and_save_output(
-            instance.name(), instance.run(self.run_cmd), instance_dir / RUN_LOG_FILE
-        )
+        output_run = run_and_save_output(instance.name(), instance.run(self.run_cmd), instance_dir / RUN_LOG_FILE)
         output_test = run_and_save_output(
             instance.name(),
             instance.test_patch_run(self.test_patch_run_cmd),
@@ -670,22 +643,15 @@ class CliArgs:
         self.logger.info("Running instances...")
 
         with tqdm(total=len(self.instances), desc="Running instances") as running_bar:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=self.max_workers_run_instance
-            ) as executor:
-                futures = {
-                    executor.submit(self.run_instance, instance): instance
-                    for instance in self.instances
-                }
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers_run_instance) as executor:
+                futures = {executor.submit(self.run_instance, instance): instance for instance in self.instances}
 
                 for future in concurrent.futures.as_completed(futures):
                     instance = futures[future]
                     try:
                         future.result()
                     except Exception as e:
-                        self.logger.error(
-                            f"Error running instance {instance.pr.id}: {e}"
-                        )
+                        self.logger.error(f"Error running instance {instance.pr.id}: {e}")
                         if self.stop_on_error:
                             executor.shutdown(wait=False)
                             sys.exit(1)

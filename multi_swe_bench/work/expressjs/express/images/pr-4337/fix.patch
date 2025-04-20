@@ -1,0 +1,26 @@
+diff --git a/History.md b/History.md
+index d52d1a67e3..3dfd2c05de 100644
+--- a/History.md
++++ b/History.md
+@@ -4,6 +4,8 @@ unreleased
+   * Fix incorrect middleware execution with unanchored `RegExp`s
+   * Fix `res.jsonp(obj, status)` deprecation message
+   * Fix typo in `res.is` JSDoc
++  * deps: cookie@0.4.1
++    - Fix `maxAge` option to reject invalid values
+   * deps: proxy-addr@~2.0.6
+     - deps: ipaddr.js@1.9.1
+ 
+diff --git a/package.json b/package.json
+index 470ed54520..8e3c4dc3ad 100644
+--- a/package.json
++++ b/package.json
+@@ -33,7 +33,7 @@
+     "body-parser": "1.19.0",
+     "content-disposition": "0.5.3",
+     "content-type": "~1.0.4",
+-    "cookie": "0.4.0",
++    "cookie": "0.4.1",
+     "cookie-signature": "1.0.6",
+     "debug": "2.6.9",
+     "depd": "~1.1.2",

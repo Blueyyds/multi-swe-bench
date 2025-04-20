@@ -1,0 +1,432 @@
+diff --git a/.travis.yml b/.travis.yml
+index 3899852754..95034721e7 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -6,6 +6,8 @@ node_js:
+   - "2.5"
+   - "3.3"
+   - "4.4"
++  - "5.11"
++  - "6.2"
+ sudo: false
+ cache:
+   directories:
+diff --git a/History.md b/History.md
+index c72241b98d..6c3811a457 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,83 @@
++unreleased
++==========
++
++  * Add `acceptRanges` option to `res.sendFile`/`res.sendfile`
++  * Add `cacheControl` option to `res.sendFile`/`res.sendfile`
++  * Add `options` argument to `req.range`
++    - Includes the `combine` option
++  * Encode URL in `res.location`/`res.redirect` if not already encoded
++  * Fix some redirect handling in `res.sendFile`/`res.sendfile`
++  * Fix Windows absolute path check using forward slashes
++  * Improve error with invalid arguments to `req.get()`
++  * Improve performance for `res.json`/`res.jsonp` in most cases
++  * Improve `Range` header handling in `res.sendFile`/`res.sendfile`
++  * deps: accepts@~1.3.3
++    - Fix including type extensions in parameters in `Accept` parsing
++    - Fix parsing `Accept` parameters with quoted equals
++    - Fix parsing `Accept` parameters with quoted semicolons
++    - Many performance improvments
++    - deps: mime-types@~2.1.11
++    - deps: negotiator@0.6.1
++  * deps: content-type@~1.0.2
++    - perf: enable strict mode
++  * deps: cookie@0.3.1
++    - Add `sameSite` option
++    - Fix cookie `Max-Age` to never be a floating point number
++    - Improve error message when `encode` is not a function
++    - Improve error message when `expires` is not a `Date`
++    - Throw better error for invalid argument to parse
++    - Throw on invalid values provided to `serialize`
++    - perf: enable strict mode
++    - perf: hoist regular expression
++    - perf: use for loop in parse
++    - perf: use string concatination for serialization
++  * deps: finalhandler@0.5.0
++    - Change invalid or non-numeric status code to 500
++    - Overwrite status message to match set status code
++    - Prefer `err.statusCode` if `err.status` is invalid
++    - Set response headers from `err.headers` object
++    - Use `statuses` instead of `http` module for status messages
++  * deps: proxy-addr@~1.1.2
++    - Fix accepting various invalid netmasks
++    - Fix IPv6-mapped IPv4 validation edge cases
++    - IPv4 netmasks must be contingous
++    - IPv6 addresses cannot be used as a netmask
++    - deps: ipaddr.js@1.1.1
++  * deps: qs@6.2.0
++    - Add `decoder` option in `parse` function
++  * deps: range-parser@~1.2.0
++    - Add `combine` option to combine overlapping ranges
++    - Fix incorrectly returning -1 when there is at least one valid range
++    - perf: remove internal function
++  * deps: send@0.14.1
++    - Add `acceptRanges` option
++    - Add `cacheControl` option
++    - Attempt to combine multiple ranges into single range
++    - Correctly inherit from `Stream` class
++    - Fix `Content-Range` header in 416 responses when using `start`/`end` options
++    - Fix `Content-Range` header missing from default 416 responses
++    - Fix redirect error when `path` contains raw non-URL characters
++    - Fix redirect when `path` starts with multiple forward slashes
++    - Ignore non-byte `Range` headers
++    - deps: http-errors@~1.5.0
++    - deps: range-parser@~1.2.0
++    - deps: statuses@~1.3.0
++    - perf: remove argument reassignment
++  * deps: serve-static@~1.11.1
++    - Add `acceptRanges` option
++    - Add `cacheControl` option
++    - Attempt to combine multiple ranges into single range
++    - Fix redirect error when `req.url` contains raw non-URL characters
++    - Ignore non-byte `Range` headers
++    - Use status code 301 for redirects
++    - deps: send@0.14.1
++  * deps: type-is@~1.6.13
++    - Fix type error when given invalid type to match against
++    - deps: mime-types@~2.1.11
++  * deps: vary@~1.1.0
++    - Only accept valid field names in the `field` argument
++  * perf: use strict equality when possible
++
+ 4.13.4 / 2016-01-21
+ ===================
+ 
+diff --git a/appveyor.yml b/appveyor.yml
+index ce5e52ff1b..f106137351 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -6,6 +6,8 @@ environment:
+     - nodejs_version: "2.5"
+     - nodejs_version: "3.3"
+     - nodejs_version: "4.4"
++    - nodejs_version: "5.11"
++    - nodejs_version: "6.2"
+ cache:
+   - node_modules
+ install:
+diff --git a/lib/middleware/query.js b/lib/middleware/query.js
+index a665f3f143..5f76f8458f 100644
+--- a/lib/middleware/query.js
++++ b/lib/middleware/query.js
+@@ -30,14 +30,9 @@ module.exports = function query(options) {
+     opts = undefined;
+   }
+ 
+-  if (opts !== undefined) {
+-    if (opts.allowDots === undefined) {
+-      opts.allowDots = false;
+-    }
+-
+-    if (opts.allowPrototypes === undefined) {
+-      opts.allowPrototypes = true;
+-    }
++  if (opts !== undefined && opts.allowPrototypes === undefined) {
++    // back-compat for qs module
++    opts.allowPrototypes = true;
+   }
+ 
+   return function query(req, res, next){
+diff --git a/lib/request.js b/lib/request.js
+index 33cac180ed..557d050ffb 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -57,6 +57,14 @@ var req = exports = module.exports = {
+ 
+ req.get =
+ req.header = function header(name) {
++  if (!name) {
++    throw new TypeError('name argument is required to req.get');
++  }
++
++  if (typeof name !== 'string') {
++    throw new TypeError('name must be a string to req.get');
++  }
++
+   var lc = name.toLowerCase();
+ 
+   switch (lc) {
+@@ -171,29 +179,34 @@ req.acceptsLanguage = deprecate.function(req.acceptsLanguages,
+   'req.acceptsLanguage: Use acceptsLanguages instead');
+ 
+ /**
+- * Parse Range header field,
+- * capping to the given `size`.
++ * Parse Range header field, capping to the given `size`.
+  *
+- * Unspecified ranges such as "0-" require
+- * knowledge of your resource length. In
+- * the case of a byte range this is of course
+- * the total number of bytes. If the Range
+- * header field is not given `null` is returned,
+- * `-1` when unsatisfiable, `-2` when syntactically invalid.
++ * Unspecified ranges such as "0-" require knowledge of your resource length. In
++ * the case of a byte range this is of course the total number of bytes. If the
++ * Range header field is not given `undefined` is returned, `-1` when unsatisfiable,
++ * and `-2` when syntactically invalid.
+  *
+- * NOTE: remember that ranges are inclusive, so
+- * for example "Range: users=0-3" should respond
+- * with 4 users when available, not 3.
++ * When ranges are returned, the array has a "type" property which is the type of
++ * range that is required (most commonly, "bytes"). Each array element is an object
++ * with a "start" and "end" property for the portion of the range.
+  *
+- * @param {Number} size
+- * @return {Array}
++ * The "combine" option can be set to `true` and overlapping & adjacent ranges
++ * will be combined into a single range.
++ *
++ * NOTE: remember that ranges are inclusive, so for example "Range: users=0-3"
++ * should respond with 4 users when available, not 3.
++ *
++ * @param {number} size
++ * @param {object} [options]
++ * @param {boolean} [options.combine=false]
++ * @return {number|array}
+  * @public
+  */
+ 
+-req.range = function(size){
++req.range = function range(size, options) {
+   var range = this.get('Range');
+   if (!range) return;
+-  return parseRange(size, range);
++  return parseRange(size, range, options);
+ };
+ 
+ /**
+@@ -303,7 +316,7 @@ defineGetter(req, 'protocol', function protocol(){
+ /**
+  * Short-hand for:
+  *
+- *    req.protocol == 'https'
++ *    req.protocol === 'https'
+  *
+  * @return {Boolean}
+  * @public
+@@ -437,10 +450,10 @@ defineGetter(req, 'fresh', function(){
+   var s = this.res.statusCode;
+ 
+   // GET or HEAD for weak freshness validation only
+-  if ('GET' != method && 'HEAD' != method) return false;
++  if ('GET' !== method && 'HEAD' !== method) return false;
+ 
+   // 2xx or 304 as per rfc2616 14.26
+-  if ((s >= 200 && s < 300) || 304 == s) {
++  if ((s >= 200 && s < 300) || 304 === s) {
+     return fresh(this.headers, (this.res._headers || {}));
+   }
+ 
+diff --git a/lib/response.js b/lib/response.js
+index e813c52ec1..6128f450a9 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -14,6 +14,7 @@
+ 
+ var contentDisposition = require('content-disposition');
+ var deprecate = require('depd')('express');
++var encodeUrl = require('encodeurl');
+ var escapeHtml = require('escape-html');
+ var http = require('http');
+ var isAbsolute = require('./utils').isAbsolute;
+@@ -189,7 +190,7 @@ res.send = function send(body) {
+   if (req.fresh) this.statusCode = 304;
+ 
+   // strip irrelevant headers
+-  if (204 == this.statusCode || 304 == this.statusCode) {
++  if (204 === this.statusCode || 304 === this.statusCode) {
+     this.removeHeader('Content-Type');
+     this.removeHeader('Content-Length');
+     this.removeHeader('Transfer-Encoding');
+@@ -239,7 +240,7 @@ res.json = function json(obj) {
+   var app = this.app;
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = JSON.stringify(val, replacer, spaces);
++  var body = stringify(val, replacer, spaces);
+ 
+   // content-type
+   if (!this.get('Content-Type')) {
+@@ -281,7 +282,7 @@ res.jsonp = function jsonp(obj) {
+   var app = this.app;
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = JSON.stringify(val, replacer, spaces);
++  var body = stringify(val, replacer, spaces);
+   var callback = this.req.query[app.get('jsonp callback name')];
+ 
+   // content-type
+@@ -832,8 +833,7 @@ res.location = function location(url) {
+   }
+ 
+   // set location
+-  this.set('Location', loc);
+-  return this;
++  return this.set('Location', encodeUrl(loc));
+ };
+ 
+ /**
+@@ -871,13 +871,12 @@ res.redirect = function redirect(url) {
+   }
+ 
+   // Set location header
+-  this.location(address);
+-  address = this.get('Location');
++  address = this.location(address).get('Location');
+ 
+   // Support text/{plain,html} by default
+   this.format({
+     text: function(){
+-      body = statusCodes[status] + '. Redirecting to ' + encodeURI(address);
++      body = statusCodes[status] + '. Redirecting to ' + address;
+     },
+ 
+     html: function(){
+@@ -1051,3 +1050,16 @@ function sendfile(res, file, options, callback) {
+   // pipe
+   file.pipe(res);
+ }
++
++/**
++ * Stringify JSON, like JSON.stringify, but v8 optimized.
++ * @private
++ */
++
++function stringify(value, replacer, spaces) {
++  // v8 checks arguments.length for optimizing simple call
++  // https://bugs.chromium.org/p/v8/issues/detail?id=4730
++  return replacer || spaces
++    ? JSON.stringify(value, replacer, spaces)
++    : JSON.stringify(value);
++}
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 504ed9ce0e..dac2514815 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -119,7 +119,7 @@ proto.param = function param(name, fn) {
+ 
+   // ensure we end up with a
+   // middleware function
+-  if ('function' != typeof fn) {
++  if ('function' !== typeof fn) {
+     throw new Error('invalid param() call for ' + name + ', got ' + fn);
+   }
+ 
+diff --git a/lib/utils.js b/lib/utils.js
+index 3d54247ad2..f418c5807c 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -66,9 +66,9 @@ exports.wetag = function wetag(body, encoding){
+  */
+ 
+ exports.isAbsolute = function(path){
+-  if ('/' == path[0]) return true;
+-  if (':' == path[1] && '\\' == path[2]) return true;
+-  if ('\\\\' == path.substring(0, 2)) return true; // Microsoft Azure absolute path
++  if ('/' === path[0]) return true;
++  if (':' === path[1] && ('\\' === path[2] || '/' === path[2])) return true; // Windows device path
++  if ('\\\\' === path.substring(0, 2)) return true; // Microsoft Azure absolute path
+ };
+ 
+ /**
+@@ -142,7 +142,7 @@ function acceptParams(str, index) {
+ 
+   for (var i = 1; i < parts.length; ++i) {
+     var pms = parts[i].split(/ *= */);
+-    if ('q' == pms[0]) {
++    if ('q' === pms[0]) {
+       ret.quality = parseFloat(pms[1]);
+     } else {
+       ret.params[pms[0]] = pms[1];
+@@ -283,7 +283,6 @@ exports.setCharset = function setCharset(type, charset) {
+ 
+ function parseExtendedQueryString(str) {
+   return qs.parse(str, {
+-    allowDots: false,
+     allowPrototypes: true
+   });
+ }
+diff --git a/package.json b/package.json
+index 404a3dea73..6b3b11b1e6 100644
+--- a/package.json
++++ b/package.json
+@@ -27,50 +27,51 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.2.12",
++    "accepts": "~1.3.3",
+     "array-flatten": "1.1.1",
+     "content-disposition": "0.5.1",
+-    "content-type": "~1.0.1",
+-    "cookie": "0.1.5",
++    "content-type": "~1.0.2",
++    "cookie": "0.3.1",
+     "cookie-signature": "1.0.6",
+     "debug": "~2.2.0",
+     "depd": "~1.1.0",
++    "encodeurl": "~1.0.1",
+     "escape-html": "~1.0.3",
+     "etag": "~1.7.0",
+-    "finalhandler": "0.4.1",
++    "finalhandler": "0.5.0",
+     "fresh": "0.3.0",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+     "on-finished": "~2.3.0",
+     "parseurl": "~1.3.1",
+     "path-to-regexp": "0.1.7",
+-    "proxy-addr": "~1.0.10",
+-    "qs": "4.0.0",
+-    "range-parser": "~1.0.3",
+-    "send": "0.13.1",
+-    "serve-static": "~1.10.2",
+-    "type-is": "~1.6.6",
++    "proxy-addr": "~1.1.2",
++    "qs": "6.2.0",
++    "range-parser": "~1.2.0",
++    "send": "0.14.1",
++    "serve-static": "~1.11.1",
++    "type-is": "~1.6.13",
+     "utils-merge": "1.0.0",
+-    "vary": "~1.0.1"
++    "vary": "~1.1.0"
+   },
+   "devDependencies": {
+     "after": "0.8.1",
+-    "ejs": "2.4.1",
++    "body-parser": "~1.15.1",
++    "cookie-parser": "~1.4.3",
++    "ejs": "2.4.2",
+     "istanbul": "0.4.3",
+     "marked": "0.3.5",
+-    "mocha": "2.5.1",
+-    "should": "8.4.0",
+-    "supertest": "1.1.0",
+-    "body-parser": "~1.14.2",
++    "method-override": "~2.3.6",
++    "mocha": "2.5.3",
++    "morgan": "~1.7.0",
++    "should": "9.0.2",
++    "supertest": "1.2.0",
+     "connect-redis": "~2.4.1",
+-    "cookie-parser": "~1.4.1",
+     "cookie-session": "~1.2.0",
+     "express-session": "~1.13.0",
+     "jade": "~1.11.0",
+-    "method-override": "~2.3.5",
+-    "morgan": "~1.6.1",
+     "multiparty": "~4.1.2",
+-    "vhost": "~3.0.1"
++    "vhost": "~3.0.2"
+   },
+   "engines": {
+     "node": ">= 0.10.0"

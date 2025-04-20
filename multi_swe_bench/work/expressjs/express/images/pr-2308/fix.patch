@@ -1,0 +1,160 @@
+diff --git a/Contributing.md b/Contributing.md
+index 2c980cf719..45bc153823 100644
+--- a/Contributing.md
++++ b/Contributing.md
+@@ -1,7 +1,7 @@
+ 
+ ## Website Issues
+ 
+-Issues for the expressjs.com website go here https://github.com/visionmedia/expressjs.com
++Issues for the expressjs.com website go here https://github.com/strongloop/expressjs.com
+ 
+ ## PRs and Code contributions
+ 
+@@ -22,4 +22,3 @@ Things that will help get your question issue looked at:
+ * Steps you have taken to debug it yourself.
+ 
+ If you post a question and do not outline the above items or make it easy for us to understand and reproduce your issue, it will be closed.
+-
+diff --git a/Readme.md b/Readme.md
+index 8abbcc46a0..2b88d8532b 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -3,8 +3,8 @@
+   Fast, unopinionated, minimalist web framework for [node](http://nodejs.org).
+ 
+   [![NPM Version](https://badge.fury.io/js/express.svg)](https://badge.fury.io/js/express)
+-  [![Build Status](https://travis-ci.org/visionmedia/express.svg?branch=master)](https://travis-ci.org/visionmedia/express)
+-  [![Coverage Status](https://img.shields.io/coveralls/visionmedia/express.svg)](https://coveralls.io/r/visionmedia/express)
++  [![Build Status](https://travis-ci.org/strongloop/express.svg?branch=master)](https://travis-ci.org/strongloop/express)
++  [![Coverage Status](https://img.shields.io/coveralls/strongloop/express.svg)](https://coveralls.io/r/strongloop/express)
+   [![Gittip](http://img.shields.io/gittip/dougwilson.svg)](https://www.gittip.com/dougwilson/)
+ 
+ ```js
+@@ -18,7 +18,7 @@ app.get('/', function (req, res) {
+ app.listen(3000)
+ ```
+ 
+-  **PROTIP** Be sure to read [Migrating from 3.x to 4.x](https://github.com/visionmedia/express/wiki/Migrating-from-3.x-to-4.x) as well as [New features in 4.x](https://github.com/visionmedia/express/wiki/New-features-in-4.x).
++  **PROTIP** Be sure to read [Migrating from 3.x to 4.x](https://github.com/strongloop/express/wiki/Migrating-from-3.x-to-4.x) as well as [New features in 4.x](https://github.com/strongloop/express/wiki/New-features-in-4.x).
+ 
+ ### Installation
+ 
+@@ -76,10 +76,10 @@ $ npm start
+ 
+ ## More Information
+ 
+-  * [Website and Documentation](http://expressjs.com/) - [[website repo](https://github.com/visionmedia/expressjs.com)]
++  * [Website and Documentation](http://expressjs.com/) - [[website repo](https://github.com/strongloop/expressjs.com)]
+   * [Github Organization](https://github.com/expressjs) for Official Middleware & Modules
+   * [#express](https://webchat.freenode.net/?channels=express) on freenode IRC
+-  * Visit the [Wiki](https://github.com/visionmedia/express/wiki)
++  * Visit the [Wiki](https://github.com/strongloop/express/wiki)
+   * [Google Group](https://groups.google.com/group/express-js) for discussion
+   * [Русскоязычная документация](http://jsman.ru/express/)
+   * [한국어 문서](http://expressjs.kr) - [[website repo](https://github.com/Hanul/expressjs.kr)]
+@@ -90,7 +90,7 @@ $ npm start
+   Clone the Express repo, then install the dev dependencies to install all the example / test suite dependencies:
+ 
+ ```bash
+-$ git clone git://github.com/visionmedia/express.git --depth 1
++$ git clone git://github.com/strongloop/express.git --depth 1
+ $ cd express
+ $ npm install
+ ```
+@@ -120,8 +120,7 @@ $ npm test
+ ### Contributors
+ 
+  * Author: [TJ Holowaychuk](https://github.com/visionmedia)
+- * Lead Maintainer: [Douglas Christopher Wilson](https://github.com/dougwilson)
+- * [All Contributors](https://github.com/visionmedia/express/graphs/contributors)
++ * [All Contributors](https://github.com/strongloop/express/graphs/contributors)
+ 
+ ### License
+ 
+diff --git a/examples/view-constructor/index.js b/examples/view-constructor/index.js
+index b4e3606a17..173663f809 100644
+--- a/examples/view-constructor/index.js
++++ b/examples/view-constructor/index.js
+@@ -23,7 +23,7 @@ app.engine('md', function(str, options, fn){
+ });
+ 
+ // pointing to a particular github repo to load files from it
+-app.set('views', 'visionmedia/express');
++app.set('views', 'strongloop/express');
+ 
+ // register a new view constructor
+ app.set('view', GithubView);
+@@ -36,7 +36,7 @@ app.get('/', function(req, res){
+ });
+ 
+ app.get('/Readme.md', function(req, res){
+-  // rendering a view from https://github.com/visionmedia/express/blob/master/Readme.md
++  // rendering a view from https://github.com/strongloop/express/blob/master/Readme.md
+   res.render('Readme.md');
+ });
+ 
+diff --git a/lib/request.js b/lib/request.js
+index ea5d03722e..6743e5a581 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -320,7 +320,8 @@ defineGetter(req, 'ips', function ips() {
+  * Return subdomains as an array.
+  *
+  * Subdomains are the dot-separated parts of the host before the main domain of
+- * the app. By default, the domain of the app is assumed to be the last two
++ * the app. IP addresses are ignored and return an empty array.
++ * By default, the domain of the app is assumed to be the last two
+  * parts of the host. This can be changed by setting "subdomain offset".
+  *
+  * For example, if the domain is "tobi.ferrets.example.com":
+@@ -332,7 +333,18 @@ defineGetter(req, 'ips', function ips() {
+  */
+ 
+ defineGetter(req, 'subdomains', function subdomains() {
++  var ipv4Reg = /^(\d?\d?\d)\.(\d?\d?\d)\.(\d?\d?\d)\.(\d?\d?\d)$/;
++  var ipv6Reg = /^::|^::1|^([a-fA-F0-9]{1,4}::?){1,7}([a-fA-F0-9]{1,4})$/;
+   var offset = this.app.get('subdomain offset');
++
++  // Check if the host is an IP
++  if (this.hostname 
++      && (ipv4Reg.test(this.hostname) 
++          || ipv6Reg.test(this.hostname))) {
++
++    return [];
++  }
++
+   return (this.hostname || '')
+     .split('.')
+     .reverse()
+diff --git a/package.json b/package.json
+index 718ef05713..5b247197d0 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Fast, unopinionated, minimalist web framework",
+-  "version": "4.8.0",
++  "version": "4.8.1",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [
+     "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+@@ -23,7 +23,7 @@
+     "app",
+     "api"
+   ],
+-  "repository": "visionmedia/express",
++  "repository": "strongloop/express",
+   "license": "MIT",
+   "dependencies": {
+     "accepts": "~1.0.7",
+@@ -37,7 +37,7 @@
+     "parseurl": "~1.2.0",
+     "path-to-regexp": "0.1.3",
+     "proxy-addr": "1.0.1",
+-    "qs": "1.0.2",
++    "qs": "1.2.0",
+     "range-parser": "1.0.0",
+     "send": "0.8.1",
+     "serve-static": "~1.5.0",

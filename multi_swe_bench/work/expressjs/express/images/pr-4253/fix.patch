@@ -1,0 +1,22 @@
+diff --git a/lib/response.js b/lib/response.js
+index c9f08cd54f..e23a4b100b 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -799,7 +799,7 @@ res.get = function(field){
+  */
+ 
+ res.clearCookie = function clearCookie(name, options) {
+-  var opts = merge({ expires: new Date(1), path: '/' }, options);
++  var opts = merge(options || {}, {maxAge: 0});
+ 
+   return this.cookie(name, '', opts);
+ };
+@@ -846,7 +846,7 @@ res.cookie = function (name, value, options) {
+   }
+ 
+   if ('maxAge' in opts) {
+-    opts.expires = new Date(Date.now() + opts.maxAge);
++    opts.expires = (opts.maxAge <= 0) ? new Date(1) : new Date(Date.now() + opts.maxAge);
+     opts.maxAge /= 1000;
+   }
+ 

@@ -1,0 +1,28 @@
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+index 88ebd3964c..8d12cb8c48 100644
+--- a/lib/router/layer.js
++++ b/lib/router/layer.js
+@@ -130,9 +130,7 @@ Layer.prototype.match = function match(path) {
+ 
+   for (var i = 1, len = m.length; i < len; ++i) {
+     key = keys[i - 1];
+-    prop = key
+-      ? key.name
+-      : n++;
++    prop = key.name;
+     val = decode_param(m[i]);
+ 
+     if (val !== undefined || !(hasOwnProperty.call(params, prop))) {
+diff --git a/package.json b/package.json
+index 63fe46b3dc..4004dcf6bb 100644
+--- a/package.json
++++ b/package.json
+@@ -42,7 +42,7 @@
+     "methods": "~1.1.1",
+     "on-finished": "~2.2.1",
+     "parseurl": "~1.3.0",
+-    "path-to-regexp": "0.1.3",
++    "path-to-regexp": "0.1.6",
+     "proxy-addr": "~1.0.8",
+     "qs": "2.4.2",
+     "range-parser": "~1.0.2",

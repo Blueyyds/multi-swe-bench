@@ -1,0 +1,468 @@
+diff --git a/test/Router.js b/test/Router.js
+index 18153d2926..057ce443df 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -368,17 +368,29 @@ describe('Router', function(){
+   })
+ 
+   describe('.use', function() {
+-    it('should require arguments', function(){
+-      var router = new Router();
+-      router.use.bind(router).should.throw(/requires middleware function/)
++    it('should require middleware', function () {
++      var router = new Router()
++      assert.throws(function () { router.use('/') }, /requires a middleware function/)
+     })
+ 
+-    it('should not accept non-functions', function(){
+-      var router = new Router();
+-      router.use.bind(router, '/', 'hello').should.throw(/requires middleware function.*string/)
+-      router.use.bind(router, '/', 5).should.throw(/requires middleware function.*number/)
+-      router.use.bind(router, '/', null).should.throw(/requires middleware function.*Null/)
+-      router.use.bind(router, '/', new Date()).should.throw(/requires middleware function.*Date/)
++    it('should reject string as middleware', function () {
++      var router = new Router()
++      assert.throws(function () { router.use('/', 'foo') }, /requires a middleware function but got a string/)
++    })
++
++    it('should reject number as middleware', function () {
++      var router = new Router()
++      assert.throws(function () { router.use('/', 42) }, /requires a middleware function but got a number/)
++    })
++
++    it('should reject null as middleware', function () {
++      var router = new Router()
++      assert.throws(function () { router.use('/', null) }, /requires a middleware function but got a Null/)
++    })
++
++    it('should reject Date as middleware', function () {
++      var router = new Router()
++      assert.throws(function () { router.use('/', new Date()) }, /requires a middleware function but got a Date/)
+     })
+ 
+     it('should be called for any URL', function (done) {
+diff --git a/test/app.use.js b/test/app.use.js
+index b2031e4c56..347937fbb3 100644
+--- a/test/app.use.js
++++ b/test/app.use.js
+@@ -1,5 +1,6 @@
+ 
+ var after = require('after');
++var assert = require('assert')
+ var express = require('..');
+ var request = require('supertest');
+ 
+@@ -253,17 +254,29 @@ describe('app', function(){
+   })
+ 
+   describe('.use(path, middleware)', function(){
+-    it('should reject missing functions', function () {
+-      var app = express();
+-      app.use.bind(app, '/').should.throw(/requires middleware function/);
++    it('should require middleware', function () {
++      var app = express()
++      assert.throws(function () { app.use('/') }, /requires a middleware function/)
+     })
+ 
+-    it('should reject non-functions as middleware', function () {
+-      var app = express();
+-      app.use.bind(app, '/', 'hi').should.throw(/requires middleware function.*string/);
+-      app.use.bind(app, '/', 5).should.throw(/requires middleware function.*number/);
+-      app.use.bind(app, '/', null).should.throw(/requires middleware function.*Null/);
+-      app.use.bind(app, '/', new Date()).should.throw(/requires middleware function.*Date/);
++    it('should reject string as middleware', function () {
++      var app = express()
++      assert.throws(function () { app.use('/', 'foo') }, /requires a middleware function but got a string/)
++    })
++
++    it('should reject number as middleware', function () {
++      var app = express()
++      assert.throws(function () { app.use('/', 42) }, /requires a middleware function but got a number/)
++    })
++
++    it('should reject null as middleware', function () {
++      var app = express()
++      assert.throws(function () { app.use('/', null) }, /requires a middleware function but got a Null/)
++    })
++
++    it('should reject Date as middleware', function () {
++      var app = express()
++      assert.throws(function () { app.use('/', new Date()) }, /requires a middleware function but got a Date/)
+     })
+ 
+     it('should strip path from req.url', function (done) {
+diff --git a/test/fixtures/broken.send b/test/fixtures/broken.send
+new file mode 100644
+index 0000000000..e69de29bb2
+diff --git a/test/req.param.js b/test/req.param.js
+index 1e827f0305..89f0295cd9 100644
+--- a/test/req.param.js
++++ b/test/req.param.js
+@@ -1,7 +1,6 @@
+ 
+ var express = require('../')
+   , request = require('supertest')
+-  , bodyParser = require('body-parser')
+ 
+ describe('req', function(){
+   describe('.param(name, default)', function(){
+@@ -34,7 +33,7 @@ describe('req', function(){
+     it('should check req.body', function(done){
+       var app = express();
+ 
+-      app.use(bodyParser.json());
++      app.use(express.json())
+ 
+       app.use(function(req, res){
+         res.end(req.param('name'));
+diff --git a/test/res.attachment.js b/test/res.attachment.js
+index 662b1dd4e0..4c3d4aa2f1 100644
+--- a/test/res.attachment.js
++++ b/test/res.attachment.js
+@@ -1,4 +1,5 @@
+ 
++var Buffer = require('safe-buffer').Buffer
+ var express = require('../')
+   , request = require('supertest');
+ 
+@@ -36,7 +37,7 @@ describe('res', function(){
+ 
+       app.use(function(req, res){
+         res.attachment('/path/to/image.png');
+-        res.send(new Buffer(4));
++        res.send(Buffer.alloc(4, '.'))
+       });
+ 
+       request(app)
+diff --git a/test/res.download.js b/test/res.download.js
+index fad56ee256..30215bf676 100644
+--- a/test/res.download.js
++++ b/test/res.download.js
+@@ -71,6 +71,86 @@ describe('res', function(){
+     })
+   })
+ 
++  describe('.download(path, filename, options, fn)', function () {
++    it('should invoke the callback', function (done) {
++      var app = express()
++      var cb = after(2, done)
++      var options = {}
++
++      app.use(function (req, res) {
++        res.download('test/fixtures/user.html', 'document', options, done)
++      })
++
++      request(app)
++      .get('/')
++      .expect(200)
++      .expect('Content-Type', 'text/html; charset=UTF-8')
++      .expect('Content-Disposition', 'attachment; filename="document"')
++      .end(cb)
++    })
++
++    it('should allow options to res.sendFile()', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.download('test/fixtures/.name', 'document', {
++          dotfiles: 'allow',
++          maxAge: '4h'
++        })
++      })
++
++      request(app)
++      .get('/')
++      .expect(200)
++      .expect('Content-Disposition', 'attachment; filename="document"')
++      .expect('Cache-Control', 'public, max-age=14400')
++      .expect('tobi')
++      .end(done)
++    })
++
++    describe('when options.headers contains Content-Disposition', function () {
++      it('should should be ignored', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/user.html', 'document', {
++            headers: {
++              'Content-Type': 'text/x-custom',
++              'Content-Disposition': 'inline'
++            }
++          })
++        })
++
++        request(app)
++        .get('/')
++        .expect(200)
++        .expect('Content-Type', 'text/x-custom')
++        .expect('Content-Disposition', 'attachment; filename="document"')
++        .end(done)
++      })
++
++      it('should should be ignored case-insensitively', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/user.html', 'document', {
++            headers: {
++              'content-type': 'text/x-custom',
++              'content-disposition': 'inline'
++            }
++          })
++        })
++
++        request(app)
++        .get('/')
++        .expect(200)
++        .expect('Content-Type', 'text/x-custom')
++        .expect('Content-Disposition', 'attachment; filename="document"')
++        .end(done)
++      })
++    })
++  })
++
+   describe('on failure', function(){
+     it('should invoke the callback', function(done){
+       var app = express();
+diff --git a/test/res.json.js b/test/res.json.js
+index 69f6723af5..1041376235 100644
+--- a/test/res.json.js
++++ b/test/res.json.js
+@@ -102,6 +102,28 @@ describe('res', function(){
+       })
+     })
+ 
++    describe('"json escape" setting', function () {
++      it('should be undefined by default', function () {
++        var app = express()
++        assert.strictEqual(app.get('json escape'), undefined)
++      })
++
++      it('should unicode escape HTML-sniffing characters', function (done) {
++        var app = express()
++
++        app.enable('json escape')
++
++        app.use(function (req, res) {
++          res.json({ '&': '<script>' })
++        })
++
++        request(app)
++        .get('/')
++        .expect('Content-Type', 'application/json; charset=utf-8')
++        .expect(200, '{"\\u0026":"\\u003cscript\\u003e"}', done)
++      })
++    })
++
+     describe('"json replacer" setting', function(){
+       it('should be passed to JSON.stringify()', function(done){
+         var app = express();
+diff --git a/test/res.jsonp.js b/test/res.jsonp.js
+index 64b41fb9a6..9b536b541f 100644
+--- a/test/res.jsonp.js
++++ b/test/res.jsonp.js
+@@ -242,6 +242,28 @@ describe('res', function(){
+       })
+     })
+ 
++    describe('"json escape" setting', function () {
++      it('should be undefined by default', function () {
++        var app = express()
++        assert.strictEqual(app.get('json escape'), undefined)
++      })
++
++      it('should unicode escape HTML-sniffing characters', function (done) {
++        var app = express()
++
++        app.enable('json escape')
++
++        app.use(function (req, res) {
++          res.jsonp({ '&': '\u2028<script>\u2029' })
++        })
++
++        request(app)
++        .get('/?callback=foo')
++        .expect('Content-Type', 'text/javascript; charset=utf-8')
++        .expect(200, /foo\({"\\u0026":"\\u2028\\u003cscript\\u003e\\u2029"}\)/, done)
++      })
++    })
++
+     describe('"json replacer" setting', function(){
+       it('should be passed to JSON.stringify()', function(done){
+         var app = express();
+diff --git a/test/res.render.js b/test/res.render.js
+index e19e8cc542..643a57002a 100644
+--- a/test/res.render.js
++++ b/test/res.render.js
+@@ -35,6 +35,20 @@ describe('res', function(){
+       .expect('<p>tobi</p>', done);
+     })
+ 
++    it('should error without "view engine" set and file extension to a non-engine module', function (done) {
++      var app = createApp()
++
++      app.locals.user = { name: 'tobi' }
++
++      app.use(function (req, res) {
++        res.render(path.join(__dirname, 'fixtures', 'broken.send'))
++      })
++
++      request(app)
++      .get('/')
++      .expect(500, /does not provide a view engine/, done)
++    })
++
+     it('should error without "view engine" set and no file extension', function (done) {
+       var app = createApp();
+ 
+diff --git a/test/res.send.js b/test/res.send.js
+index 88d231eab5..7aa8d7d90e 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -1,4 +1,5 @@
+ 
++var Buffer = require('safe-buffer').Buffer
+ var express = require('..');
+ var methods = require('methods');
+ var request = require('supertest');
+@@ -166,7 +167,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.set('Content-Type', 'text/plain; charset=iso-8859-1').send(new Buffer('hi'));
++        res.set('Content-Type', 'text/plain; charset=iso-8859-1').send(Buffer.from('hi'))
+       });
+ 
+       request(app)
+@@ -181,7 +182,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.send(new Buffer('hello'));
++        res.send(Buffer.from('hello'))
+       });
+ 
+       request(app)
+@@ -194,8 +195,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function (req, res) {
+-        var str = Array(1000).join('-');
+-        res.send(new Buffer(str));
++        res.send(Buffer.alloc(999, '-'))
+       });
+ 
+       request(app)
+@@ -208,7 +208,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.set('Content-Type', 'text/plain').send(new Buffer('hey'));
++        res.set('Content-Type', 'text/plain').send(Buffer.from('hey'))
+       });
+ 
+       request(app)
+@@ -512,7 +512,7 @@ describe('res', function(){
+ 
+         app.set('etag', function (body, encoding) {
+           var chunk = !Buffer.isBuffer(body)
+-            ? new Buffer(body, encoding)
++            ? Buffer.from(body, encoding)
+             : body;
+           chunk.toString().should.equal('hello, world!');
+           return '"custom"';
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index ff4b1cb2dd..4b1f3852f3 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -180,6 +180,44 @@ describe('res', function(){
+       });
+     });
+ 
++    describe('with "immutable" option', function () {
++      it('should add immutable cache-control directive', function (done) {
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'), {
++          immutable: true,
++          maxAge: '4h'
++        })
++
++        request(app)
++        .get('/')
++        .expect('Cache-Control', 'public, max-age=14400, immutable')
++        .expect(200, done)
++      })
++    })
++
++    describe('with "maxAge" option', function () {
++      it('should set cache-control max-age from number', function (done) {
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'), {
++          maxAge: 14400000
++        })
++
++        request(app)
++        .get('/')
++        .expect('Cache-Control', 'public, max-age=14400')
++        .expect(200, done)
++      })
++
++      it('should set cache-control max-age from string', function (done) {
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'), {
++          maxAge: '4h'
++        })
++
++        request(app)
++        .get('/')
++        .expect('Cache-Control', 'public, max-age=14400')
++        .expect(200, done)
++      })
++    })
++
+     describe('with "root" option', function () {
+       it('should not transfer relative with without', function (done) {
+         var app = createApp('test/fixtures/name.txt');
+diff --git a/test/res.type.js b/test/res.type.js
+index 7c03ef4c64..cc1dd08d41 100644
+--- a/test/res.type.js
++++ b/test/res.type.js
+@@ -13,7 +13,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('Content-Type', 'application/javascript', done);
++      .expect('Content-Type', 'application/javascript; charset=utf-8')
++      .end(done)
+     })
+ 
+     it('should default to application/octet-stream', function(done){
+diff --git a/test/utils.js b/test/utils.js
+index c49019fe12..b51d223af9 100644
+--- a/test/utils.js
++++ b/test/utils.js
+@@ -1,5 +1,6 @@
+ 
+ var assert = require('assert');
++var Buffer = require('safe-buffer').Buffer
+ var utils = require('../lib/utils');
+ 
+ describe('utils.etag(body, encoding)', function(){
+@@ -14,8 +15,7 @@ describe('utils.etag(body, encoding)', function(){
+   })
+ 
+   it('should support buffer', function(){
+-    var buf = new Buffer('express!')
+-    utils.etag(buf)
++    utils.etag(Buffer.from('express!'))
+     .should.eql('"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+@@ -59,8 +59,7 @@ describe('utils.wetag(body, encoding)', function(){
+   })
+ 
+   it('should support buffer', function(){
+-    var buf = new Buffer('express!')
+-    utils.wetag(buf)
++    utils.wetag(Buffer.from('express!'))
+     .should.eql('W/"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 

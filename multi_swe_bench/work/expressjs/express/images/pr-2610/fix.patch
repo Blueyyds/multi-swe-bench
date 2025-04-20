@@ -1,0 +1,1889 @@
+diff --git a/.travis.yml b/.travis.yml
+index 73568f23c8..dc2e2c8e23 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -1,10 +1,10 @@
+ language: node_js
+ node_js:
+   - "0.10"
+-  - "0.11"
+-matrix:
+-  allow_failures:
+-    - node_js: "0.11"
+-  fast_finish: true
+-script: "npm run-script test-travis"
++  - "0.12"
++  - "1.0"
++  - "1.5"
++sudo: false
++before_install: "npm rm --save-dev connect-redis"
++script: "npm run-script test-ci"
+ after_script: "npm install coveralls@2.10.0 && cat ./coverage/lcov.info | coveralls"
+diff --git a/History.md b/History.md
+index fc8330b0fa..c0b9ed6e60 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,167 @@
++4.12.3 / 2015-03-17
++===================
++
++  * deps: accepts@~1.2.5
++    - deps: mime-types@~2.0.10
++  * deps: debug@~2.1.3
++    - Fix high intensity foreground color for bold
++    - deps: ms@0.7.0
++  * deps: finalhandler@0.3.4
++    - deps: debug@~2.1.3
++  * deps: proxy-addr@~1.0.7
++    - deps: ipaddr.js@0.1.9
++  * deps: qs@2.4.1
++    - Fix error when parameter `hasOwnProperty` is present
++  * deps: send@0.12.2
++    - Throw errors early for invalid `extensions` or `index` options
++    - deps: debug@~2.1.3
++  * deps: serve-static@~1.9.2
++    - deps: send@0.12.2
++  * deps: type-is@~1.6.1
++    - deps: mime-types@~2.0.10
++
++4.12.2 / 2015-03-02
++===================
++
++  * Fix regression where `"Request aborted"` is logged using `res.sendFile`
++
++4.12.1 / 2015-03-01
++===================
++
++  * Fix constructing application with non-configurable prototype properties
++  * Fix `ECONNRESET` errors from `res.sendFile` usage
++  * Fix `req.host` when using "trust proxy" hops count
++  * Fix `req.protocol`/`req.secure` when using "trust proxy" hops count
++  * Fix wrong `code` on aborted connections from `res.sendFile`
++  * deps: merge-descriptors@1.0.0
++
++4.12.0 / 2015-02-23
++===================
++
++  * Fix `"trust proxy"` setting to inherit when app is mounted
++  * Generate `ETag`s for all request responses
++    - No longer restricted to only responses for `GET` and `HEAD` requests
++  * Use `content-type` to parse `Content-Type` headers
++  * deps: accepts@~1.2.4
++    - Fix preference sorting to be stable for long acceptable lists
++    - deps: mime-types@~2.0.9
++    - deps: negotiator@0.5.1
++  * deps: cookie-signature@1.0.6
++  * deps: send@0.12.1
++    - Always read the stat size from the file
++    - Fix mutating passed-in `options`
++    - deps: mime@1.3.4
++  * deps: serve-static@~1.9.1
++    - deps: send@0.12.1
++  * deps: type-is@~1.6.0
++    - fix argument reassignment
++    - fix false-positives in `hasBody` `Transfer-Encoding` check
++    - support wildcard for both type and subtype (`*/*`)
++    - deps: mime-types@~2.0.9
++
++4.11.2 / 2015-02-01
++===================
++
++  * Fix `res.redirect` double-calling `res.end` for `HEAD` requests
++  * deps: accepts@~1.2.3
++    - deps: mime-types@~2.0.8
++  * deps: proxy-addr@~1.0.6
++    - deps: ipaddr.js@0.1.8
++  * deps: type-is@~1.5.6
++    - deps: mime-types@~2.0.8
++
++4.11.1 / 2015-01-20
++===================
++
++  * deps: send@0.11.1
++    - Fix root path disclosure
++  * deps: serve-static@~1.8.1
++    - Fix redirect loop in Node.js 0.11.14
++    - Fix root path disclosure
++    - deps: send@0.11.1
++
++4.11.0 / 2015-01-13
++===================
++
++  * Add `res.append(field, val)` to append headers
++  * Deprecate leading `:` in `name` for `app.param(name, fn)`
++  * Deprecate `req.param()` -- use `req.params`, `req.body`, or `req.query` instead
++  * Deprecate `app.param(fn)`
++  * Fix `OPTIONS` responses to include the `HEAD` method properly
++  * Fix `res.sendFile` not always detecting aborted connection
++  * Match routes iteratively to prevent stack overflows
++  * deps: accepts@~1.2.2
++    - deps: mime-types@~2.0.7
++    - deps: negotiator@0.5.0
++  * deps: send@0.11.0
++    - deps: debug@~2.1.1
++    - deps: etag@~1.5.1
++    - deps: ms@0.7.0
++    - deps: on-finished@~2.2.0
++  * deps: serve-static@~1.8.0
++    - deps: send@0.11.0
++
++4.10.8 / 2015-01-13
++===================
++
++  * Fix crash from error within `OPTIONS` response handler
++  * deps: proxy-addr@~1.0.5
++    - deps: ipaddr.js@0.1.6
++
++4.10.7 / 2015-01-04
++===================
++
++  * Fix `Allow` header for `OPTIONS` to not contain duplicate methods
++  * Fix incorrect "Request aborted" for `res.sendFile` when `HEAD` or 304
++  * deps: debug@~2.1.1
++  * deps: finalhandler@0.3.3
++    - deps: debug@~2.1.1
++    - deps: on-finished@~2.2.0
++  * deps: methods@~1.1.1
++  * deps: on-finished@~2.2.0
++  * deps: serve-static@~1.7.2
++    - Fix potential open redirect when mounted at root
++  * deps: type-is@~1.5.5
++    - deps: mime-types@~2.0.7
++
++4.10.6 / 2014-12-12
++===================
++
++  * Fix exception in `req.fresh`/`req.stale` without response headers
++
++4.10.5 / 2014-12-10
++===================
++
++  * Fix `res.send` double-calling `res.end` for `HEAD` requests
++  * deps: accepts@~1.1.4
++    - deps: mime-types@~2.0.4
++  * deps: type-is@~1.5.4
++    - deps: mime-types@~2.0.4
++
++4.10.4 / 2014-11-24
++===================
++
++  * Fix `res.sendfile` logging standard write errors
++
++4.10.3 / 2014-11-23
++===================
++
++  * Fix `res.sendFile` logging standard write errors
++  * deps: etag@~1.5.1
++  * deps: proxy-addr@~1.0.4
++    - deps: ipaddr.js@0.1.5
++  * deps: qs@2.3.3
++    - Fix `arrayLimit` behavior
++
++4.10.2 / 2014-11-09
++===================
++
++  * Correctly invoke async router callback asynchronously
++  * deps: accepts@~1.1.3
++    - deps: mime-types@~2.0.3
++  * deps: type-is@~1.5.3
++    - deps: mime-types@~2.0.3
++
+ 4.10.1 / 2014-10-28
+ ===================
+ 
+@@ -575,6 +739,158 @@
+    - `app.route()` - Proxy to the app's `Router#route()` method to create a new route
+    - Router & Route - public API
+ 
++3.20.2 / 2015-03-16
++===================
++
++  * deps: connect@2.29.1
++    - deps: body-parser@~1.12.2
++    - deps: compression@~1.4.3
++    - deps: connect-timeout@~1.6.1
++    - deps: debug@~2.1.3
++    - deps: errorhandler@~1.3.5
++    - deps: express-session@~1.10.4
++    - deps: finalhandler@0.3.4
++    - deps: method-override@~2.3.2
++    - deps: morgan@~1.5.2
++    - deps: qs@2.4.1
++    - deps: serve-index@~1.6.3
++    - deps: serve-static@~1.9.2
++    - deps: type-is@~1.6.1
++  * deps: debug@~2.1.3
++    - Fix high intensity foreground color for bold
++    - deps: ms@0.7.0
++  * deps: merge-descriptors@1.0.0
++  * deps: proxy-addr@~1.0.7
++    - deps: ipaddr.js@0.1.9
++  * deps: send@0.12.2
++    - Throw errors early for invalid `extensions` or `index` options
++    - deps: debug@~2.1.3
++
++3.20.1 / 2015-02-28
++===================
++
++  * Fix `req.host` when using "trust proxy" hops count
++  * Fix `req.protocol`/`req.secure` when using "trust proxy" hops count
++
++3.20.0 / 2015-02-18
++===================
++
++  * Fix `"trust proxy"` setting to inherit when app is mounted
++  * Generate `ETag`s for all request responses
++    - No longer restricted to only responses for `GET` and `HEAD` requests
++  * Use `content-type` to parse `Content-Type` headers
++  * deps: connect@2.29.0
++    - Use `content-type` to parse `Content-Type` headers
++    - deps: body-parser@~1.12.0
++    - deps: compression@~1.4.1
++    - deps: connect-timeout@~1.6.0
++    - deps: cookie-parser@~1.3.4
++    - deps: cookie-signature@1.0.6
++    - deps: csurf@~1.7.0
++    - deps: errorhandler@~1.3.4
++    - deps: express-session@~1.10.3
++    - deps: http-errors@~1.3.1
++    - deps: response-time@~2.3.0
++    - deps: serve-index@~1.6.2
++    - deps: serve-static@~1.9.1
++    - deps: type-is@~1.6.0
++  * deps: cookie-signature@1.0.6
++  * deps: send@0.12.1
++    - Always read the stat size from the file
++    - Fix mutating passed-in `options`
++    - deps: mime@1.3.4
++
++3.19.2 / 2015-02-01
++===================
++
++  * deps: connect@2.28.3
++    - deps: compression@~1.3.1
++    - deps: csurf@~1.6.6
++    - deps: errorhandler@~1.3.3
++    - deps: express-session@~1.10.2
++    - deps: serve-index@~1.6.1
++    - deps: type-is@~1.5.6
++  * deps: proxy-addr@~1.0.6
++    - deps: ipaddr.js@0.1.8
++
++3.19.1 / 2015-01-20
++===================
++
++  * deps: connect@2.28.2
++    - deps: body-parser@~1.10.2
++    - deps: serve-static@~1.8.1
++  * deps: send@0.11.1
++    - Fix root path disclosure
++
++3.19.0 / 2015-01-09
++===================
++
++  * Fix `OPTIONS` responses to include the `HEAD` method property
++  * Use `readline` for prompt in `express(1)`
++  * deps: commander@2.6.0
++  * deps: connect@2.28.1
++    - deps: body-parser@~1.10.1
++    - deps: compression@~1.3.0
++    - deps: connect-timeout@~1.5.0
++    - deps: csurf@~1.6.4
++    - deps: debug@~2.1.1
++    - deps: errorhandler@~1.3.2
++    - deps: express-session@~1.10.1
++    - deps: finalhandler@0.3.3
++    - deps: method-override@~2.3.1
++    - deps: morgan@~1.5.1
++    - deps: serve-favicon@~2.2.0
++    - deps: serve-index@~1.6.0
++    - deps: serve-static@~1.8.0
++    - deps: type-is@~1.5.5
++  * deps: debug@~2.1.1
++  * deps: methods@~1.1.1
++  * deps: proxy-addr@~1.0.5
++    - deps: ipaddr.js@0.1.6
++  * deps: send@0.11.0
++    - deps: debug@~2.1.1
++    - deps: etag@~1.5.1
++    - deps: ms@0.7.0
++    - deps: on-finished@~2.2.0
++
++3.18.6 / 2014-12-12
++===================
++
++  * Fix exception in `req.fresh`/`req.stale` without response headers
++
++3.18.5 / 2014-12-11
++===================
++
++  * deps: connect@2.27.6
++    - deps: compression@~1.2.2
++    - deps: express-session@~1.9.3
++    - deps: http-errors@~1.2.8
++    - deps: serve-index@~1.5.3
++    - deps: type-is@~1.5.4
++
++3.18.4 / 2014-11-23
++===================
++
++  * deps: connect@2.27.4
++    - deps: body-parser@~1.9.3
++    - deps: compression@~1.2.1
++    - deps: errorhandler@~1.2.3
++    - deps: express-session@~1.9.2
++    - deps: qs@2.3.3
++    - deps: serve-favicon@~2.1.7
++    - deps: serve-static@~1.5.1
++    - deps: type-is@~1.5.3
++  * deps: etag@~1.5.1
++  * deps: proxy-addr@~1.0.4
++    - deps: ipaddr.js@0.1.5
++
++3.18.3 / 2014-11-09
++===================
++
++  * deps: connect@2.27.3
++    - Correctly invoke async callback asynchronously
++    - deps: csurf@~1.6.3
++
+ 3.18.2 / 2014-10-28
+ ===================
+ 
+diff --git a/LICENSE b/LICENSE
+index 0f3c767892..aa927e44e3 100644
+--- a/LICENSE
++++ b/LICENSE
+@@ -1,6 +1,8 @@
+ (The MIT License)
+ 
+ Copyright (c) 2009-2014 TJ Holowaychuk <tj@vision-media.ca>
++Copyright (c) 2013-2014 Roman Shtylman <shtylman+expressjs@gmail.com>
++Copyright (c) 2014-2015 Douglas Christopher Wilson <doug@somethingdoug.com>
+ 
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+diff --git a/Readme.md b/Readme.md
+index 9fe91d2fc6..8da83a517e 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -4,7 +4,8 @@
+ 
+   [![NPM Version][npm-image]][npm-url]
+   [![NPM Downloads][downloads-image]][downloads-url]
+-  [![Build Status][travis-image]][travis-url]
++  [![Linux Build][travis-image]][travis-url]
++  [![Windows Build][appveyor-image]][appveyor-url]
+   [![Test Coverage][coveralls-image]][coveralls-url]
+ 
+ ```js
+@@ -18,7 +19,7 @@ app.get('/', function (req, res) {
+ app.listen(3000)
+ ```
+ 
+-### Installation
++## Installation
+ 
+ ```bash
+ $ npm install express
+@@ -86,7 +87,7 @@ $ npm start
+ 
+ ## Examples
+ 
+-  To view the examples, clone the Express repo & install the dependancies:
++  To view the examples, clone the Express repo and install the dependencies:
+ 
+ ```bash
+ $ git clone git://github.com/strongloop/express.git --depth 1
+@@ -102,14 +103,14 @@ $ node examples/content-negotiation
+ 
+ ## Tests
+ 
+-  To run the test suite, first install the dependancies, then run `npm test`:
++  To run the test suite, first install the dependencies, then run `npm test`:
+ 
+ ```bash
+ $ npm install
+ $ npm test
+ ```
+ 
+-### People
++## People
+ 
+ The original author of Express is [TJ Holowaychuk](https://github.com/tj) [![TJ's Gratipay][gratipay-image-visionmedia]][gratipay-url-visionmedia]
+ 
+@@ -117,19 +118,21 @@ The current lead maintainer is [Douglas Christopher Wilson](https://github.com/d
+ 
+ [List of all contributors](https://github.com/strongloop/express/graphs/contributors)
+ 
+-### License
++## License
+ 
+   [MIT](LICENSE)
+ 
+-[npm-image]: https://img.shields.io/npm/v/express.svg?style=flat
++[npm-image]: https://img.shields.io/npm/v/express.svg
+ [npm-url]: https://npmjs.org/package/express
+-[downloads-image]: https://img.shields.io/npm/dm/express.svg?style=flat
++[downloads-image]: https://img.shields.io/npm/dm/express.svg
+ [downloads-url]: https://npmjs.org/package/express
+-[travis-image]: https://img.shields.io/travis/strongloop/express.svg?style=flat
++[travis-image]: https://img.shields.io/travis/strongloop/express/master.svg?label=linux
+ [travis-url]: https://travis-ci.org/strongloop/express
+-[coveralls-image]: https://img.shields.io/coveralls/strongloop/express.svg?style=flat
++[appveyor-image]: https://img.shields.io/appveyor/ci/dougwilson/express/master.svg?label=windows
++[appveyor-url]: https://ci.appveyor.com/project/dougwilson/express
++[coveralls-image]: https://img.shields.io/coveralls/strongloop/express/master.svg
+ [coveralls-url]: https://coveralls.io/r/strongloop/express?branch=master
+-[gratipay-image-visionmedia]: https://img.shields.io/gratipay/visionmedia.svg?style=flat
+-[gratipay-url-visionmedia]: https://gratipay/visionmedia/
+-[gratipay-image-dougwilson]: https://img.shields.io/gratipay/dougwilson.svg?style=flat
+-[gratipay-url-dougwilson]: https://gratipay/dougwilson/
++[gratipay-image-visionmedia]: https://img.shields.io/gratipay/visionmedia.svg
++[gratipay-url-visionmedia]: https://gratipay.com/visionmedia/
++[gratipay-image-dougwilson]: https://img.shields.io/gratipay/dougwilson.svg
++[gratipay-url-dougwilson]: https://gratipay.com/dougwilson/
+diff --git a/appveyor.yml b/appveyor.yml
+new file mode 100644
+index 0000000000..eb8dbcc6d1
+--- /dev/null
++++ b/appveyor.yml
+@@ -0,0 +1,16 @@
++environment:
++  matrix:
++    - nodejs_version: "0.10"
++    - nodejs_version: "0.12"
++    - nodejs_version: "1.0"
++    - nodejs_version: "1.5"
++install:
++  - ps: Install-Product node $env:nodejs_version
++  - npm rm --save-dev connect-redis
++  - npm install
++build: off
++test_script:
++  - node --version
++  - npm --version
++  - npm run test-ci
++version: "{build}"
+diff --git a/examples/cookie-sessions/index.js b/examples/cookie-sessions/index.js
+index b7b9ce51e1..73653f63af 100644
+--- a/examples/cookie-sessions/index.js
++++ b/examples/cookie-sessions/index.js
+@@ -2,6 +2,7 @@
+  * Module dependencies.
+  */
+ 
++var cookieSession = require('cookie-session');
+ var express = require('../../');
+ 
+ var app = module.exports = express();
+diff --git a/examples/cors/index.js b/examples/cors/index.js
+deleted file mode 100644
+index ac30ac9444..0000000000
+--- a/examples/cors/index.js
++++ /dev/null
+@@ -1,48 +0,0 @@
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../..');
+-var logger = require('morgan');
+-var app = express();
+-var bodyParser = require('body-parser');
+-var api = express();
+-
+-// app middleware
+-
+-app.use(express.static(__dirname + '/public'));
+-
+-// api middleware
+-
+-api.use(logger('dev'));
+-api.use(bodyParser.json());
+-
+-/**
+- * CORS support.
+- */
+-
+-api.all('*', function(req, res, next){
+-  if (!req.get('Origin')) return next();
+-  // use "*" here to accept any origin
+-  res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+-  res.set('Access-Control-Allow-Methods', 'PUT');
+-  res.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type');
+-  // res.set('Access-Control-Allow-Max-Age', 3600);
+-  if ('OPTIONS' == req.method) return res.send(200);
+-  next();
+-});
+-
+-/**
+- * PUT an existing user.
+- */
+-
+-api.put('/user/:id', function(req, res){
+-  console.log(req.body);
+-  res.send(204);
+-});
+-
+-app.listen(3000);
+-api.listen(3001);
+-
+-console.log('app listening on 3000');
+-console.log('api listening on 3001');
+diff --git a/examples/cors/public/index.html b/examples/cors/public/index.html
+deleted file mode 100644
+index d87edc2255..0000000000
+--- a/examples/cors/public/index.html
++++ /dev/null
+@@ -1,12 +0,0 @@
+-<!DOCTYPE html>
+-<html>
+-  <body>
+-    <script>
+-      var req = new XMLHttpRequest;
+-      req.open('PUT', 'http://localhost:3001/user/1', false);
+-      req.setRequestHeader('Content-Type', 'application/json');
+-      req.send('{"name":"tobi","species":"ferret"}');
+-      console.log(req.responseText);
+-    </script>
+-  </body>
+-</html>
+diff --git a/examples/error-pages/index.js b/examples/error-pages/index.js
+index 8b58f28cc0..aff985bd67 100644
+--- a/examples/error-pages/index.js
++++ b/examples/error-pages/index.js
+@@ -9,7 +9,7 @@ var silent = 'test' == process.env.NODE_ENV;
+ 
+ // general config
+ app.set('views', __dirname + '/views');
+-app.set('view engine', 'jade');
++app.set('view engine', 'ejs');
+ 
+ // our custom "verbose errors" setting
+ // which we can use in the templates
+@@ -25,7 +25,7 @@ silent || app.use(logger('dev'));
+ // Routes
+ 
+ app.get('/', function(req, res){
+-  res.render('index.jade');
++  res.render('index.ejs');
+ });
+ 
+ app.get('/404', function(req, res, next){
+@@ -96,7 +96,6 @@ app.use(function(err, req, res, next){
+   res.render('500', { error: err });
+ });
+ 
+-
+ /* istanbul ignore next */
+ if (!module.parent) {
+   app.listen(3000);
+diff --git a/examples/error-pages/views/404.ejs b/examples/error-pages/views/404.ejs
+new file mode 100644
+index 0000000000..a72369e2d2
+--- /dev/null
++++ b/examples/error-pages/views/404.ejs
+@@ -0,0 +1,3 @@
++<% include error_header %>
++<h2>Cannot find <%= url %></h2>
++<% include footer %>
+diff --git a/examples/error-pages/views/404.jade b/examples/error-pages/views/404.jade
+deleted file mode 100644
+index db7b05d9fc..0000000000
+--- a/examples/error-pages/views/404.jade
++++ /dev/null
+@@ -1,5 +0,0 @@
+-
+-extends error
+-
+-block content
+-  h2 Cannot find #{url}
+\ No newline at end of file
+diff --git a/examples/error-pages/views/500.ejs b/examples/error-pages/views/500.ejs
+new file mode 100644
+index 0000000000..8c1e0e80fb
+--- /dev/null
++++ b/examples/error-pages/views/500.ejs
+@@ -0,0 +1,8 @@
++<% include error_header %>
++<h2>Error: <%= error.message %></h2>
++<% if (settings['verbose errors']) { %>
++  <pre><%= error.stack %></pre>
++<% } else { %>
++  <p>An error occurred!</p>
++<% } %>
++<% include footer %>
+diff --git a/examples/error-pages/views/500.jade b/examples/error-pages/views/500.jade
+deleted file mode 100644
+index e44489de99..0000000000
+--- a/examples/error-pages/views/500.jade
++++ /dev/null
+@@ -1,13 +0,0 @@
+-
+-// note that we extend a different
+-// layout with jade for 4xx & 5xx
+-// responses
+-
+-extends error
+-
+-block content
+-  h1 Error: #{error.message}
+-  if settings['verbose errors']
+-    pre= error.stack
+-  else
+-    p An error ocurred!
+\ No newline at end of file
+diff --git a/examples/error-pages/views/error.jade b/examples/error-pages/views/error.jade
+deleted file mode 100644
+index bf750c0087..0000000000
+--- a/examples/error-pages/views/error.jade
++++ /dev/null
+@@ -1,6 +0,0 @@
+-html
+-  head 
+-    title Error
+-  body
+-    h1 An error occurred!
+-    block content
+\ No newline at end of file
+diff --git a/examples/error-pages/views/error_header.ejs b/examples/error-pages/views/error_header.ejs
+new file mode 100644
+index 0000000000..6d541dd9f5
+--- /dev/null
++++ b/examples/error-pages/views/error_header.ejs
+@@ -0,0 +1,8 @@
++<!DOCTYPE html>
++<html>
++<head>
++<title>Error</title>
++</head>
++
++<body>
++<h1>An error occurred!</h1>
+diff --git a/examples/error-pages/views/footer.ejs b/examples/error-pages/views/footer.ejs
+new file mode 100644
+index 0000000000..308b1d01b6
+--- /dev/null
++++ b/examples/error-pages/views/footer.ejs
+@@ -0,0 +1,2 @@
++</body>
++</html>
+diff --git a/examples/error-pages/views/index.ejs b/examples/error-pages/views/index.ejs
+new file mode 100644
+index 0000000000..04a1a7847b
+--- /dev/null
++++ b/examples/error-pages/views/index.ejs
+@@ -0,0 +1,18 @@
++<!DOCTYPE html>
++<html>
++<head>
++<title>Custom Pages Example</title>
++</head>
++
++<body>
++<h1>My Site</h1>
++<h2>Pages Example</h2>
++
++<ul>
++<li>visit <a href="/500">500</a></li>
++<li>visit <a href="/404">404</a></li>
++<li>visit <a href="/403">403</a></li>
++</ul>
++
++</body>
++</html>
+diff --git a/examples/error-pages/views/index.jade b/examples/error-pages/views/index.jade
+deleted file mode 100644
+index da8f0f1698..0000000000
+--- a/examples/error-pages/views/index.jade
++++ /dev/null
+@@ -1,15 +0,0 @@
+-
+-extends layout
+-
+-block content
+-  h2 Pages Example
+-  ul
+-    li 
+-      | visit 
+-      a(href="/500") 500
+-    li
+-      | visit 
+-      a(href="/404") 404
+-    li
+-      | visit 
+-      a(href='/403') 403
+\ No newline at end of file
+diff --git a/examples/error-pages/views/layout.jade b/examples/error-pages/views/layout.jade
+deleted file mode 100644
+index 8a6f7b1747..0000000000
+--- a/examples/error-pages/views/layout.jade
++++ /dev/null
+@@ -1,6 +0,0 @@
+-html
+-  head 
+-    title Custom Pages Example
+-  body
+-    h1 My Site
+-    block content
+\ No newline at end of file
+diff --git a/examples/multi-router/controllers/api_v1.js b/examples/multi-router/controllers/api_v1.js
+new file mode 100644
+index 0000000000..08b7b5e6fd
+--- /dev/null
++++ b/examples/multi-router/controllers/api_v1.js
+@@ -0,0 +1,13 @@
++var express = require('../../..');
++
++var apiv1 = express.Router();
++
++apiv1.get('/', function(req, res) {
++  res.send('Hello from APIv1 root route.');
++});
++
++apiv1.get('/users', function(req, res) {
++  res.send('List of APIv1 users.');
++});
++
++module.exports = apiv1;
+diff --git a/examples/multi-router/controllers/api_v2.js b/examples/multi-router/controllers/api_v2.js
+new file mode 100644
+index 0000000000..4dd708281c
+--- /dev/null
++++ b/examples/multi-router/controllers/api_v2.js
+@@ -0,0 +1,13 @@
++var express = require('../../..');
++
++var apiv2 = express.Router();
++
++apiv2.get('/', function(req, res) {
++  res.send('Hello from APIv2 root route.');
++});
++
++apiv2.get('/users', function(req, res) {
++  res.send('List of APIv2 users.');
++});
++
++module.exports = apiv2;
+diff --git a/examples/multi-router/index.js b/examples/multi-router/index.js
+new file mode 100644
+index 0000000000..ff31e514a5
+--- /dev/null
++++ b/examples/multi-router/index.js
+@@ -0,0 +1,16 @@
++var express = require('../..');
++
++var app = module.exports = express();
++
++app.use('/api/v1', require('./controllers/api_v1'));
++app.use('/api/v2', require('./controllers/api_v2'));
++
++app.get('/', function(req, res) {
++  res.send('Hello form root route.');
++});
++
++/* istanbul ignore next */
++if (!module.parent) {
++  app.listen(3000);
++  console.log('Express started on port 3000');
++}
+diff --git a/examples/mvc/controllers/pet/index.js b/examples/mvc/controllers/pet/index.js
+index f1b9c26212..157a98e84e 100644
+--- a/examples/mvc/controllers/pet/index.js
++++ b/examples/mvc/controllers/pet/index.js
+@@ -4,6 +4,8 @@
+ 
+ var db = require('../../db');
+ 
++exports.engine = 'ejs';
++
+ exports.before = function(req, res, next){
+   var pet = db.pets[req.params.pet_id];
+   if (!pet) return next('route');
+diff --git a/examples/mvc/controllers/pet/views/edit.ejs b/examples/mvc/controllers/pet/views/edit.ejs
+new file mode 100644
+index 0000000000..fc697c2550
+--- /dev/null
++++ b/examples/mvc/controllers/pet/views/edit.ejs
+@@ -0,0 +1,15 @@
++<!DOCTYPE html>
++<html>
++<head>
++<link rel="stylesheet" href="/style.css">
++<title>Edit <%= pet.name %></title>
++</head>
++
++<body>
++<h1><%= pet.name %></h1>
++<form action="/pet/<%= pet.id %>?_method=put" method="post">
++  <label>Name: <input type="text" name="pet[name]" value="<%= pet.name %>"></label>
++  <input type="submit" value="Update">
++</form>
++</body>
++</html>
+diff --git a/examples/mvc/controllers/pet/views/edit.jade b/examples/mvc/controllers/pet/views/edit.jade
+deleted file mode 100644
+index 690bd956b1..0000000000
+--- a/examples/mvc/controllers/pet/views/edit.jade
++++ /dev/null
+@@ -1,6 +0,0 @@
+-link(rel='stylesheet', href='/style.css')
+-h1= pet.name
+-form(action='/pet/#{pet.id}?_method=put', method='post')
+-  label= 'Name: '
+-    input(type='text', name='pet[name]', value=pet.name)
+-  input(type='submit', value='Update')
+diff --git a/examples/mvc/controllers/pet/views/show.ejs b/examples/mvc/controllers/pet/views/show.ejs
+new file mode 100644
+index 0000000000..2ec7b0bf06
+--- /dev/null
++++ b/examples/mvc/controllers/pet/views/show.ejs
+@@ -0,0 +1,13 @@
++<!DOCTYPE html>
++<html>
++<head>
++<link rel="stylesheet" href="/style.css">
++<title><%= pet.name %></title>
++</head>
++
++<body>
++<h1><%= pet.name %> <a href="/pet/<%= pet.id %>/edit">edit</a></h1>
++
++<p>You are viewing <%= pet.name %></p>
++</body>
++</html>
+diff --git a/examples/mvc/controllers/pet/views/show.jade b/examples/mvc/controllers/pet/views/show.jade
+deleted file mode 100644
+index ad57ae7384..0000000000
+--- a/examples/mvc/controllers/pet/views/show.jade
++++ /dev/null
+@@ -1,6 +0,0 @@
+-link(rel='stylesheet', href='/style.css')
+-
+-h1= pet.name
+-  a(href='/pet/#{pet.id}/edit')  edit
+-
+-p You are viewing #{pet.name}
+diff --git a/examples/mvc/lib/boot.js b/examples/mvc/lib/boot.js
+index 82ac8a5186..78e82db1bf 100644
+--- a/examples/mvc/lib/boot.js
++++ b/examples/mvc/lib/boot.js
+@@ -66,7 +66,7 @@ module.exports = function(parent, options){
+         app[method](path, obj.before, handler);
+         verbose && console.log('     %s %s -> before -> %s', method.toUpperCase(), path, key);
+       } else {
+-        app[method](path, obj[key]);
++        app[method](path, handler);
+         verbose && console.log('     %s %s -> %s', method.toUpperCase(), path, key);
+       }
+     }
+diff --git a/examples/route-separation/index.js b/examples/route-separation/index.js
+index bac61ea894..3d93d5cfd9 100644
+--- a/examples/route-separation/index.js
++++ b/examples/route-separation/index.js
+@@ -21,7 +21,7 @@ app.set('views', __dirname + '/views');
+ 
+ /* istanbul ignore next */
+ if (!module.parent) {
+-  app.use(express.logger('dev'));
++  app.use(logger('dev'));
+ }
+ 
+ app.use(methodOverride('_method'));
+diff --git a/lib/application.js b/lib/application.js
+index 2fbb5503c7..5ec44248ca 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -1,5 +1,14 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
+ /**
+  * Module dependencies.
++ * @api private
+  */
+ 
+ var finalhandler = require('finalhandler');
+@@ -25,6 +34,13 @@ var slice = Array.prototype.slice;
+ 
+ var app = exports = module.exports = {};
+ 
++/**
++ * Variable for trust proxy inheritance back-compat
++ * @api private
++ */
++
++var trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';
++
+ /**
+  * Initialize the server.
+  *
+@@ -58,10 +74,23 @@ app.defaultConfiguration = function(){
+   this.set('subdomain offset', 2);
+   this.set('trust proxy', false);
+ 
++  // trust proxy inherit back-compat
++  Object.defineProperty(this.settings, trustProxyDefaultSymbol, {
++    configurable: true,
++    value: true
++  });
++
+   debug('booting in %s mode', env);
+ 
+-  // inherit protos
+-  this.on('mount', function(parent){
++  this.on('mount', function onmount(parent) {
++    // inherit trust proxy
++    if (this.settings[trustProxyDefaultSymbol] === true
++      && typeof parent.settings['trust proxy fn'] === 'function') {
++      delete this.settings['trust proxy'];
++      delete this.settings['trust proxy fn'];
++    }
++
++    // inherit protos
+     this.request.__proto__ = parent.request;
+     this.response.__proto__ = parent.response;
+     this.engines.__proto__ = parent.engines;
+@@ -327,6 +356,13 @@ app.set = function(setting, val){
+     case 'trust proxy':
+       debug('compile trust proxy %s', val);
+       this.set('trust proxy fn', compileTrust(val));
++
++      // trust proxy inherit back-compat
++      Object.defineProperty(this.settings, trustProxyDefaultSymbol, {
++        configurable: true,
++        value: false
++      });
++
+       break;
+   }
+ 
+@@ -563,7 +599,7 @@ app.listen = function(){
+ * Log error using console.error.
+ *
+ * @param {Error} err
+-* @api public
++* @api private
+ */
+ 
+ function logerror(err){
+diff --git a/lib/express.js b/lib/express.js
+index 8a6c28464a..bb8d8082a4 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -28,8 +28,8 @@ function createApplication() {
+     app.handle(req, res, next);
+   };
+ 
+-  mixin(app, proto);
+-  mixin(app, EventEmitter.prototype);
++  mixin(app, EventEmitter.prototype, false);
++  mixin(app, proto, false);
+ 
+   app.request = { __proto__: req, app: app };
+   app.response = { __proto__: res, app: app };
+diff --git a/lib/middleware/init.js b/lib/middleware/init.js
+index c09cf0c69c..1e3e903f04 100644
+--- a/lib/middleware/init.js
++++ b/lib/middleware/init.js
+@@ -1,6 +1,6 @@
+ /**
+  * Initialization middleware, exposing the
+- * request and response to eachother, as well
++ * request and response to each other, as well
+  * as defaulting the X-Powered-By header field.
+  *
+  * @param {Function} app
+diff --git a/lib/request.js b/lib/request.js
+index 483ee1c149..e52dfe554e 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -63,12 +63,12 @@ req.header = function(name){
+  * the best match when true, otherwise `undefined`, in which
+  * case you should respond with 406 "Not Acceptable".
+  *
+- * The `type` value may be a single mime type string
+- * such as "application/json", the extension name
+- * such as "json", a comma-delimted list such as "json, html, text/plain",
++ * The `type` value may be a single MIME type string
++ * such as "application/json", an extension name
++ * such as "json", a comma-delimited list such as "json, html, text/plain",
+  * an argument list such as `"json", "html", "text/plain"`,
+  * or an array `["json", "html", "text/plain"]`. When a list
+- * or array is given the _best_ match, if any is returned.
++ * or array is given, the _best_ match, if any is returned.
+  *
+  * Examples:
+  *
+@@ -200,13 +200,20 @@ req.range = function(size){
+  * @api public
+  */
+ 
+-req.param = function(name, defaultValue){
++req.param = function param(name, defaultValue) {
+   var params = this.params || {};
+   var body = this.body || {};
+   var query = this.query || {};
++
++  var args = arguments.length === 1
++    ? 'name'
++    : 'name, default';
++  deprecate('req.param(' + args + '): Use req.params, req.body, or req.query instead');
++
+   if (null != params[name] && params.hasOwnProperty(name)) return params[name];
+   if (null != body[name]) return body[name];
+   if (null != query[name]) return query[name];
++
+   return defaultValue;
+ };
+ 
+@@ -261,7 +268,7 @@ defineGetter(req, 'protocol', function protocol(){
+     : 'http';
+   var trust = this.app.get('trust proxy fn');
+ 
+-  if (!trust(this.connection.remoteAddress)) {
++  if (!trust(this.connection.remoteAddress, 0)) {
+     return proto;
+   }
+ 
+@@ -371,7 +378,7 @@ defineGetter(req, 'hostname', function hostname(){
+   var trust = this.app.get('trust proxy fn');
+   var host = this.get('X-Forwarded-Host');
+ 
+-  if (!host || !trust(this.connection.remoteAddress)) {
++  if (!host || !trust(this.connection.remoteAddress, 0)) {
+     host = this.get('Host');
+   }
+ 
+@@ -412,7 +419,7 @@ defineGetter(req, 'fresh', function(){
+ 
+   // 2xx or 304 as per rfc2616 14.26
+   if ((s >= 200 && s < 300) || 304 == s) {
+-    return fresh(this.headers, this.res._headers);
++    return fresh(this.headers, (this.res._headers || {}));
+   }
+ 
+   return false;
+diff --git a/lib/response.js b/lib/response.js
+index 34e46ad73a..b759eb95e4 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -1,5 +1,13 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
+ /**
+  * Module dependencies.
++ * @api private
+  */
+ 
+ var contentDisposition = require('content-disposition');
+@@ -159,15 +167,12 @@ res.send = function send(body) {
+     this.set('Content-Length', len);
+   }
+ 
+-  // method check
+-  var isHead = req.method === 'HEAD';
+-
+-  // ETag support
+-  if (len !== undefined && (isHead || req.method === 'GET')) {
+-    var etag = app.get('etag fn');
+-    if (etag && !this.get('ETag')) {
+-      etag = etag(chunk, encoding);
+-      etag && this.set('ETag', etag);
++  // populate ETag
++  var etag;
++  var generateETag = len !== undefined && app.get('etag fn');
++  if (typeof generateETag === 'function' && !this.get('ETag')) {
++    if ((etag = generateETag(chunk, encoding))) {
++      this.set('ETag', etag);
+     }
+   }
+ 
+@@ -182,14 +187,14 @@ res.send = function send(body) {
+     chunk = '';
+   }
+ 
+-  // skip body for HEAD
+-  if (isHead) {
++  if (req.method === 'HEAD') {
++    // skip body for HEAD
+     this.end();
++  } else {
++    // respond
++    this.end(chunk, encoding);
+   }
+ 
+-  // respond
+-  this.end(chunk, encoding);
+-
+   return this;
+ };
+ 
+@@ -398,8 +403,8 @@ res.sendFile = function sendFile(path, options, fn) {
+     if (fn) return fn(err);
+     if (err && err.code === 'EISDIR') return next();
+ 
+-    // next() all but aborted errors
+-    if (err && err.code !== 'ECONNABORT') {
++    // next() all but write errors
++    if (err && err.code !== 'ECONNABORTED' && err.syscall !== 'write') {
+       next(err);
+     }
+   });
+@@ -467,8 +472,8 @@ res.sendfile = function(path, options, fn){
+     if (fn) return fn(err);
+     if (err && err.code === 'EISDIR') return next();
+ 
+-    // next() all but aborted errors
+-    if (err && err.code !== 'ECONNABORT') {
++    // next() all but write errors
++    if (err && err.code !== 'ECONNABORT' && err.syscall !== 'write') {
+       next(err);
+     }
+   });
+@@ -636,6 +641,35 @@ res.attachment = function attachment(filename) {
+   return this;
+ };
+ 
++/**
++ * Append additional header `field` with value `val`.
++ *
++ * Example:
++ *
++ *    res.append('Link', ['<http://localhost/>', '<http://localhost:3000/>']);
++ *    res.append('Set-Cookie', 'foo=bar; Path=/; HttpOnly');
++ *    res.append('Warning', '199 Miscellaneous warning');
++ *
++ * @param {String} field
++ * @param {String|Array} val
++ * @return {ServerResponse} for chaining
++ * @api public
++ */
++
++res.append = function append(field, val) {
++  var prev = this.get(field);
++  var value = val;
++
++  if (prev) {
++    // concat the new and prev vals
++    value = Array.isArray(prev) ? prev.concat(val)
++      : Array.isArray(val) ? [prev].concat(val)
++      : [prev, val];
++  }
++
++  return this.set(field, value);
++};
++
+ /**
+  * Set header `field` to `val`, or pass
+  * an object of header fields.
+@@ -841,9 +875,9 @@ res.redirect = function redirect(url) {
+ 
+   if (this.req.method === 'HEAD') {
+     this.end();
++  } else {
++    this.end(body);
+   }
+-
+-  this.end(body);
+ };
+ 
+ /**
+@@ -907,6 +941,17 @@ res.render = function(view, options, fn){
+ // pipe the send file stream
+ function sendfile(res, file, options, callback) {
+   var done = false;
++  var streaming;
++
++  // request aborted
++  function onaborted() {
++    if (done) return;
++    done = true;
++
++    var err = new Error('Request aborted');
++    err.code = 'ECONNABORTED';
++    callback(err);
++  }
+ 
+   // directory
+   function ondirectory() {
+@@ -932,25 +977,39 @@ function sendfile(res, file, options, callback) {
+     callback();
+   }
+ 
++  // file
++  function onfile() {
++    streaming = false;
++  }
++
+   // finished
+   function onfinish(err) {
++    if (err && err.code === 'ECONNRESET') return onaborted();
+     if (err) return onerror(err);
+     if (done) return;
+ 
+     setImmediate(function () {
++      if (streaming !== false && !done) {
++        onaborted();
++        return;
++      }
++
+       if (done) return;
+       done = true;
+-
+-      // response finished before end of file
+-      var err = new Error('Request aborted');
+-      err.code = 'ECONNABORT';
+-      callback(err);
++      callback();
+     });
+   }
+ 
++  // streaming
++  function onstream() {
++    streaming = true;
++  }
++
++  file.on('directory', ondirectory);
+   file.on('end', onend);
+   file.on('error', onerror);
+-  file.on('directory', ondirectory);
++  file.on('file', onfile);
++  file.on('stream', onstream);
+   onFinished(res, onfinish);
+ 
+   if (options.headers) {
+diff --git a/lib/router/index.js b/lib/router/index.js
+index c6e6ba21d4..209f881b1e 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -8,6 +8,7 @@ var Layer = require('./layer');
+ var methods = require('methods');
+ var mixin = require('utils-merge');
+ var debug = require('debug')('express:router');
++var deprecate = require('depd')('express');
+ var parseUrl = require('parseurl');
+ var utils = require('../utils');
+ 
+@@ -81,9 +82,10 @@ var proto = module.exports = function(options) {
+  * @api public
+  */
+ 
+-proto.param = function(name, fn){
++proto.param = function param(name, fn) {
+   // param logic
+-  if ('function' == typeof name) {
++  if (typeof name === 'function') {
++    deprecate('router.param(fn): Refactor to use path params');
+     this._params.push(name);
+     return;
+   }
+@@ -94,6 +96,7 @@ proto.param = function(name, fn){
+   var ret;
+ 
+   if (name[0] === ':') {
++    deprecate('router.param(' + JSON.stringify(name) + ', fn): Use router.param(' + JSON.stringify(name.substr(1)) + ', fn) instead');
+     name = name.substr(1);
+   }
+ 
+@@ -152,9 +155,7 @@ proto.handle = function(req, res, done) {
+   if (req.method === 'OPTIONS') {
+     done = wrap(done, function(old, err) {
+       if (err || options.length === 0) return old(err);
+-
+-      var body = options.join(',');
+-      return res.set('Allow', body).send(body);
++      sendOptionsResponse(res, options, old);
+     });
+   }
+ 
+@@ -169,73 +170,104 @@ proto.handle = function(req, res, done) {
+       ? null
+       : err;
+ 
+-    var layer = stack[idx++];
+-
++    // remove added slash
+     if (slashAdded) {
+       req.url = req.url.substr(1);
+       slashAdded = false;
+     }
+ 
++    // restore altered req.url
+     if (removed.length !== 0) {
+       req.baseUrl = parentUrl;
+       req.url = protohost + removed + req.url.substr(protohost.length);
+       removed = '';
+     }
+ 
+-    if (!layer) {
++    // no more matching layers
++    if (idx >= stack.length) {
++      setImmediate(done, layerError);
++      return;
++    }
++
++    // get pathname of request
++    var path = getPathname(req);
++
++    if (path == null) {
+       return done(layerError);
+     }
+ 
+-    self.match_layer(layer, req, res, function (err, path) {
+-      if (err || path === undefined) {
+-        return next(layerError || err);
++    // find next matching layer
++    var layer;
++    var match;
++    var route;
++
++    while (match !== true && idx < stack.length) {
++      layer = stack[idx++];
++      match = matchLayer(layer, path);
++      route = layer.route;
++
++      if (typeof match !== 'boolean') {
++        // hold on to layerError
++        layerError = layerError || match;
+       }
+ 
+-      // route object and not middleware
+-      var route = layer.route;
++      if (match !== true) {
++        continue;
++      }
+ 
+-      // if final route, then we support options
+-      if (route) {
+-        // we don't run any routes with error first
+-        if (layerError) {
+-          return next(layerError);
+-        }
+-
+-        var method = req.method;
+-        var has_method = route._handles_method(method);
+-
+-        // build up automatic options response
+-        if (!has_method && method === 'OPTIONS') {
+-          options.push.apply(options, route._options());
+-        }
+-
+-        // don't even bother
+-        if (!has_method && method !== 'HEAD') {
+-          return next();
+-        }
+-
+-        // we can now dispatch to the route
+-        req.route = route;
++      if (!route) {
++        // process non-route handlers normally
++        continue;
++      }
++
++      if (layerError) {
++        // routes do not match with a pending error
++        match = false;
++        continue;
+       }
+ 
+-      // Capture one-time layer values
+-      req.params = self.mergeParams
+-        ? mergeParams(layer.params, parentParams)
+-        : layer.params;
+-      var layerPath = layer.path;
++      var method = req.method;
++      var has_method = route._handles_method(method);
+ 
+-      // this should be done for the layer
+-      self.process_params(layer, paramcalled, req, res, function (err) {
+-        if (err) {
+-          return next(layerError || err);
+-        }
++      // build up automatic options response
++      if (!has_method && method === 'OPTIONS') {
++        appendMethods(options, route._options());
++      }
+ 
+-        if (route) {
+-          return layer.handle_request(req, res, next);
+-        }
++      // don't even bother matching route
++      if (!has_method && method !== 'HEAD') {
++        match = false;
++        continue;
++      }
++    }
+ 
+-        trim_prefix(layer, layerError, layerPath, path);
+-      });
++    // no match
++    if (match !== true) {
++      return done(layerError);
++    }
++
++    // store route for dispatch on change
++    if (route) {
++      req.route = route;
++    }
++
++    // Capture one-time layer values
++    req.params = self.mergeParams
++      ? mergeParams(layer.params, parentParams)
++      : layer.params;
++    var layerPath = layer.path;
++
++    // this should be done for the layer
++    self.process_params(layer, paramcalled, req, res, function (err) {
++      if (err) {
++        return next(layerError || err);
++      }
++
++      if (route) {
++        return layer.handle_request(req, res, next);
++      }
++
++      trim_prefix(layer, layerError, layerPath, path);
+     });
+   }
+ 
+@@ -272,29 +304,6 @@ proto.handle = function(req, res, done) {
+   }
+ };
+ 
+-/**
+- * Match request to a layer.
+- *
+- * @api private
+- */
+-
+-proto.match_layer = function match_layer(layer, req, res, done) {
+-  var error = null;
+-  var path;
+-
+-  try {
+-    path = parseUrl(req).pathname;
+-
+-    if (!layer.match(path)) {
+-      path = undefined;
+-    }
+-  } catch (err) {
+-    error = err;
+-  }
+-
+-  done(error, path);
+-};
+-
+ /**
+  * Process any parameters for the layer.
+  *
+@@ -491,6 +500,25 @@ methods.concat('all').forEach(function(method){
+   };
+ });
+ 
++// append methods to a list of methods
++function appendMethods(list, addition) {
++  for (var i = 0; i < addition.length; i++) {
++    var method = addition[i];
++    if (list.indexOf(method) === -1) {
++      list.push(method);
++    }
++  }
++}
++
++// get pathname of request
++function getPathname(req) {
++  try {
++    return parseUrl(req).pathname;
++  } catch (err) {
++    return undefined;
++  }
++}
++
+ // get type for error message
+ function gettype(obj) {
+   var type = typeof obj;
+@@ -504,6 +532,22 @@ function gettype(obj) {
+     .replace(objectRegExp, '$1');
+ }
+ 
++/**
++ * Match path to a layer.
++ *
++ * @param {Layer} layer
++ * @param {string} path
++ * @private
++ */
++
++function matchLayer(layer, path) {
++  try {
++    return layer.match(path);
++  } catch (err) {
++    return err;
++  }
++}
++
+ // merge params with parent params
+ function mergeParams(params, parent) {
+   if (typeof parent !== 'object' || !parent) {
+@@ -560,6 +604,17 @@ function restore(fn, obj) {
+   };
+ }
+ 
++// send an OPTIONS response
++function sendOptionsResponse(res, options, next) {
++  try {
++    var body = options.join(',');
++    res.set('Allow', body);
++    res.send(body);
++  } catch (err) {
++    next(err);
++  }
++}
++
+ // wrap a function
+ function wrap(old, fn) {
+   return function proxy() {
+diff --git a/lib/router/match.js b/lib/router/match.js
+deleted file mode 100644
+index 9afebfc8b3..0000000000
+--- a/lib/router/match.js
++++ /dev/null
+@@ -1,56 +0,0 @@
+-
+-/**
+- * Expose `Layer`.
+- */
+-
+-module.exports = Match;
+-
+-function Match(layer, path, params) {
+-  this.layer = layer;
+-  this.params = {};
+-  this.path = path || '';
+-
+-  if (!params) {
+-    return this;
+-  }
+-
+-  var keys = layer.keys;
+-  var n = 0;
+-  var prop;
+-  var key;
+-  var val;
+-
+-  for (var i = 0; i < params.length; i++) {
+-    key = keys[i];
+-    val = decode_param(params[i]);
+-    prop = key
+-      ? key.name
+-      : n++;
+-
+-    this.params[prop] = val;
+-  }
+-
+-  return this;
+-};
+-
+-/**
+- * Decode param value.
+- *
+- * @param {string} val
+- * @return {string}
+- * @api private
+- */
+-
+-function decode_param(val){
+-  if (typeof val !== 'string') {
+-    return val;
+-  }
+-
+-  try {
+-    return decodeURIComponent(val);
+-  } catch (e) {
+-    var err = new TypeError("Failed to decode param '" + val + "'");
+-    err.status = 400;
+-    throw err;
+-  }
+-}
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 903d1a5e21..6213b82170 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -52,10 +52,20 @@ Route.prototype._handles_method = function _handles_method(method) {
+  * @api private
+  */
+ 
+-Route.prototype._options = function(){
+-  return Object.keys(this.methods).map(function(method) {
+-    return method.toUpperCase();
+-  });
++Route.prototype._options = function _options() {
++  var methods = Object.keys(this.methods);
++
++  // append automatic head
++  if (this.methods.get && !this.methods.head) {
++    methods.push('head');
++  }
++
++  for (var i = 0; i < methods.length; i++) {
++    // make upper case
++    methods[i] = methods[i].toUpperCase();
++  }
++
++  return methods;
+ };
+ 
+ /**
+diff --git a/lib/utils.js b/lib/utils.js
+index 9814527c0f..ce53ad8b99 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -1,8 +1,17 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
+ /**
+  * Module dependencies.
++ * @api private
+  */
+ 
+ var contentDisposition = require('content-disposition');
++var contentType = require('content-type');
+ var deprecate = require('depd')('express');
+ var mime = require('send').mime;
+ var basename = require('path').basename;
+@@ -10,7 +19,6 @@ var etag = require('etag');
+ var proxyaddr = require('proxy-addr');
+ var qs = require('qs');
+ var querystring = require('querystring');
+-var typer = require('media-typer');
+ 
+ /**
+  * Return strong ETag for `body`.
+@@ -258,21 +266,23 @@ exports.compileTrust = function(val) {
+  * @api private
+  */
+ 
+-exports.setCharset = function(type, charset){
+-  if (!type || !charset) return type;
++exports.setCharset = function setCharset(type, charset) {
++  if (!type || !charset) {
++    return type;
++  }
+ 
+   // parse type
+-  var parsed = typer.parse(type);
++  var parsed = contentType.parse(type);
+ 
+   // set charset
+   parsed.parameters.charset = charset;
+ 
+   // format type
+-  return typer.format(parsed);
++  return contentType.format(parsed);
+ };
+ 
+ /**
+- * Return new empty objet.
++ * Return new empty object.
+  *
+  * @return {Object}
+  * @api private
+diff --git a/package.json b/package.json
+index e98cd90db3..3c693a5770 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Fast, unopinionated, minimalist web framework",
+-  "version": "4.10.1",
++  "version": "4.12.3",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [
+     "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+@@ -27,48 +27,48 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.1.2",
++    "accepts": "~1.2.5",
+     "content-disposition": "0.5.0",
+-    "cookie-signature": "1.0.5",
+-    "debug": "~2.1.0",
++    "content-type": "~1.0.1",
++    "cookie": "0.1.2",
++    "cookie-signature": "1.0.6",
++    "debug": "~2.1.3",
+     "depd": "~1.0.0",
+     "escape-html": "1.0.1",
+-    "etag": "~1.5.0",
+-    "finalhandler": "0.3.2",
++    "etag": "~1.5.1",
++    "finalhandler": "0.3.4",
+     "fresh": "0.2.4",
+-    "media-typer": "0.3.0",
+-    "methods": "1.1.0",
+-    "on-finished": "~2.1.1",
++    "merge-descriptors": "1.0.0",
++    "methods": "~1.1.1",
++    "on-finished": "~2.2.0",
+     "parseurl": "~1.3.0",
+     "path-to-regexp": "0.1.3",
+-    "proxy-addr": "~1.0.3",
+-    "qs": "2.3.2",
++    "proxy-addr": "~1.0.7",
++    "qs": "2.4.1",
+     "range-parser": "~1.0.2",
+-    "send": "0.10.1",
+-    "serve-static": "~1.7.1",
+-    "type-is": "~1.5.2",
++    "send": "0.12.2",
++    "serve-static": "~1.9.2",
++    "type-is": "~1.6.1",
+     "vary": "~1.0.0",
+-    "cookie": "0.1.2",
+-    "merge-descriptors": "0.0.2",
+     "utils-merge": "1.0.0"
+   },
+   "devDependencies": {
+     "after": "0.8.1",
+-    "istanbul": "0.3.2",
+-    "mocha": "~2.0.0",
+-    "should": "~4.1.0",
+-    "supertest": "~0.14.0",
+-    "ejs": "~1.0.0",
+-    "marked": "0.3.2",
+-    "hjs": "~0.0.6",
+-    "body-parser": "~1.9.1",
+-    "connect-redis": "~2.1.0",
+-    "cookie-parser": "~1.3.3",
+-    "express-session": "~1.9.1",
+-    "jade": "~1.7.0",
+-    "method-override": "~2.3.0",
+-    "morgan": "~1.4.1",
+-    "multiparty": "~4.0.0",
++    "ejs": "2.3.1",
++    "istanbul": "0.3.8",
++    "marked": "0.3.3",
++    "mocha": "~2.2.1",
++    "should": "~5.2.0",
++    "supertest": "~0.15.0",
++    "body-parser": "~1.12.2",
++    "connect-redis": "~2.2.0",
++    "cookie-parser": "~1.3.4",
++    "cookie-session": "~1.1.0",
++    "express-session": "~1.10.4",
++    "jade": "~1.9.2",
++    "method-override": "~2.3.2",
++    "morgan": "~1.5.2",
++    "multiparty": "~4.1.1",
+     "vhost": "~3.0.0"
+   },
+   "engines": {
+@@ -83,8 +83,8 @@
+   ],
+   "scripts": {
+     "test": "mocha --require test/support/env --reporter spec --bail --check-leaks test/ test/acceptance/",
++    "test-ci": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --require test/support/env --reporter spec --check-leaks test/ test/acceptance/",
+     "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --require test/support/env --reporter dot --check-leaks test/ test/acceptance/",
+-    "test-tap": "mocha --require test/support/env --reporter tap --check-leaks test/ test/acceptance/",
+-    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --require test/support/env --reporter spec --check-leaks test/ test/acceptance/"
++    "test-tap": "mocha --require test/support/env --reporter tap --check-leaks test/ test/acceptance/"
+   }
+ }
+diff --git a/support/app.js b/support/app.js
+deleted file mode 100644
+index 6631bdf314..0000000000
+--- a/support/app.js
++++ /dev/null
+@@ -1,65 +0,0 @@
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../');
+-
+-var app = express()
+-  , blog = express()
+-  , admin = express();
+-
+-blog.use('/admin', admin);
+-app.use('/blog', blog);
+-app.set('views', __dirname + '/views');
+-app.set('view engine', 'jade');
+-app.locals.self = true;
+-
+-app.get('/render', function(req, res){
+-  res.render('hello');
+-});
+-
+-admin.get('/', function(req, res){
+-  res.send('Hello World\n');
+-});
+-
+-blog.get('/', function(req, res){
+-  res.send('Hello World\n');
+-});
+-
+-app.get('/', function(req, res){
+-  res.send('Hello World\n');
+-});
+-
+-app.get('/json', function(req, res){
+-  res.send({ name: 'Tobi', role: 'admin' });
+-});
+-
+-app.get('/json/:n', function(req, res){
+-  var n = ~~req.params.n;
+-  var arr = [];
+-  var obj = { name: 'Tobi', role: 'admin' };
+-  while (n--) arr.push(obj);
+-  res.send(arr);
+-});
+-
+-function foo(req, res, next) {
+-  next();
+-}
+-
+-app.get('/middleware', foo, foo, foo, foo, function(req, res){
+-  res.send('Hello World\n');
+-});
+-
+-var n = 100;
+-while (n--) {
+-  app.get('/foo', foo, foo, function(req, res){
+-    
+-  });
+-}
+-
+-app.get('/match', function(req, res){
+-  res.send('Hello World\n');
+-});
+-
+-app.listen(8000);
+diff --git a/support/views/hello.jade b/support/views/hello.jade
+deleted file mode 100644
+index 09a0111cce..0000000000
+--- a/support/views/hello.jade
++++ /dev/null
+@@ -1,1 +0,0 @@
+-p Hello
+\ No newline at end of file

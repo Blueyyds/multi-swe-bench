@@ -1,0 +1,2667 @@
+diff --git a/test/Route.js b/test/Route.js
+index 8e7ddbdbcc..3bdc8d7df2 100644
+--- a/test/Route.js
++++ b/test/Route.js
+@@ -13,6 +13,28 @@ describe('Route', function(){
+     route.dispatch(req, {}, done)
+   })
+ 
++  it('should not stack overflow with a large sync stack', function (done) {
++    this.timeout(5000) // long-running test
++
++    var req = { method: 'GET', url: '/' }
++    var route = new Route('/foo')
++
++    for (var i = 0; i < 6000; i++) {
++      route.all(function (req, res, next) { next() })
++    }
++
++    route.get(function (req, res, next) {
++      req.called = true
++      next()
++    })
++
++    route.dispatch(req, {}, function (err) {
++      if (err) return done(err)
++      assert.ok(req.called)
++      done()
++    })
++  })
++
+   describe('.all', function(){
+     it('should add handler', function(done){
+       var req = { method: 'GET', url: '/' };
+diff --git a/test/Router.js b/test/Router.js
+index 907b972636..bf5a31ffdd 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -62,6 +62,8 @@ describe('Router', function(){
+   })
+ 
+   it('should not stack overflow with many registered routes', function(done){
++    this.timeout(5000) // long-running test
++
+     var handler = function(req, res){ res.end(new Error('wrong handler')) };
+     var router = new Router();
+ 
+@@ -76,6 +78,22 @@ describe('Router', function(){
+     router.handle({ url: '/', method: 'GET' }, { end: done });
+   });
+ 
++  it('should not stack overflow with a large sync stack', function (done) {
++    this.timeout(5000) // long-running test
++
++    var router = new Router()
++
++    for (var i = 0; i < 6000; i++) {
++      router.use(function (req, res, next) { next() })
++    }
++
++    router.use(function (req, res) {
++      res.end()
++    })
++
++    router.handle({ url: '/', method: 'GET' }, { end: done })
++  })
++
+   describe('.handle', function(){
+     it('should dispatch', function(done){
+       var router = new Router();
+diff --git a/test/config.js b/test/config.js
+index 8386a4471c..b04367fdbf 100644
+--- a/test/config.js
++++ b/test/config.js
+@@ -11,6 +11,12 @@ describe('config', function () {
+       assert.equal(app.get('foo'), 'bar');
+     })
+ 
++    it('should set prototype values', function () {
++      var app = express()
++      app.set('hasOwnProperty', 42)
++      assert.strictEqual(app.get('hasOwnProperty'), 42)
++    })
++
+     it('should return the app', function () {
+       var app = express();
+       assert.equal(app.set('foo', 'bar'), app);
+@@ -21,6 +27,17 @@ describe('config', function () {
+       assert.equal(app.set('foo', undefined), app);
+     })
+ 
++    it('should return set value', function () {
++      var app = express()
++      app.set('foo', 'bar')
++      assert.strictEqual(app.set('foo'), 'bar')
++    })
++
++    it('should return undefined for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.set('hasOwnProperty'), undefined)
++    })
++
+     describe('"etag"', function(){
+       it('should throw on bad value', function(){
+         var app = express();
+@@ -51,6 +68,11 @@ describe('config', function () {
+       assert.strictEqual(app.get('foo'), undefined);
+     })
+ 
++    it('should return undefined for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.get('hasOwnProperty'), undefined)
++    })
++
+     it('should otherwise return the value', function(){
+       var app = express();
+       app.set('foo', 'bar');
+@@ -125,6 +147,12 @@ describe('config', function () {
+       assert.equal(app.enable('tobi'), app);
+       assert.strictEqual(app.get('tobi'), true);
+     })
++
++    it('should set prototype values', function () {
++      var app = express()
++      app.enable('hasOwnProperty')
++      assert.strictEqual(app.get('hasOwnProperty'), true)
++    })
+   })
+ 
+   describe('.disable()', function(){
+@@ -133,6 +161,12 @@ describe('config', function () {
+       assert.equal(app.disable('tobi'), app);
+       assert.strictEqual(app.get('tobi'), false);
+     })
++
++    it('should set prototype values', function () {
++      var app = express()
++      app.disable('hasOwnProperty')
++      assert.strictEqual(app.get('hasOwnProperty'), false)
++    })
+   })
+ 
+   describe('.enabled()', function(){
+@@ -146,6 +180,11 @@ describe('config', function () {
+       app.set('foo', 'bar');
+       assert.strictEqual(app.enabled('foo'), true);
+     })
++
++    it('should default to false for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.enabled('hasOwnProperty'), false)
++    })
+   })
+ 
+   describe('.disabled()', function(){
+@@ -159,5 +198,10 @@ describe('config', function () {
+       app.set('foo', 'bar');
+       assert.strictEqual(app.disabled('foo'), false);
+     })
++
++    it('should default to true for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.disabled('hasOwnProperty'), true)
++    })
+   })
+ })
+diff --git a/test/express.json.js b/test/express.json.js
+index 53a39565a9..a8cfebc41e 100644
+--- a/test/express.json.js
++++ b/test/express.json.js
+@@ -1,10 +1,15 @@
+ 'use strict'
+ 
+ var assert = require('assert')
++var asyncHooks = tryRequire('async_hooks')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('..')
+ var request = require('supertest')
+ 
++var describeAsyncHooks = typeof asyncHooks.AsyncLocalStorage === 'function'
++  ? describe
++  : describe.skip
++
+ describe('express.json()', function () {
+   it('should parse JSON', function (done) {
+     request(createApp())
+@@ -38,6 +43,14 @@ describe('express.json()', function () {
+       .expect(200, '{}', done)
+   })
+ 
++  it('should 400 when only whitespace', function (done) {
++    request(createApp())
++      .post('/')
++      .set('Content-Type', 'application/json')
++      .send('  \n')
++      .expect(400, '[entity.parse.failed] ' + parseError(' '), done)
++  })
++
+   it('should 400 when invalid content-length', function (done) {
+     var app = express()
+ 
+@@ -59,6 +72,32 @@ describe('express.json()', function () {
+       .expect(400, /content length/, done)
+   })
+ 
++  it('should 500 if stream not readable', function (done) {
++    var app = express()
++
++    app.use(function (req, res, next) {
++      req.on('end', next)
++      req.resume()
++    })
++
++    app.use(express.json())
++
++    app.use(function (err, req, res, next) {
++      res.status(err.status || 500)
++      res.send('[' + err.type + '] ' + err.message)
++    })
++
++    app.post('/', function (req, res) {
++      res.json(req.body)
++    })
++
++    request(app)
++      .post('/')
++      .set('Content-Type', 'application/json')
++      .send('{"user":"tobi"}')
++      .expect(500, '[stream.not.readable] stream is not readable', done)
++  })
++
+   it('should handle duplicated middleware', function (done) {
+     var app = express()
+ 
+@@ -86,7 +125,7 @@ describe('express.json()', function () {
+         .post('/')
+         .set('Content-Type', 'application/json')
+         .send('{:')
+-        .expect(400, parseError('{:'), done)
++        .expect(400, '[entity.parse.failed] ' + parseError('{:'), done)
+     })
+ 
+     it('should 400 for incomplete', function (done) {
+@@ -94,16 +133,7 @@ describe('express.json()', function () {
+         .post('/')
+         .set('Content-Type', 'application/json')
+         .send('{"user"')
+-        .expect(400, parseError('{"user"'), done)
+-    })
+-
+-    it('should error with type = "entity.parse.failed"', function (done) {
+-      request(this.app)
+-        .post('/')
+-        .set('Content-Type', 'application/json')
+-        .set('X-Error-Property', 'type')
+-        .send(' {"user"')
+-        .expect(400, 'entity.parse.failed', done)
++        .expect(400, '[entity.parse.failed] ' + parseError('{"user"'), done)
+     })
+ 
+     it('should include original body on error object', function (done) {
+@@ -124,24 +154,13 @@ describe('express.json()', function () {
+         .set('Content-Type', 'application/json')
+         .set('Content-Length', '1034')
+         .send(JSON.stringify({ str: buf.toString() }))
+-        .expect(413, done)
+-    })
+-
+-    it('should error with type = "entity.too.large"', function (done) {
+-      var buf = Buffer.alloc(1024, '.')
+-      request(createApp({ limit: '1kb' }))
+-        .post('/')
+-        .set('Content-Type', 'application/json')
+-        .set('Content-Length', '1034')
+-        .set('X-Error-Property', 'type')
+-        .send(JSON.stringify({ str: buf.toString() }))
+-        .expect(413, 'entity.too.large', done)
++        .expect(413, '[entity.too.large] request entity too large', done)
+     })
+ 
+     it('should 413 when over limit with chunked encoding', function (done) {
++      var app = createApp({ limit: '1kb' })
+       var buf = Buffer.alloc(1024, '.')
+-      var server = createApp({ limit: '1kb' })
+-      var test = request(server).post('/')
++      var test = request(app).post('/')
+       test.set('Content-Type', 'application/json')
+       test.set('Transfer-Encoding', 'chunked')
+       test.write('{"str":')
+@@ -149,6 +168,15 @@ describe('express.json()', function () {
+       test.expect(413, done)
+     })
+ 
++    it('should 413 when inflated body over limit', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/json')
++      test.write(Buffer.from('1f8b080000000000000aab562a2e2952b252d21b05a360148c58a0540b0066f7ce1e0a040000', 'hex'))
++      test.expect(413, done)
++    })
++
+     it('should accept number of bytes', function (done) {
+       var buf = Buffer.alloc(1024, '.')
+       request(createApp({ limit: 1024 }))
+@@ -161,11 +189,11 @@ describe('express.json()', function () {
+     it('should not change when options altered', function (done) {
+       var buf = Buffer.alloc(1024, '.')
+       var options = { limit: '1kb' }
+-      var server = createApp(options)
++      var app = createApp(options)
+ 
+       options.limit = '100kb'
+ 
+-      request(server)
++      request(app)
+         .post('/')
+         .set('Content-Type', 'application/json')
+         .send(JSON.stringify({ str: buf.toString() }))
+@@ -174,14 +202,23 @@ describe('express.json()', function () {
+ 
+     it('should not hang response', function (done) {
+       var buf = Buffer.alloc(10240, '.')
+-      var server = createApp({ limit: '8kb' })
+-      var test = request(server).post('/')
++      var app = createApp({ limit: '8kb' })
++      var test = request(app).post('/')
+       test.set('Content-Type', 'application/json')
+       test.write(buf)
+       test.write(buf)
+       test.write(buf)
+       test.expect(413, done)
+     })
++
++    it('should not error when inflating', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/json')
++      test.write(Buffer.from('1f8b080000000000000aab562a2e2952b252d21b05a360148c58a0540b0066f7ce1e0a0400', 'hex'))
++      test.expect(413, done)
++    })
+   })
+ 
+   describe('with inflate option', function () {
+@@ -195,7 +232,7 @@ describe('express.json()', function () {
+         test.set('Content-Encoding', 'gzip')
+         test.set('Content-Type', 'application/json')
+         test.write(Buffer.from('1f8b080000000000000bab56ca4bcc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
+-        test.expect(415, 'content encoding unsupported', done)
++        test.expect(415, '[encoding.unsupported] content encoding unsupported', done)
+       })
+     })
+ 
+@@ -225,7 +262,7 @@ describe('express.json()', function () {
+           .post('/')
+           .set('Content-Type', 'application/json')
+           .send('true')
+-          .expect(400, parseError('#rue').replace('#', 't'), done)
++          .expect(400, '[entity.parse.failed] ' + parseError('#rue').replace('#', 't'), done)
+       })
+     })
+ 
+@@ -253,7 +290,7 @@ describe('express.json()', function () {
+           .post('/')
+           .set('Content-Type', 'application/json')
+           .send('true')
+-          .expect(400, parseError('#rue').replace('#', 't'), done)
++          .expect(400, '[entity.parse.failed] ' + parseError('#rue').replace('#', 't'), done)
+       })
+ 
+       it('should not parse primitives with leading whitespaces', function (done) {
+@@ -261,7 +298,7 @@ describe('express.json()', function () {
+           .post('/')
+           .set('Content-Type', 'application/json')
+           .send('    true')
+-          .expect(400, parseError('    #rue').replace('#', 't'), done)
++          .expect(400, '[entity.parse.failed] ' + parseError('    #rue').replace('#', 't'), done)
+       })
+ 
+       it('should allow leading whitespaces in JSON', function (done) {
+@@ -272,15 +309,6 @@ describe('express.json()', function () {
+           .expect(200, '{"user":"tobi"}', done)
+       })
+ 
+-      it('should error with type = "entity.parse.failed"', function (done) {
+-        request(this.app)
+-          .post('/')
+-          .set('Content-Type', 'application/json')
+-          .set('X-Error-Property', 'type')
+-          .send('true')
+-          .expect(400, 'entity.parse.failed', done)
+-      })
+-
+       it('should include correct message in stack trace', function (done) {
+         request(this.app)
+           .post('/')
+@@ -397,65 +425,59 @@ describe('express.json()', function () {
+     })
+ 
+     it('should error from verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x5b) throw new Error('no arrays')
+-      } })
+-
+-      request(app)
+-        .post('/')
+-        .set('Content-Type', 'application/json')
+-        .send('["tobi"]')
+-        .expect(403, 'no arrays', done)
+-    })
+-
+-    it('should error with type = "entity.verify.failed"', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x5b) throw new Error('no arrays')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x5b) throw new Error('no arrays')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'application/json')
+-        .set('X-Error-Property', 'type')
+         .send('["tobi"]')
+-        .expect(403, 'entity.verify.failed', done)
++        .expect(403, '[entity.verify.failed] no arrays', done)
+     })
+ 
+     it('should allow custom codes', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] !== 0x5b) return
+-        var err = new Error('no arrays')
+-        err.status = 400
+-        throw err
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] !== 0x5b) return
++          var err = new Error('no arrays')
++          err.status = 400
++          throw err
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'application/json')
+         .send('["tobi"]')
+-        .expect(400, 'no arrays', done)
++        .expect(400, '[entity.verify.failed] no arrays', done)
+     })
+ 
+     it('should allow custom type', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] !== 0x5b) return
+-        var err = new Error('no arrays')
+-        err.type = 'foo.bar'
+-        throw err
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] !== 0x5b) return
++          var err = new Error('no arrays')
++          err.type = 'foo.bar'
++          throw err
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'application/json')
+-        .set('X-Error-Property', 'type')
+         .send('["tobi"]')
+-        .expect(403, 'foo.bar', done)
++        .expect(403, '[foo.bar] no arrays', done)
+     })
+ 
+     it('should include original body on error object', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x5b) throw new Error('no arrays')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x5b) throw new Error('no arrays')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+@@ -466,9 +488,11 @@ describe('express.json()', function () {
+     })
+ 
+     it('should allow pass-through', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x5b) throw new Error('no arrays')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x5b) throw new Error('no arrays')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+@@ -478,9 +502,11 @@ describe('express.json()', function () {
+     })
+ 
+     it('should work with different charsets', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x5b) throw new Error('no arrays')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x5b) throw new Error('no arrays')
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/json; charset=utf-16')
+@@ -489,14 +515,120 @@ describe('express.json()', function () {
+     })
+ 
+     it('should 415 on unknown charset prior to verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        throw new Error('unexpected verify call')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          throw new Error('unexpected verify call')
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/json; charset=x-bogus')
+       test.write(Buffer.from('00000000', 'hex'))
+-      test.expect(415, 'unsupported charset "X-BOGUS"', done)
++      test.expect(415, '[charset.unsupported] unsupported charset "X-BOGUS"', done)
++    })
++  })
++
++  describeAsyncHooks('async local storage', function () {
++    before(function () {
++      var app = express()
++      var store = { foo: 'bar' }
++
++      app.use(function (req, res, next) {
++        req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++        req.asyncLocalStorage.run(store, next)
++      })
++
++      app.use(express.json())
++
++      app.use(function (req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        next()
++      })
++
++      app.use(function (err, req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        res.status(err.status || 500)
++        res.send('[' + err.type + '] ' + err.message)
++      })
++
++      app.post('/', function (req, res) {
++        res.json(req.body)
++      })
++
++      this.app = app
++    })
++
++    it('should presist store', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/json')
++        .send('{"user":"tobi"}')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('{"user":"tobi"}')
++        .end(done)
++    })
++
++    it('should presist store when unmatched content-type', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/fizzbuzz')
++        .send('buzz')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('{}')
++        .end(done)
++    })
++
++    it('should presist store when inflated', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/json')
++      test.write(Buffer.from('1f8b080000000000000bab56ca4bcc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
++      test.expect(200)
++      test.expect('x-store-foo', 'bar')
++      test.expect('{"name":"论"}')
++      test.end(done)
++    })
++
++    it('should presist store when inflate error', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/json')
++      test.write(Buffer.from('1f8b080000000000000bab56cc4d55b2527ab16e97522d00515be1cc0e000000', 'hex'))
++      test.expect(400)
++      test.expect('x-store-foo', 'bar')
++      test.end(done)
++    })
++
++    it('should presist store when parse error', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/json')
++        .send('{"user":')
++        .expect(400)
++        .expect('x-store-foo', 'bar')
++        .end(done)
++    })
++
++    it('should presist store when limit exceeded', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/json')
++        .send('{"user":"' + Buffer.alloc(1024 * 100, '.').toString() + '"}')
++        .expect(413)
++        .expect('x-store-foo', 'bar')
++        .end(done)
+     })
+   })
+ 
+@@ -538,15 +670,7 @@ describe('express.json()', function () {
+       var test = request(this.app).post('/')
+       test.set('Content-Type', 'application/json; charset=koi8-r')
+       test.write(Buffer.from('7b226e616d65223a22cec5d4227d', 'hex'))
+-      test.expect(415, 'unsupported charset "KOI8-R"', done)
+-    })
+-
+-    it('should error with type = "charset.unsupported"', function (done) {
+-      var test = request(this.app).post('/')
+-      test.set('Content-Type', 'application/json; charset=koi8-r')
+-      test.set('X-Error-Property', 'type')
+-      test.write(Buffer.from('7b226e616d65223a22cec5d4227d', 'hex'))
+-      test.expect(415, 'charset.unsupported', done)
++      test.expect(415, '[charset.unsupported] unsupported charset "KOI8-R"', done)
+     })
+   })
+ 
+@@ -599,16 +723,7 @@ describe('express.json()', function () {
+       test.set('Content-Encoding', 'nulls')
+       test.set('Content-Type', 'application/json')
+       test.write(Buffer.from('000000000000', 'hex'))
+-      test.expect(415, 'unsupported content encoding "nulls"', done)
+-    })
+-
+-    it('should error with type = "encoding.unsupported"', function (done) {
+-      var test = request(this.app).post('/')
+-      test.set('Content-Encoding', 'nulls')
+-      test.set('Content-Type', 'application/json')
+-      test.set('X-Error-Property', 'type')
+-      test.write(Buffer.from('000000000000', 'hex'))
+-      test.expect(415, 'encoding.unsupported', done)
++      test.expect(415, '[encoding.unsupported] unsupported content encoding "nulls"', done)
+     })
+ 
+     it('should 400 on malformed encoding', function (done) {
+@@ -639,7 +754,9 @@ function createApp (options) {
+ 
+   app.use(function (err, req, res, next) {
+     res.status(err.status || 500)
+-    res.send(String(err[req.headers['x-error-property'] || 'message']))
++    res.send(String(req.headers['x-error-property']
++      ? err[req.headers['x-error-property']]
++      : ('[' + err.type + '] ' + err.message)))
+   })
+ 
+   app.post('/', function (req, res) {
+@@ -663,3 +780,11 @@ function shouldContainInBody (str) {
+       'expected \'' + res.text + '\' to contain \'' + str + '\'')
+   }
+ }
++
++function tryRequire (name) {
++  try {
++    return require(name)
++  } catch (e) {
++    return {}
++  }
++}
+diff --git a/test/express.raw.js b/test/express.raw.js
+index cbd0736e7c..4aa62bb85b 100644
+--- a/test/express.raw.js
++++ b/test/express.raw.js
+@@ -1,10 +1,15 @@
+ 'use strict'
+ 
+ var assert = require('assert')
++var asyncHooks = tryRequire('async_hooks')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('..')
+ var request = require('supertest')
+ 
++var describeAsyncHooks = typeof asyncHooks.AsyncLocalStorage === 'function'
++  ? describe
++  : describe.skip
++
+ describe('express.raw()', function () {
+   before(function () {
+     this.app = createApp()
+@@ -60,6 +65,36 @@ describe('express.raw()', function () {
+       .expect(200, { buf: '' }, done)
+   })
+ 
++  it('should 500 if stream not readable', function (done) {
++    var app = express()
++
++    app.use(function (req, res, next) {
++      req.on('end', next)
++      req.resume()
++    })
++
++    app.use(express.raw())
++
++    app.use(function (err, req, res, next) {
++      res.status(err.status || 500)
++      res.send('[' + err.type + '] ' + err.message)
++    })
++
++    app.post('/', function (req, res) {
++      if (Buffer.isBuffer(req.body)) {
++        res.json({ buf: req.body.toString('hex') })
++      } else {
++        res.json(req.body)
++      }
++    })
++
++    request(app)
++      .post('/')
++      .set('Content-Type', 'application/octet-stream')
++      .send('the user is tobi')
++      .expect(500, '[stream.not.readable] stream is not readable', done)
++  })
++
+   it('should handle duplicated middleware', function (done) {
+     var app = express()
+ 
+@@ -102,6 +137,15 @@ describe('express.raw()', function () {
+       test.expect(413, done)
+     })
+ 
++    it('should 413 when inflated body over limit', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/octet-stream')
++      test.write(Buffer.from('1f8b080000000000000ad3d31b05a360148c64000087e5a14704040000', 'hex'))
++      test.expect(413, done)
++    })
++
+     it('should accept number of bytes', function (done) {
+       var buf = Buffer.alloc(1028, '.')
+       var app = createApp({ limit: 1024 })
+@@ -134,6 +178,15 @@ describe('express.raw()', function () {
+       test.write(buf)
+       test.expect(413, done)
+     })
++
++    it('should not error when inflating', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/octet-stream')
++      test.write(Buffer.from('1f8b080000000000000ad3d31b05a360148c64000087e5a147040400', 'hex'))
++      test.expect(413, done)
++    })
+   })
+ 
+   describe('with inflate option', function () {
+@@ -147,7 +200,7 @@ describe('express.raw()', function () {
+         test.set('Content-Encoding', 'gzip')
+         test.set('Content-Type', 'application/octet-stream')
+         test.write(Buffer.from('1f8b080000000000000bcb4bcc4db57db16e170099a4bad608000000', 'hex'))
+-        test.expect(415, 'content encoding unsupported', done)
++        test.expect(415, '[encoding.unsupported] content encoding unsupported', done)
+       })
+     })
+ 
+@@ -263,34 +316,40 @@ describe('express.raw()', function () {
+     })
+ 
+     it('should error from verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x00) throw new Error('no leading null')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x00) throw new Error('no leading null')
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/octet-stream')
+       test.write(Buffer.from('000102', 'hex'))
+-      test.expect(403, 'no leading null', done)
++      test.expect(403, '[entity.verify.failed] no leading null', done)
+     })
+ 
+     it('should allow custom codes', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] !== 0x00) return
+-        var err = new Error('no leading null')
+-        err.status = 400
+-        throw err
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] !== 0x00) return
++          var err = new Error('no leading null')
++          err.status = 400
++          throw err
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/octet-stream')
+       test.write(Buffer.from('000102', 'hex'))
+-      test.expect(400, 'no leading null', done)
++      test.expect(400, '[entity.verify.failed] no leading null', done)
+     })
+ 
+     it('should allow pass-through', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x00) throw new Error('no leading null')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x00) throw new Error('no leading null')
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/octet-stream')
+@@ -299,6 +358,104 @@ describe('express.raw()', function () {
+     })
+   })
+ 
++  describeAsyncHooks('async local storage', function () {
++    before(function () {
++      var app = express()
++      var store = { foo: 'bar' }
++
++      app.use(function (req, res, next) {
++        req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++        req.asyncLocalStorage.run(store, next)
++      })
++
++      app.use(express.raw())
++
++      app.use(function (req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        next()
++      })
++
++      app.use(function (err, req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        res.status(err.status || 500)
++        res.send('[' + err.type + '] ' + err.message)
++      })
++
++      app.post('/', function (req, res) {
++        if (Buffer.isBuffer(req.body)) {
++          res.json({ buf: req.body.toString('hex') })
++        } else {
++          res.json(req.body)
++        }
++      })
++
++      this.app = app
++    })
++
++    it('should presist store', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/octet-stream')
++        .send('the user is tobi')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect({ buf: '746865207573657220697320746f6269' })
++        .end(done)
++    })
++
++    it('should presist store when unmatched content-type', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/fizzbuzz')
++        .send('buzz')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('{}')
++        .end(done)
++    })
++
++    it('should presist store when inflated', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/octet-stream')
++      test.write(Buffer.from('1f8b080000000000000bcb4bcc4db57db16e170099a4bad608000000', 'hex'))
++      test.expect(200)
++      test.expect('x-store-foo', 'bar')
++      test.expect({ buf: '6e616d653de8aeba' })
++      test.end(done)
++    })
++
++    it('should presist store when inflate error', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/octet-stream')
++      test.write(Buffer.from('1f8b080000000000000bcb4bcc4db57db16e170099a4bad6080000', 'hex'))
++      test.expect(400)
++      test.expect('x-store-foo', 'bar')
++      test.end(done)
++    })
++
++    it('should presist store when limit exceeded', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/octet-stream')
++        .send('the user is ' + Buffer.alloc(1024 * 100, '.').toString())
++        .expect(413)
++        .expect('x-store-foo', 'bar')
++        .end(done)
++    })
++  })
++
+   describe('charset', function () {
+     before(function () {
+       this.app = createApp()
+@@ -356,12 +513,12 @@ describe('express.raw()', function () {
+       test.expect(200, { buf: '6e616d653de8aeba' }, done)
+     })
+ 
+-    it('should fail on unknown encoding', function (done) {
++    it('should 415 on unknown encoding', function (done) {
+       var test = request(this.app).post('/')
+       test.set('Content-Encoding', 'nulls')
+       test.set('Content-Type', 'application/octet-stream')
+       test.write(Buffer.from('000000000000', 'hex'))
+-      test.expect(415, 'unsupported content encoding "nulls"', done)
++      test.expect(415, '[encoding.unsupported] unsupported content encoding "nulls"', done)
+     })
+   })
+ })
+@@ -373,7 +530,9 @@ function createApp (options) {
+ 
+   app.use(function (err, req, res, next) {
+     res.status(err.status || 500)
+-    res.send(String(err[req.headers['x-error-property'] || 'message']))
++    res.send(String(req.headers['x-error-property']
++      ? err[req.headers['x-error-property']]
++      : ('[' + err.type + '] ' + err.message)))
+   })
+ 
+   app.post('/', function (req, res) {
+@@ -386,3 +545,11 @@ function createApp (options) {
+ 
+   return app
+ }
++
++function tryRequire (name) {
++  try {
++    return require(name)
++  } catch (e) {
++    return {}
++  }
++}
+diff --git a/test/express.text.js b/test/express.text.js
+index ebc12cd109..cb7750a525 100644
+--- a/test/express.text.js
++++ b/test/express.text.js
+@@ -1,10 +1,15 @@
+ 'use strict'
+ 
+ var assert = require('assert')
++var asyncHooks = tryRequire('async_hooks')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('..')
+ var request = require('supertest')
+ 
++var describeAsyncHooks = typeof asyncHooks.AsyncLocalStorage === 'function'
++  ? describe
++  : describe.skip
++
+ describe('express.text()', function () {
+   before(function () {
+     this.app = createApp()
+@@ -56,6 +61,32 @@ describe('express.text()', function () {
+       .expect(200, '""', done)
+   })
+ 
++  it('should 500 if stream not readable', function (done) {
++    var app = express()
++
++    app.use(function (req, res, next) {
++      req.on('end', next)
++      req.resume()
++    })
++
++    app.use(express.text())
++
++    app.use(function (err, req, res, next) {
++      res.status(err.status || 500)
++      res.send('[' + err.type + '] ' + err.message)
++    })
++
++    app.post('/', function (req, res) {
++      res.json(req.body)
++    })
++
++    request(app)
++      .post('/')
++      .set('Content-Type', 'text/plain')
++      .send('user is tobi')
++      .expect(500, '[stream.not.readable] stream is not readable', done)
++  })
++
+   it('should handle duplicated middleware', function (done) {
+     var app = express()
+ 
+@@ -75,16 +106,16 @@ describe('express.text()', function () {
+ 
+   describe('with defaultCharset option', function () {
+     it('should change default charset', function (done) {
+-      var app = createApp({ defaultCharset: 'koi8-r' })
+-      var test = request(app).post('/')
++      var server = createApp({ defaultCharset: 'koi8-r' })
++      var test = request(server).post('/')
+       test.set('Content-Type', 'text/plain')
+       test.write(Buffer.from('6e616d6520697320cec5d4', 'hex'))
+       test.expect(200, '"name is нет"', done)
+     })
+ 
+     it('should honor content-type charset', function (done) {
+-      var app = createApp({ defaultCharset: 'koi8-r' })
+-      var test = request(app).post('/')
++      var server = createApp({ defaultCharset: 'koi8-r' })
++      var test = request(server).post('/')
+       test.set('Content-Type', 'text/plain; charset=utf-8')
+       test.write(Buffer.from('6e616d6520697320e8aeba', 'hex'))
+       test.expect(200, '"name is 论"', done)
+@@ -103,8 +134,8 @@ describe('express.text()', function () {
+     })
+ 
+     it('should 413 when over limit with chunked encoding', function (done) {
+-      var buf = Buffer.alloc(1028, '.')
+       var app = createApp({ limit: '1kb' })
++      var buf = Buffer.alloc(1028, '.')
+       var test = request(app).post('/')
+       test.set('Content-Type', 'text/plain')
+       test.set('Transfer-Encoding', 'chunked')
+@@ -112,6 +143,15 @@ describe('express.text()', function () {
+       test.expect(413, done)
+     })
+ 
++    it('should 413 when inflated body over limit', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'text/plain')
++      test.write(Buffer.from('1f8b080000000000000ad3d31b05a360148c64000087e5a14704040000', 'hex'))
++      test.expect(413, done)
++    })
++
+     it('should accept number of bytes', function (done) {
+       var buf = Buffer.alloc(1028, '.')
+       request(createApp({ limit: 1024 }))
+@@ -136,8 +176,8 @@ describe('express.text()', function () {
+     })
+ 
+     it('should not hang response', function (done) {
+-      var buf = Buffer.alloc(10240, '.')
+       var app = createApp({ limit: '8kb' })
++      var buf = Buffer.alloc(10240, '.')
+       var test = request(app).post('/')
+       test.set('Content-Type', 'text/plain')
+       test.write(buf)
+@@ -145,6 +185,17 @@ describe('express.text()', function () {
+       test.write(buf)
+       test.expect(413, done)
+     })
++
++    it('should not error when inflating', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'text/plain')
++      test.write(Buffer.from('1f8b080000000000000ad3d31b05a360148c64000087e5a1470404', 'hex'))
++      setTimeout(function () {
++        test.expect(413, done)
++      }, 100)
++    })
+   })
+ 
+   describe('with inflate option', function () {
+@@ -158,7 +209,7 @@ describe('express.text()', function () {
+         test.set('Content-Encoding', 'gzip')
+         test.set('Content-Type', 'text/plain')
+         test.write(Buffer.from('1f8b080000000000000bcb4bcc4d55c82c5678b16e170072b3e0200b000000', 'hex'))
+-        test.expect(415, 'content encoding unsupported', done)
++        test.expect(415, '[encoding.unsupported] content encoding unsupported', done)
+       })
+     })
+ 
+@@ -278,36 +329,42 @@ describe('express.text()', function () {
+     })
+ 
+     it('should error from verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x20) throw new Error('no leading space')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x20) throw new Error('no leading space')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'text/plain')
+         .send(' user is tobi')
+-        .expect(403, 'no leading space', done)
++        .expect(403, '[entity.verify.failed] no leading space', done)
+     })
+ 
+     it('should allow custom codes', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] !== 0x20) return
+-        var err = new Error('no leading space')
+-        err.status = 400
+-        throw err
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] !== 0x20) return
++          var err = new Error('no leading space')
++          err.status = 400
++          throw err
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'text/plain')
+         .send(' user is tobi')
+-        .expect(400, 'no leading space', done)
++        .expect(400, '[entity.verify.failed] no leading space', done)
+     })
+ 
+     it('should allow pass-through', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x20) throw new Error('no leading space')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x20) throw new Error('no leading space')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+@@ -317,14 +374,110 @@ describe('express.text()', function () {
+     })
+ 
+     it('should 415 on unknown charset prior to verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        throw new Error('unexpected verify call')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          throw new Error('unexpected verify call')
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'text/plain; charset=x-bogus')
+       test.write(Buffer.from('00000000', 'hex'))
+-      test.expect(415, 'unsupported charset "X-BOGUS"', done)
++      test.expect(415, '[charset.unsupported] unsupported charset "X-BOGUS"', done)
++    })
++  })
++
++  describeAsyncHooks('async local storage', function () {
++    before(function () {
++      var app = express()
++      var store = { foo: 'bar' }
++
++      app.use(function (req, res, next) {
++        req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++        req.asyncLocalStorage.run(store, next)
++      })
++
++      app.use(express.text())
++
++      app.use(function (req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        next()
++      })
++
++      app.use(function (err, req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        res.status(err.status || 500)
++        res.send('[' + err.type + '] ' + err.message)
++      })
++
++      app.post('/', function (req, res) {
++        res.json(req.body)
++      })
++
++      this.app = app
++    })
++
++    it('should presist store', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'text/plain')
++        .send('user is tobi')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('"user is tobi"')
++        .end(done)
++    })
++
++    it('should presist store when unmatched content-type', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/fizzbuzz')
++        .send('buzz')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('{}')
++        .end(done)
++    })
++
++    it('should presist store when inflated', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'text/plain')
++      test.write(Buffer.from('1f8b080000000000000bcb4bcc4d55c82c5678b16e170072b3e0200b000000', 'hex'))
++      test.expect(200)
++      test.expect('x-store-foo', 'bar')
++      test.expect('"name is 论"')
++      test.end(done)
++    })
++
++    it('should presist store when inflate error', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'text/plain')
++      test.write(Buffer.from('1f8b080000000000000bcb4bcc4d55c82c5678b16e170072b3e0200b0000', 'hex'))
++      test.expect(400)
++      test.expect('x-store-foo', 'bar')
++      test.end(done)
++    })
++
++    it('should presist store when limit exceeded', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'text/plain')
++        .send('user is ' + Buffer.alloc(1024 * 100, '.').toString())
++        .expect(413)
++        .expect('x-store-foo', 'bar')
++        .end(done)
+     })
+   })
+ 
+@@ -366,7 +519,7 @@ describe('express.text()', function () {
+       var test = request(this.app).post('/')
+       test.set('Content-Type', 'text/plain; charset=x-bogus')
+       test.write(Buffer.from('00000000', 'hex'))
+-      test.expect(415, 'unsupported charset "X-BOGUS"', done)
++      test.expect(415, '[charset.unsupported] unsupported charset "X-BOGUS"', done)
+     })
+   })
+ 
+@@ -414,12 +567,12 @@ describe('express.text()', function () {
+       test.expect(200, '"name is 论"', done)
+     })
+ 
+-    it('should fail on unknown encoding', function (done) {
++    it('should 415 on unknown encoding', function (done) {
+       var test = request(this.app).post('/')
+       test.set('Content-Encoding', 'nulls')
+       test.set('Content-Type', 'text/plain')
+       test.write(Buffer.from('000000000000', 'hex'))
+-      test.expect(415, 'unsupported content encoding "nulls"', done)
++      test.expect(415, '[encoding.unsupported] unsupported content encoding "nulls"', done)
+     })
+   })
+ })
+@@ -431,7 +584,9 @@ function createApp (options) {
+ 
+   app.use(function (err, req, res, next) {
+     res.status(err.status || 500)
+-    res.send(err.message)
++    res.send(String(req.headers['x-error-property']
++      ? err[req.headers['x-error-property']]
++      : ('[' + err.type + '] ' + err.message)))
+   })
+ 
+   app.post('/', function (req, res) {
+@@ -440,3 +595,11 @@ function createApp (options) {
+ 
+   return app
+ }
++
++function tryRequire (name) {
++  try {
++    return require(name)
++  } catch (e) {
++    return {}
++  }
++}
+diff --git a/test/express.urlencoded.js b/test/express.urlencoded.js
+index 340eb74316..e07432c86c 100644
+--- a/test/express.urlencoded.js
++++ b/test/express.urlencoded.js
+@@ -1,10 +1,15 @@
+ 'use strict'
+ 
+ var assert = require('assert')
++var asyncHooks = tryRequire('async_hooks')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('..')
+ var request = require('supertest')
+ 
++var describeAsyncHooks = typeof asyncHooks.AsyncLocalStorage === 'function'
++  ? describe
++  : describe.skip
++
+ describe('express.urlencoded()', function () {
+   before(function () {
+     this.app = createApp()
+@@ -57,6 +62,32 @@ describe('express.urlencoded()', function () {
+       .expect(200, '{}', done)
+   })
+ 
++  it('should 500 if stream not readable', function (done) {
++    var app = express()
++
++    app.use(function (req, res, next) {
++      req.on('end', next)
++      req.resume()
++    })
++
++    app.use(express.urlencoded())
++
++    app.use(function (err, req, res, next) {
++      res.status(err.status || 500)
++      res.send('[' + err.type + '] ' + err.message)
++    })
++
++    app.post('/', function (req, res) {
++      res.json(req.body)
++    })
++
++    request(app)
++      .post('/')
++      .set('Content-Type', 'application/x-www-form-urlencoded')
++      .send('user=tobi')
++      .expect(500, '[stream.not.readable] stream is not readable', done)
++  })
++
+   it('should handle duplicated middleware', function (done) {
+     var app = express()
+ 
+@@ -217,7 +248,7 @@ describe('express.urlencoded()', function () {
+         test.set('Content-Encoding', 'gzip')
+         test.set('Content-Type', 'application/x-www-form-urlencoded')
+         test.write(Buffer.from('1f8b080000000000000bcb4bcc4db57db16e170099a4bad608000000', 'hex'))
+-        test.expect(415, 'content encoding unsupported', done)
++        test.expect(415, '[encoding.unsupported] content encoding unsupported', done)
+       })
+     })
+ 
+@@ -248,8 +279,8 @@ describe('express.urlencoded()', function () {
+     })
+ 
+     it('should 413 when over limit with chunked encoding', function (done) {
+-      var buf = Buffer.alloc(1024, '.')
+       var app = createApp({ limit: '1kb' })
++      var buf = Buffer.alloc(1024, '.')
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/x-www-form-urlencoded')
+       test.set('Transfer-Encoding', 'chunked')
+@@ -258,6 +289,15 @@ describe('express.urlencoded()', function () {
+       test.expect(413, done)
+     })
+ 
++    it('should 413 when inflated body over limit', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/x-www-form-urlencoded')
++      test.write(Buffer.from('1f8b080000000000000a2b2e29b2d51b05a360148c580000a0351f9204040000', 'hex'))
++      test.expect(413, done)
++    })
++
+     it('should accept number of bytes', function (done) {
+       var buf = Buffer.alloc(1024, '.')
+       request(createApp({ limit: 1024 }))
+@@ -282,8 +322,8 @@ describe('express.urlencoded()', function () {
+     })
+ 
+     it('should not hang response', function (done) {
+-      var buf = Buffer.alloc(10240, '.')
+       var app = createApp({ limit: '8kb' })
++      var buf = Buffer.alloc(10240, '.')
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/x-www-form-urlencoded')
+       test.write(buf)
+@@ -291,6 +331,15 @@ describe('express.urlencoded()', function () {
+       test.write(buf)
+       test.expect(413, done)
+     })
++
++    it('should not error when inflating', function (done) {
++      var app = createApp({ limit: '1kb' })
++      var test = request(app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/x-www-form-urlencoded')
++      test.write(Buffer.from('1f8b080000000000000a2b2e29b2d51b05a360148c580000a0351f92040400', 'hex'))
++      test.expect(413, done)
++    })
+   })
+ 
+   describe('with parameterLimit option', function () {
+@@ -310,16 +359,7 @@ describe('express.urlencoded()', function () {
+           .post('/')
+           .set('Content-Type', 'application/x-www-form-urlencoded')
+           .send(createManyParams(11))
+-          .expect(413, /too many parameters/, done)
+-      })
+-
+-      it('should error with type = "parameters.too.many"', function (done) {
+-        request(createApp({ extended: false, parameterLimit: 10 }))
+-          .post('/')
+-          .set('Content-Type', 'application/x-www-form-urlencoded')
+-          .set('X-Error-Property', 'type')
+-          .send(createManyParams(11))
+-          .expect(413, 'parameters.too.many', done)
++          .expect(413, '[parameters.too.many] too many parameters', done)
+       })
+ 
+       it('should work when at the limit', function (done) {
+@@ -374,16 +414,7 @@ describe('express.urlencoded()', function () {
+           .post('/')
+           .set('Content-Type', 'application/x-www-form-urlencoded')
+           .send(createManyParams(11))
+-          .expect(413, /too many parameters/, done)
+-      })
+-
+-      it('should error with type = "parameters.too.many"', function (done) {
+-        request(createApp({ extended: true, parameterLimit: 10 }))
+-          .post('/')
+-          .set('Content-Type', 'application/x-www-form-urlencoded')
+-          .set('X-Error-Property', 'type')
+-          .send(createManyParams(11))
+-          .expect(413, 'parameters.too.many', done)
++          .expect(413, '[parameters.too.many] too many parameters', done)
+       })
+ 
+       it('should work when at the limit', function (done) {
+@@ -526,65 +557,59 @@ describe('express.urlencoded()', function () {
+     })
+ 
+     it('should error from verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x20) throw new Error('no leading space')
+-      } })
+-
+-      request(app)
+-        .post('/')
+-        .set('Content-Type', 'application/x-www-form-urlencoded')
+-        .send(' user=tobi')
+-        .expect(403, 'no leading space', done)
+-    })
+-
+-    it('should error with type = "entity.verify.failed"', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x20) throw new Error('no leading space')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x20) throw new Error('no leading space')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'application/x-www-form-urlencoded')
+-        .set('X-Error-Property', 'type')
+         .send(' user=tobi')
+-        .expect(403, 'entity.verify.failed', done)
++        .expect(403, '[entity.verify.failed] no leading space', done)
+     })
+ 
+     it('should allow custom codes', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] !== 0x20) return
+-        var err = new Error('no leading space')
+-        err.status = 400
+-        throw err
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] !== 0x20) return
++          var err = new Error('no leading space')
++          err.status = 400
++          throw err
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'application/x-www-form-urlencoded')
+         .send(' user=tobi')
+-        .expect(400, 'no leading space', done)
++        .expect(400, '[entity.verify.failed] no leading space', done)
+     })
+ 
+     it('should allow custom type', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] !== 0x20) return
+-        var err = new Error('no leading space')
+-        err.type = 'foo.bar'
+-        throw err
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] !== 0x20) return
++          var err = new Error('no leading space')
++          err.type = 'foo.bar'
++          throw err
++        }
++      })
+ 
+       request(app)
+         .post('/')
+         .set('Content-Type', 'application/x-www-form-urlencoded')
+-        .set('X-Error-Property', 'type')
+         .send(' user=tobi')
+-        .expect(403, 'foo.bar', done)
++        .expect(403, '[foo.bar] no leading space', done)
+     })
+ 
+     it('should allow pass-through', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        if (buf[0] === 0x5b) throw new Error('no arrays')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          if (buf[0] === 0x5b) throw new Error('no arrays')
++        }
++      })
+ 
+       request(app)
+         .post('/')
+@@ -594,14 +619,110 @@ describe('express.urlencoded()', function () {
+     })
+ 
+     it('should 415 on unknown charset prior to verify', function (done) {
+-      var app = createApp({ verify: function (req, res, buf) {
+-        throw new Error('unexpected verify call')
+-      } })
++      var app = createApp({
++        verify: function (req, res, buf) {
++          throw new Error('unexpected verify call')
++        }
++      })
+ 
+       var test = request(app).post('/')
+       test.set('Content-Type', 'application/x-www-form-urlencoded; charset=x-bogus')
+       test.write(Buffer.from('00000000', 'hex'))
+-      test.expect(415, 'unsupported charset "X-BOGUS"', done)
++      test.expect(415, '[charset.unsupported] unsupported charset "X-BOGUS"', done)
++    })
++  })
++
++  describeAsyncHooks('async local storage', function () {
++    before(function () {
++      var app = express()
++      var store = { foo: 'bar' }
++
++      app.use(function (req, res, next) {
++        req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++        req.asyncLocalStorage.run(store, next)
++      })
++
++      app.use(express.urlencoded())
++
++      app.use(function (req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        next()
++      })
++
++      app.use(function (err, req, res, next) {
++        var local = req.asyncLocalStorage.getStore()
++
++        if (local) {
++          res.setHeader('x-store-foo', String(local.foo))
++        }
++
++        res.status(err.status || 500)
++        res.send('[' + err.type + '] ' + err.message)
++      })
++
++      app.post('/', function (req, res) {
++        res.json(req.body)
++      })
++
++      this.app = app
++    })
++
++    it('should presist store', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/x-www-form-urlencoded')
++        .send('user=tobi')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('{"user":"tobi"}')
++        .end(done)
++    })
++
++    it('should presist store when unmatched content-type', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/fizzbuzz')
++        .send('buzz')
++        .expect(200)
++        .expect('x-store-foo', 'bar')
++        .expect('{}')
++        .end(done)
++    })
++
++    it('should presist store when inflated', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/x-www-form-urlencoded')
++      test.write(Buffer.from('1f8b080000000000000bcb4bcc4db57db16e170099a4bad608000000', 'hex'))
++      test.expect(200)
++      test.expect('x-store-foo', 'bar')
++      test.expect('{"name":"论"}')
++      test.end(done)
++    })
++
++    it('should presist store when inflate error', function (done) {
++      var test = request(this.app).post('/')
++      test.set('Content-Encoding', 'gzip')
++      test.set('Content-Type', 'application/x-www-form-urlencoded')
++      test.write(Buffer.from('1f8b080000000000000bcb4bcc4db57db16e170099a4bad6080000', 'hex'))
++      test.expect(400)
++      test.expect('x-store-foo', 'bar')
++      test.end(done)
++    })
++
++    it('should presist store when limit exceeded', function (done) {
++      request(this.app)
++        .post('/')
++        .set('Content-Type', 'application/x-www-form-urlencoded')
++        .send('user=' + Buffer.alloc(1024 * 100, '.').toString())
++        .expect(413)
++        .expect('x-store-foo', 'bar')
++        .end(done)
+     })
+   })
+ 
+@@ -636,7 +757,7 @@ describe('express.urlencoded()', function () {
+       var test = request(this.app).post('/')
+       test.set('Content-Type', 'application/x-www-form-urlencoded; charset=koi8-r')
+       test.write(Buffer.from('6e616d653dcec5d4', 'hex'))
+-      test.expect(415, 'unsupported charset "KOI8-R"', done)
++      test.expect(415, '[charset.unsupported] unsupported charset "KOI8-R"', done)
+     })
+   })
+ 
+@@ -684,12 +805,12 @@ describe('express.urlencoded()', function () {
+       test.expect(200, '{"name":"论"}', done)
+     })
+ 
+-    it('should fail on unknown encoding', function (done) {
++    it('should 415 on unknown encoding', function (done) {
+       var test = request(this.app).post('/')
+       test.set('Content-Encoding', 'nulls')
+       test.set('Content-Type', 'application/x-www-form-urlencoded')
+       test.write(Buffer.from('000000000000', 'hex'))
+-      test.expect(415, 'unsupported content encoding "nulls"', done)
++      test.expect(415, '[encoding.unsupported] unsupported content encoding "nulls"', done)
+     })
+   })
+ })
+@@ -718,7 +839,9 @@ function createApp (options) {
+ 
+   app.use(function (err, req, res, next) {
+     res.status(err.status || 500)
+-    res.send(String(err[req.headers['x-error-property'] || 'message']))
++    res.send(String(req.headers['x-error-property']
++      ? err[req.headers['x-error-property']]
++      : ('[' + err.type + '] ' + err.message)))
+   })
+ 
+   app.post('/', function (req, res) {
+@@ -733,3 +856,11 @@ function expectKeyCount (count) {
+     assert.strictEqual(Object.keys(JSON.parse(res.text)).length, count)
+   }
+ }
++
++function tryRequire (name) {
++  try {
++    return require(name)
++  } catch (e) {
++    return {}
++  }
++}
+diff --git a/test/res.cookie.js b/test/res.cookie.js
+index d10e48646b..93deb76988 100644
+--- a/test/res.cookie.js
++++ b/test/res.cookie.js
+@@ -67,6 +67,21 @@ describe('res', function(){
+       .expect(200, done)
+     })
+ 
++    describe('expires', function () {
++      it('should throw on invalid date', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { expires: new Date(NaN) })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /option expires is invalid/, done)
++      })
++    })
++
+     describe('maxAge', function(){
+       it('should set relative expires', function(done){
+         var app = express();
+@@ -111,6 +126,36 @@ describe('res', function(){
+         .expect(200, optionsCopy, done)
+       })
+ 
++      it('should not throw on null', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { maxAge: null })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('Set-Cookie', 'name=tobi; Path=/')
++          .end(done)
++      })
++
++      it('should not throw on undefined', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { maxAge: undefined })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('Set-Cookie', 'name=tobi; Path=/')
++          .end(done)
++      })
++
+       it('should throw an error with invalid maxAge', function (done) {
+         var app = express()
+ 
+@@ -125,6 +170,63 @@ describe('res', function(){
+       })
+     })
+ 
++    describe('priority', function () {
++      it('should set low priority', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { priority: 'low' })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect('Set-Cookie', /Priority=Low/)
++          .expect(200, done)
++      })
++
++      it('should set medium priority', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { priority: 'medium' })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect('Set-Cookie', /Priority=Medium/)
++          .expect(200, done)
++      })
++
++      it('should set high priority', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { priority: 'high' })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect('Set-Cookie', /Priority=High/)
++          .expect(200, done)
++      })
++
++      it('should throw with invalid priority', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.cookie('name', 'tobi', { priority: 'foobar' })
++          res.end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /option priority is invalid/, done)
++      })
++    })
++
+     describe('signed', function(){
+       it('should generate a signed JSON cookie', function(done){
+         var app = express();
+diff --git a/test/res.download.js b/test/res.download.js
+index 1322b0a31f..b52e66803c 100644
+--- a/test/res.download.js
++++ b/test/res.download.js
+@@ -1,11 +1,20 @@
+ 'use strict'
+ 
+ var after = require('after');
++var assert = require('assert')
++var asyncHooks = tryRequire('async_hooks')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('..');
++var path = require('path')
+ var request = require('supertest');
+ var utils = require('./support/utils')
+ 
++var FIXTURES_PATH = path.join(__dirname, 'fixtures')
++
++var describeAsyncHooks = typeof asyncHooks.AsyncLocalStorage === 'function'
++  ? describe
++  : describe.skip
++
+ describe('res', function(){
+   describe('.download(path)', function(){
+     it('should transfer as an attachment', function(done){
+@@ -81,6 +90,272 @@ describe('res', function(){
+       .expect('Content-Disposition', 'attachment; filename="user.html"')
+       .expect(200, cb);
+     })
++
++    describeAsyncHooks('async local storage', function () {
++      it('should presist store', function (done) {
++        var app = express()
++        var cb = after(2, done)
++        var store = { foo: 'bar' }
++
++        app.use(function (req, res, next) {
++          req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++          req.asyncLocalStorage.run(store, next)
++        })
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/name.txt', function (err) {
++            if (err) return cb(err)
++
++            var local = req.asyncLocalStorage.getStore()
++
++            assert.strictEqual(local.foo, 'bar')
++            cb()
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect('Content-Type', 'text/plain; charset=UTF-8')
++          .expect('Content-Disposition', 'attachment; filename="name.txt"')
++          .expect(200, 'tobi', cb)
++      })
++
++      it('should presist store on error', function (done) {
++        var app = express()
++        var store = { foo: 'bar' }
++
++        app.use(function (req, res, next) {
++          req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++          req.asyncLocalStorage.run(store, next)
++        })
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/does-not-exist', function (err) {
++            var local = req.asyncLocalStorage.getStore()
++
++            if (local) {
++              res.setHeader('x-store-foo', String(local.foo))
++            }
++
++            res.send(err ? 'got ' + err.status + ' error' : 'no error')
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('x-store-foo', 'bar')
++          .expect('got 404 error')
++          .end(done)
++      })
++    })
++  })
++
++  describe('.download(path, options)', function () {
++    it('should allow options to res.sendFile()', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.download('test/fixtures/.name', {
++          dotfiles: 'allow',
++          maxAge: '4h'
++        })
++      })
++
++      request(app)
++        .get('/')
++        .expect(200)
++        .expect('Content-Disposition', 'attachment; filename=".name"')
++        .expect('Cache-Control', 'public, max-age=14400')
++        .expect(utils.shouldHaveBody(Buffer.from('tobi')))
++        .end(done)
++    })
++
++    describe('with "headers" option', function () {
++      it('should set headers on response', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/user.html', {
++            headers: {
++              'X-Foo': 'Bar',
++              'X-Bar': 'Foo'
++            }
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('X-Foo', 'Bar')
++          .expect('X-Bar', 'Foo')
++          .end(done)
++      })
++
++      it('should use last header when duplicated', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/user.html', {
++            headers: {
++              'X-Foo': 'Bar',
++              'x-foo': 'bar'
++            }
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('X-Foo', 'bar')
++          .end(done)
++      })
++
++      it('should override Content-Type', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/user.html', {
++            headers: {
++              'Content-Type': 'text/x-custom'
++            }
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('Content-Type', 'text/x-custom')
++          .end(done)
++      })
++
++      it('should not set headers on 404', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('test/fixtures/does-not-exist', {
++            headers: {
++              'X-Foo': 'Bar'
++            }
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(404)
++          .expect(utils.shouldNotHaveHeader('X-Foo'))
++          .end(done)
++      })
++
++      describe('when headers contains Content-Disposition', function () {
++        it('should be ignored', function (done) {
++          var app = express()
++
++          app.use(function (req, res) {
++            res.download('test/fixtures/user.html', {
++              headers: {
++                'Content-Disposition': 'inline'
++              }
++            })
++          })
++
++          request(app)
++            .get('/')
++            .expect(200)
++            .expect('Content-Disposition', 'attachment; filename="user.html"')
++            .end(done)
++        })
++
++        it('should be ignored case-insensitively', function (done) {
++          var app = express()
++
++          app.use(function (req, res) {
++            res.download('test/fixtures/user.html', {
++              headers: {
++                'content-disposition': 'inline'
++              }
++            })
++          })
++
++          request(app)
++            .get('/')
++            .expect(200)
++            .expect('Content-Disposition', 'attachment; filename="user.html"')
++            .end(done)
++        })
++      })
++    })
++
++    describe('with "root" option', function () {
++      it('should allow relative path', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('name.txt', {
++            root: FIXTURES_PATH
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('Content-Disposition', 'attachment; filename="name.txt"')
++          .expect(utils.shouldHaveBody(Buffer.from('tobi')))
++          .end(done)
++      })
++
++      it('should allow up within root', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('fake/../name.txt', {
++            root: FIXTURES_PATH
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('Content-Disposition', 'attachment; filename="name.txt"')
++          .expect(utils.shouldHaveBody(Buffer.from('tobi')))
++          .end(done)
++      })
++
++      it('should reject up outside root', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          var p = '..' + path.sep +
++            path.relative(path.dirname(FIXTURES_PATH), path.join(FIXTURES_PATH, 'name.txt'))
++
++          res.download(p, {
++            root: FIXTURES_PATH
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(403)
++          .expect(utils.shouldNotHaveHeader('Content-Disposition'))
++          .end(done)
++      })
++
++      it('should reject reading outside root', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.download('../name.txt', {
++            root: FIXTURES_PATH
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(403)
++          .expect(utils.shouldNotHaveHeader('Content-Disposition'))
++          .end(done)
++      })
++    })
+   })
+ 
+   describe('.download(path, filename, fn)', function(){
+@@ -213,3 +488,11 @@ describe('res', function(){
+     })
+   })
+ })
++
++function tryRequire (name) {
++  try {
++    return require(name)
++  } catch (e) {
++    return {}
++  }
++}
+diff --git a/test/res.format.js b/test/res.format.js
+index 24e18d9552..45243d17a1 100644
+--- a/test/res.format.js
++++ b/test/res.format.js
+@@ -50,7 +50,12 @@ var app3 = express();
+ app3.use(function(req, res, next){
+   res.format({
+     text: function(){ res.send('hey') },
+-    default: function(){ res.send('default') }
++    default: function (a, b, c) {
++      assert(req === a)
++      assert(res === b)
++      assert(next === c)
++      res.send('default')
++    }
+   })
+ });
+ 
+@@ -118,6 +123,28 @@ describe('res', function(){
+         .set('Accept', '*/*')
+         .expect('hey', done);
+       })
++
++      it('should be able to invoke other formatter', function (done) {
++        var app = express()
++
++        app.use(function (req, res, next) {
++          res.format({
++            json: function () { res.send('json') },
++            default: function () {
++              res.header('x-default', '1')
++              this.json()
++            }
++          })
++        })
++
++        request(app)
++          .get('/')
++          .set('Accept', 'text/plain')
++          .expect(200)
++          .expect('x-default', '1')
++          .expect('json')
++          .end(done)
++      })
+     })
+ 
+     describe('in router', function(){
+diff --git a/test/res.send.js b/test/res.send.js
+index 6ba5542288..c92568db6a 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -283,6 +283,22 @@ describe('res', function(){
+     })
+   })
+ 
++  describe('when .statusCode is 205', function () {
++    it('should strip Transfer-Encoding field and body, set Content-Length', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.status(205).set('Transfer-Encoding', 'chunked').send('foo')
++      })
++
++      request(app)
++        .get('/')
++        .expect(utils.shouldNotHaveHeader('Transfer-Encoding'))
++        .expect('Content-Length', '0')
++        .expect(205, '', done)
++    })
++  })
++
+   describe('when .statusCode is 304', function(){
+     it('should strip Content-* fields, Transfer-Encoding field, and body', function(done){
+       var app = express();
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index e828c17e25..eb71adeb6a 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -1,6 +1,7 @@
+ 'use strict'
+ 
+ var after = require('after');
++var asyncHooks = tryRequire('async_hooks')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('../')
+   , request = require('supertest')
+@@ -10,6 +11,10 @@ var path = require('path');
+ var fixtures = path.join(__dirname, 'fixtures');
+ var utils = require('./support/utils');
+ 
++var describeAsyncHooks = typeof asyncHooks.AsyncLocalStorage === 'function'
++  ? describe
++  : describe.skip
++
+ describe('res', function(){
+   describe('.sendFile(path)', function () {
+     it('should error missing path', function (done) {
+@@ -261,6 +266,64 @@ describe('res', function(){
+         .get('/')
+         .expect(200, 'got 404 error', done)
+     })
++
++    describeAsyncHooks('async local storage', function () {
++      it('should presist store', function (done) {
++        var app = express()
++        var cb = after(2, done)
++        var store = { foo: 'bar' }
++
++        app.use(function (req, res, next) {
++          req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++          req.asyncLocalStorage.run(store, next)
++        })
++
++        app.use(function (req, res) {
++          res.sendFile(path.resolve(fixtures, 'name.txt'), function (err) {
++            if (err) return cb(err)
++
++            var local = req.asyncLocalStorage.getStore()
++
++            assert.strictEqual(local.foo, 'bar')
++            cb()
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect('Content-Type', 'text/plain; charset=UTF-8')
++          .expect(200, 'tobi', cb)
++      })
++
++      it('should presist store on error', function (done) {
++        var app = express()
++        var store = { foo: 'bar' }
++
++        app.use(function (req, res, next) {
++          req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++          req.asyncLocalStorage.run(store, next)
++        })
++
++        app.use(function (req, res) {
++          res.sendFile(path.resolve(fixtures, 'does-not-exist'), function (err) {
++            var local = req.asyncLocalStorage.getStore()
++
++            if (local) {
++              res.setHeader('x-store-foo', String(local.foo))
++            }
++
++            res.send(err ? 'got ' + err.status + ' error' : 'no error')
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('x-store-foo', 'bar')
++          .expect('got 404 error')
++          .end(done)
++      })
++    })
+   })
+ 
+   describe('.sendFile(path, options)', function () {
+@@ -684,7 +747,7 @@ describe('res', function(){
+       })
+ 
+       describe('when cacheControl: false', function () {
+-        it('shold not send cache-control', function (done) {
++        it('should not send cache-control', function (done) {
+           var app = express()
+ 
+           app.use(function (req, res) {
+@@ -999,6 +1062,64 @@ describe('res', function(){
+       .get('/')
+       .end(function(){});
+     })
++
++    describeAsyncHooks('async local storage', function () {
++      it('should presist store', function (done) {
++        var app = express()
++        var cb = after(2, done)
++        var store = { foo: 'bar' }
++
++        app.use(function (req, res, next) {
++          req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++          req.asyncLocalStorage.run(store, next)
++        })
++
++        app.use(function (req, res) {
++          res.sendfile('test/fixtures/name.txt', function (err) {
++            if (err) return cb(err)
++
++            var local = req.asyncLocalStorage.getStore()
++
++            assert.strictEqual(local.foo, 'bar')
++            cb()
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect('Content-Type', 'text/plain; charset=UTF-8')
++          .expect(200, 'tobi', cb)
++      })
++
++      it('should presist store on error', function (done) {
++        var app = express()
++        var store = { foo: 'bar' }
++
++        app.use(function (req, res, next) {
++          req.asyncLocalStorage = new asyncHooks.AsyncLocalStorage()
++          req.asyncLocalStorage.run(store, next)
++        })
++
++        app.use(function (req, res) {
++          res.sendfile('test/fixtures/does-not-exist', function (err) {
++            var local = req.asyncLocalStorage.getStore()
++
++            if (local) {
++              res.setHeader('x-store-foo', String(local.foo))
++            }
++
++            res.send(err ? 'got ' + err.status + ' error' : 'no error')
++          })
++        })
++
++        request(app)
++          .get('/')
++          .expect(200)
++          .expect('x-store-foo', 'bar')
++          .expect('got 404 error')
++          .end(done)
++      })
++    })
+   })
+ 
+   describe('.sendfile(path)', function(){
+@@ -1280,3 +1401,11 @@ function createApp(path, options, fn) {
+ 
+   return app;
+ }
++
++function tryRequire (name) {
++  try {
++    return require(name)
++  } catch (e) {
++    return {}
++  }
++}
+diff --git a/test/res.status.js b/test/res.status.js
+index e0abc73c4c..1fe08344ea 100644
+--- a/test/res.status.js
++++ b/test/res.status.js
+@@ -1,21 +1,202 @@
+ 'use strict'
+ 
+ var express = require('../')
+-  , request = require('supertest');
++var request = require('supertest')
+ 
+-describe('res', function(){
+-  describe('.status(code)', function(){
+-    it('should set the response .statusCode', function(done){
+-      var app = express();
++var isIoJs = process.release
++  ? process.release.name === 'io.js'
++  : ['v1.', 'v2.', 'v3.'].indexOf(process.version.slice(0, 3)) !== -1
+ 
+-      app.use(function(req, res){
+-        res.status(201).end('Created');
+-      });
++describe('res', function () {
++  describe('.status(code)', function () {
++    describe('when "code" is undefined', function () {
++      it('should raise error for invalid status code', function (done) {
++        var app = express()
+ 
+-      request(app)
+-      .get('/')
+-      .expect('Created')
+-      .expect(201, done);
++        app.use(function (req, res) {
++          res.status(undefined).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /Invalid status code/, function (err) {
++            if (isIoJs) {
++              done(err ? null : new Error('expected error'))
++            } else {
++              done(err)
++            }
++          })
++      })
++    })
++
++    describe('when "code" is null', function () {
++      it('should raise error for invalid status code', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(null).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /Invalid status code/, function (err) {
++            if (isIoJs) {
++              done(err ? null : new Error('expected error'))
++            } else {
++              done(err)
++            }
++          })
++      })
++    })
++
++    describe('when "code" is 201', function () {
++      it('should set the response status code to 201', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(201).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(201, done)
++      })
++    })
++
++    describe('when "code" is 302', function () {
++      it('should set the response status code to 302', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(302).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(302, done)
++      })
++    })
++
++    describe('when "code" is 403', function () {
++      it('should set the response status code to 403', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(403).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(403, done)
++      })
++    })
++
++    describe('when "code" is 501', function () {
++      it('should set the response status code to 501', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(501).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(501, done)
++      })
++    })
++
++    describe('when "code" is "410"', function () {
++      it('should set the response status code to 410', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status('410').end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(410, done)
++      })
++    })
++
++    describe('when "code" is 410.1', function () {
++      it('should set the response status code to 410', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(410.1).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(410, function (err) {
++            if (isIoJs) {
++              done(err ? null : new Error('expected error'))
++            } else {
++              done(err)
++            }
++          })
++      })
++    })
++
++    describe('when "code" is 1000', function () {
++      it('should raise error for invalid status code', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(1000).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /Invalid status code/, function (err) {
++            if (isIoJs) {
++              done(err ? null : new Error('expected error'))
++            } else {
++              done(err)
++            }
++          })
++      })
++    })
++
++    describe('when "code" is 99', function () {
++      it('should raise error for invalid status code', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(99).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /Invalid status code/, function (err) {
++            if (isIoJs) {
++              done(err ? null : new Error('expected error'))
++            } else {
++              done(err)
++            }
++          })
++      })
++    })
++
++    describe('when "code" is -401', function () {
++      it('should raise error for invalid status code', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.status(-401).end()
++        })
++
++        request(app)
++          .get('/')
++          .expect(500, /Invalid status code/, function (err) {
++            if (isIoJs) {
++              done(err ? null : new Error('expected error'))
++            } else {
++              done(err)
++            }
++          })
++      })
+     })
+   })
+ })

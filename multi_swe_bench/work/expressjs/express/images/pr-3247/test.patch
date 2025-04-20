@@ -1,0 +1,2223 @@
+diff --git a/test/Route.js b/test/Route.js
+index c979fb110c..ada54086bf 100644
+--- a/test/Route.js
++++ b/test/Route.js
+@@ -7,6 +7,11 @@ var express = require('../')
+   , assert = require('assert');
+ 
+ describe('Route', function(){
++  it('should work without handlers', function(done) {
++    var req = { method: 'GET', url: '/' }
++    var route = new Route('/foo')
++    route.dispatch(req, {}, done)
++  })
+ 
+   describe('.all', function(){
+     it('should add handler', function(done){
+diff --git a/test/Router.js b/test/Router.js
+index 21cdff2c6c..01a6e2c472 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -53,6 +53,16 @@ describe('Router', function(){
+     router.handle({ url: '', method: 'GET' }, {}, done);
+   });
+ 
++  it('should handle missing URL', function (done) {
++    var router = new Router()
++
++    router.use(function (req, res) {
++      throw new Error('should not be called')
++    })
++
++    router.handle({ method: 'GET' }, {}, done)
++  })
++
+   it('should not stack overflow with many registered routes', function(done){
+     var handler = function(req, res){ res.end(new Error('wrong handler')) };
+     var router = new Router();
+@@ -337,6 +347,24 @@ describe('Router', function(){
+       assert.equal(count, methods.length);
+       done();
+     })
++
++    it('should be called for any URL when "*"', function (done) {
++      var cb = after(4, done)
++      var router = new Router()
++
++      function no () {
++        throw new Error('should not be called')
++      }
++
++      router.all('*', function (req, res) {
++        res.end()
++      })
++
++      router.handle({ url: '/', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '/foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: 'foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '*', method: 'GET' }, { end: cb }, no)
++    })
+   })
+ 
+   describe('.use', function() {
+@@ -353,6 +381,24 @@ describe('Router', function(){
+       router.use.bind(router, '/', new Date()).should.throw(/requires middleware function.*Date/)
+     })
+ 
++    it('should be called for any URL', function (done) {
++      var cb = after(4, done)
++      var router = new Router()
++
++      function no () {
++        throw new Error('should not be called')
++      }
++
++      router.use(function (req, res) {
++        res.end()
++      })
++
++      router.handle({ url: '/', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '/foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: 'foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '*', method: 'GET' }, { end: cb }, no)
++    })
++
+     it('should accept array of middleware', function(done){
+       var count = 0;
+       var router = new Router();
+diff --git a/test/acceptance/cookies.js b/test/acceptance/cookies.js
+index 86add660c7..aa9e1faef4 100644
+--- a/test/acceptance/cookies.js
++++ b/test/acceptance/cookies.js
+@@ -1,6 +1,7 @@
+ 
+ var app = require('../../examples/cookies')
+   , request = require('supertest');
++var utils = require('../support/utils');
+ 
+ describe('cookies', function(){
+   describe('GET /', function(){
+@@ -13,10 +14,8 @@ describe('cookies', function(){
+     it('should respond with no cookies', function(done){
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.not.have.property('set-cookie')
+-        done()
+-      })
++      .expect(utils.shouldNotHaveHeader('Set-Cookie'))
++      .expect(200, done)
+     })
+ 
+     it('should respond to cookie', function(done){
+@@ -57,20 +56,16 @@ describe('cookies', function(){
+       .post('/')
+       .type('urlencoded')
+       .send({ remember: 1 })
+-      .expect(302, function(err, res){
+-        res.headers.should.have.property('set-cookie')
+-        done()
+-      })
++      .expect('Set-Cookie', /remember=1/)
++      .expect(302, done)
+     })
+ 
+     it('should no set cookie w/o reminder', function(done){
+       request(app)
+       .post('/')
+       .send({})
+-      .expect(302, function(err, res){
+-        res.headers.should.not.have.property('set-cookie')
+-        done()
+-      })
++      .expect(utils.shouldNotHaveHeader('Set-Cookie'))
++      .expect(302, done)
+     })
+   })
+ })
+diff --git a/test/acceptance/downloads.js b/test/acceptance/downloads.js
+index ed9a02f9ce..a0aa7b75d9 100644
+--- a/test/acceptance/downloads.js
++++ b/test/acceptance/downloads.js
+@@ -15,11 +15,8 @@ describe('downloads', function(){
+     it('should have a download header', function(done){
+       request(app)
+       .get('/files/amazing.txt')
+-      .end(function(err, res){
+-        res.status.should.equal(200);
+-        res.headers.should.have.property('content-disposition', 'attachment; filename="amazing.txt"')
+-        done()
+-      })
++      .expect('Content-Disposition', 'attachment; filename="amazing.txt"')
++      .expect(200, done)
+     })
+   })
+ 
+diff --git a/test/acceptance/web-service.js b/test/acceptance/web-service.js
+index 5868e92df9..521fa9fa28 100644
+--- a/test/acceptance/web-service.js
++++ b/test/acceptance/web-service.js
+@@ -53,7 +53,7 @@ describe('web-service', function(){
+         .get('/api/repos?api-key=foo')
+         .expect('Content-Type', 'application/json; charset=utf-8')
+         .expect(/"name":"express"/)
+-        .expect(/"url":"http:\/\/github.com\/strongloop\/express"/)
++        .expect(/"url":"http:\/\/github.com\/expressjs\/express"/)
+         .expect(200, done)
+       })
+     })
+diff --git a/test/app.engine.js b/test/app.engine.js
+index 88311b2f6d..6d1ee1cacb 100644
+--- a/test/app.engine.js
++++ b/test/app.engine.js
+@@ -1,6 +1,7 @@
+ 
+ var express = require('../')
+   , fs = require('fs');
++var path = require('path')
+ 
+ function render(path, options, fn) {
+   fs.readFile(path, 'utf8', function(err, str){
+@@ -15,7 +16,7 @@ describe('app', function(){
+     it('should map a template engine', function(done){
+       var app = express();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.engine('.html', render);
+       app.locals.user = { name: 'tobi' };
+ 
+@@ -36,7 +37,7 @@ describe('app', function(){
+     it('should work without leading "."', function(done){
+       var app = express();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.engine('html', render);
+       app.locals.user = { name: 'tobi' };
+ 
+@@ -50,7 +51,7 @@ describe('app', function(){
+     it('should work "view engine" setting', function(done){
+       var app = express();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.engine('html', render);
+       app.set('view engine', 'html');
+       app.locals.user = { name: 'tobi' };
+@@ -65,7 +66,7 @@ describe('app', function(){
+     it('should work "view engine" with leading "."', function(done){
+       var app = express();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.engine('.html', render);
+       app.set('view engine', '.html');
+       app.locals.user = { name: 'tobi' };
+diff --git a/test/app.options.js b/test/app.options.js
+index 20234723a5..9c88abafe5 100644
+--- a/test/app.options.js
++++ b/test/app.options.js
+@@ -72,7 +72,7 @@ describe('OPTIONS', function(){
+     .expect(200, 'GET,HEAD', done);
+   })
+ 
+-  describe('when error occurs in respone handler', function () {
++  describe('when error occurs in response handler', function () {
+     it('should pass error to callback', function (done) {
+       var app = express();
+       var router = express.Router();
+diff --git a/test/app.param.js b/test/app.param.js
+index 30885bcdc8..c7a375418c 100644
+--- a/test/app.param.js
++++ b/test/app.param.js
+@@ -29,8 +29,8 @@ describe('app', function(){
+ 
+       request(app)
+       .get('/user/tj')
+-      .end(function(err, res){
+-        res.text.should.equal('tj');
++      .expect(200, 'tj', function (err) {
++        if (err) return done(err)
+         request(app)
+         .get('/user/123')
+         .expect(404, done);
+@@ -69,9 +69,8 @@ describe('app', function(){
+ 
+       request(app)
+       .get('/user/123')
+-      .end(function(err, res){
+-        res.text.should.equal('123');
+-
++      .expect(200, '123', function (err) {
++        if (err) return done(err)
+         request(app)
+         .get('/post/123')
+         .expect('123', done);
+diff --git a/test/app.render.js b/test/app.render.js
+index c9737b7a06..729b1c97cc 100644
+--- a/test/app.render.js
++++ b/test/app.render.js
+@@ -1,5 +1,7 @@
+ 
++var assert = require('assert')
+ var express = require('..');
++var path = require('path')
+ var tmpl = require('./support/tmpl');
+ 
+ describe('app', function(){
+@@ -9,7 +11,7 @@ describe('app', function(){
+ 
+       app.locals.user = { name: 'tobi' };
+ 
+-      app.render(__dirname + '/fixtures/user.tmpl', function (err, str) {
++      app.render(path.join(__dirname, 'fixtures', 'user.tmpl'), function (err, str) {
+         if (err) return done(err);
+         str.should.equal('<p>tobi</p>');
+         done();
+@@ -22,7 +24,7 @@ describe('app', function(){
+       app.set('view engine', 'tmpl');
+       app.locals.user = { name: 'tobi' };
+ 
+-      app.render(__dirname + '/fixtures/user', function(err, str){
++      app.render(path.join(__dirname, 'fixtures', 'user'), function (err, str) {
+         if (err) return done(err);
+         str.should.equal('<p>tobi</p>');
+         done();
+@@ -32,7 +34,7 @@ describe('app', function(){
+     it('should expose app.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+ 
+       app.render('user.tmpl', function (err, str) {
+@@ -45,7 +47,7 @@ describe('app', function(){
+     it('should support index.<engine>', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.set('view engine', 'tmpl');
+ 
+       app.render('blog/post', function (err, str) {
+@@ -80,9 +82,10 @@ describe('app', function(){
+       it('should provide a helpful error', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+         app.render('rawr.tmpl', function (err) {
+-          err.message.should.equal('Failed to lookup view "rawr.tmpl" in views directory "' + __dirname + '/fixtures"');
++          assert.ok(err)
++          assert.equal(err.message, 'Failed to lookup view "rawr.tmpl" in views directory "' + path.join(__dirname, 'fixtures') + '"')
+           done();
+         });
+       })
+@@ -92,7 +95,7 @@ describe('app', function(){
+       it('should invoke the callback', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+ 
+         app.render('user.tmpl', function (err, str) {
+           // nextTick to prevent cyclic
+@@ -108,7 +111,7 @@ describe('app', function(){
+       it('should render the template', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+ 
+         app.render('email.tmpl', function (err, str) {
+           if (err) return done(err);
+@@ -123,7 +126,7 @@ describe('app', function(){
+         var app = createApp();
+ 
+         app.set('view engine', 'tmpl');
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+ 
+         app.render('email', function(err, str){
+           if (err) return done(err);
+@@ -137,7 +140,7 @@ describe('app', function(){
+       it('should lookup the file in the path', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures/default_layout');
++        app.set('views',  path.join(__dirname, 'fixtures', 'default_layout'))
+         app.locals.user = { name: 'tobi' };
+ 
+         app.render('user.tmpl', function (err, str) {
+@@ -150,7 +153,10 @@ describe('app', function(){
+       describe('when array of paths', function(){
+         it('should lookup the file in the path', function(done){
+           var app = createApp();
+-          var views = [__dirname + '/fixtures/local_layout', __dirname + '/fixtures/default_layout'];
++          var views = [
++            path.join(__dirname, 'fixtures', 'local_layout'),
++            path.join(__dirname, 'fixtures', 'default_layout')
++          ]
+ 
+           app.set('views', views);
+           app.locals.user = { name: 'tobi' };
+@@ -164,7 +170,10 @@ describe('app', function(){
+ 
+         it('should lookup in later paths until found', function(done){
+           var app = createApp();
+-          var views = [__dirname + '/fixtures/local_layout', __dirname + '/fixtures/default_layout'];
++          var views = [
++            path.join(__dirname, 'fixtures', 'local_layout'),
++            path.join(__dirname, 'fixtures', 'default_layout')
++          ]
+ 
+           app.set('views', views);
+           app.locals.name = 'tobi';
+@@ -178,13 +187,17 @@ describe('app', function(){
+ 
+         it('should error if file does not exist', function(done){
+           var app = createApp();
+-          var views = [__dirname + '/fixtures/local_layout', __dirname + '/fixtures/default_layout'];
++          var views = [
++            path.join(__dirname, 'fixtures', 'local_layout'),
++            path.join(__dirname, 'fixtures', 'default_layout')
++          ]
+ 
+           app.set('views', views);
+           app.locals.name = 'tobi';
+ 
+           app.render('pet.tmpl', function (err, str) {
+-            err.message.should.equal('Failed to lookup view "pet.tmpl" in views directories "' + __dirname + '/fixtures/local_layout" or "' + __dirname + '/fixtures/default_layout"');
++            assert.ok(err)
++            assert.equal(err.message, 'Failed to lookup view "pet.tmpl" in views directories "' + views[0] + '" or "' + views[1] + '"')
+             done();
+           })
+         })
+@@ -281,7 +294,7 @@ describe('app', function(){
+     it('should render the template', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+ 
+       var user = { name: 'tobi' };
+ 
+@@ -295,7 +308,7 @@ describe('app', function(){
+     it('should expose app.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+ 
+       app.render('user.tmpl', {}, function (err, str) {
+@@ -308,7 +321,7 @@ describe('app', function(){
+     it('should give precedence to app.render() locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+       var jane = { name: 'jane' };
+ 
+diff --git a/test/app.router.js b/test/app.router.js
+index 03b43eb081..95680f9139 100644
+--- a/test/app.router.js
++++ b/test/app.router.js
+@@ -77,7 +77,7 @@ describe('app.router', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect(404, 'Cannot GET /\n', cb);
++      .expect(404, cb)
+ 
+       request(app)
+       .delete('/')
+@@ -90,7 +90,7 @@ describe('app.router', function(){
+     });
+   })
+ 
+-  describe('decode querystring', function(){
++  describe('decode params', function () {
+     it('should decode correct params', function(done){
+       var app = express();
+ 
+@@ -539,8 +539,8 @@ describe('app.router', function(){
+ 
+     request(app)
+     .get('/user/10')
+-    .end(function(err, res){
+-      res.statusCode.should.equal(200);
++    .expect(200, function (err) {
++      if (err) return done(err)
+       request(app)
+       .get('/user/tj')
+       .expect(404, done);
+@@ -563,6 +563,30 @@ describe('app.router', function(){
+   })
+ 
+   describe('*', function(){
++    it('should capture everything', function (done) {
++      var app = express()
++
++      app.get('*', function (req, res) {
++        res.end(req.params[0])
++      })
++
++      request(app)
++      .get('/user/tobi.json')
++      .expect('/user/tobi.json', done)
++    })
++
++    it('should decore the capture', function (done) {
++      var app = express()
++
++      app.get('*', function (req, res) {
++        res.end(req.params[0])
++      })
++
++      request(app)
++      .get('/user/tobi%20and%20loki.json')
++      .expect('/user/tobi and loki.json', done)
++    })
++
+     it('should denote a greedy capture group', function(done){
+       var app = express();
+ 
+@@ -757,7 +781,7 @@ describe('app.router', function(){
+       .expect('editing tj (old)', cb);
+     })
+ 
+-    it('should work inside literal paranthesis', function(done){
++    it('should work inside literal parenthesis', function(done){
+       var app = express();
+ 
+       app.get('/:user\\(:op\\)', function(req, res){
+@@ -908,6 +932,37 @@ describe('app.router', function(){
+     })
+   })
+ 
++  describe('when next("router") is called', function () {
++    it('should jump out of router', function (done) {
++      var app = express()
++      var router = express.Router()
++
++      function fn (req, res, next) {
++        res.set('X-Hit', '1')
++        next('router')
++      }
++
++      router.get('/foo', fn, function (req, res, next) {
++        res.end('failure')
++      })
++
++      router.get('/foo', function (req, res, next) {
++        res.end('failure')
++      })
++
++      app.use(router)
++
++      app.get('/foo', function (req, res) {
++        res.end('success')
++      })
++
++      request(app)
++      .get('/foo')
++      .expect('X-Hit', '1')
++      .expect(200, 'success', done)
++    })
++  })
++
+   describe('when next(err) is called', function(){
+     it('should break out of app.router', function(done){
+       var app = express()
+diff --git a/test/middleware.basic.js b/test/middleware.basic.js
+index 3e1f181384..28a4dd18f2 100644
+--- a/test/middleware.basic.js
++++ b/test/middleware.basic.js
+@@ -32,13 +32,8 @@ describe('middleware', function(){
+       .get('/')
+       .set('Content-Type', 'application/json')
+       .send('{"foo":"bar"}')
+-      .end(function(err, res){
+-        if (err) return done(err);
+-        res.headers.should.have.property('content-type', 'application/json');
+-        res.statusCode.should.equal(200);
+-        res.text.should.equal('{"foo":"bar"}');
+-        done();
+-      })
++      .expect('Content-Type', 'application/json')
++      .expect(200, '{"foo":"bar"}', done)
+     })
+   })
+ })
+diff --git a/test/req.acceptsEncoding.js b/test/req.acceptsEncoding.js
+index 930b4ea76c..12708fc014 100644
+--- a/test/req.acceptsEncoding.js
++++ b/test/req.acceptsEncoding.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsEncoding', function(){
+-    it('should be true if encoding accpeted', function(done){
++    it('should be true if encoding accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if encoding not accpeted', function(done){
++    it('should be false if encoding not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.acceptsEncodings.js b/test/req.acceptsEncodings.js
+index c4c68e1e8e..c036c29769 100644
+--- a/test/req.acceptsEncodings.js
++++ b/test/req.acceptsEncodings.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsEncodingss', function(){
+-    it('should be true if encoding accpeted', function(done){
++    it('should be true if encoding accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if encoding not accpeted', function(done){
++    it('should be false if encoding not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.acceptsLanguage.js b/test/req.acceptsLanguage.js
+index 36afc47f92..b14d920bd6 100644
+--- a/test/req.acceptsLanguage.js
++++ b/test/req.acceptsLanguage.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsLanguage', function(){
+-    it('should be true if language accpeted', function(done){
++    it('should be true if language accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if language not accpeted', function(done){
++    it('should be false if language not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.acceptsLanguages.js b/test/req.acceptsLanguages.js
+index 8d11eb81e8..6a9cb3366b 100644
+--- a/test/req.acceptsLanguages.js
++++ b/test/req.acceptsLanguages.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsLanguages', function(){
+-    it('should be true if language accpeted', function(done){
++    it('should be true if language accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if language not accpeted', function(done){
++    it('should be false if language not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.fresh.js b/test/req.fresh.js
+index 0f1aa982ad..1aa8fa5b21 100644
+--- a/test/req.fresh.js
++++ b/test/req.fresh.js
+@@ -36,8 +36,8 @@ describe('req', function(){
+     it('should return false without response headers', function(done){
+       var app = express();
+ 
++      app.disable('x-powered-by')
+       app.use(function(req, res){
+-        res._headers = null;
+         res.send(req.fresh);
+       });
+ 
+diff --git a/test/req.get.js b/test/req.get.js
+index 144a256848..109a2d90ce 100644
+--- a/test/req.get.js
++++ b/test/req.get.js
+@@ -31,5 +31,29 @@ describe('req', function(){
+       .set('Referrer', 'http://foobar.com')
+       .expect('http://foobar.com', done);
+     })
++
++    it('should throw missing header name', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.end(req.get())
++      })
++
++      request(app)
++      .get('/')
++      .expect(500, /TypeError: name argument is required to req.get/, done)
++    })
++
++    it('should throw for non-string header name', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.end(req.get(42))
++      })
++
++      request(app)
++      .get('/')
++      .expect(500, /TypeError: name must be a string to req.get/, done)
++    })
+   })
+-})
+\ No newline at end of file
++})
+diff --git a/test/req.ip.js b/test/req.ip.js
+index 3ca575e11b..1cd255216b 100644
+--- a/test/req.ip.js
++++ b/test/req.ip.js
+@@ -79,8 +79,8 @@ describe('req', function(){
+           res.send(req.ip);
+         });
+ 
+-          var test = request(app).get('/')
+-          test.expect(200, getExpectedClientAddress(test._server), done);
++        var test = request(app).get('/')
++        test.expect(200, getExpectedClientAddress(test._server), done)
+       })
+     })
+   })
+diff --git a/test/req.is.js b/test/req.is.js
+index e5adb19de9..a2fce17867 100644
+--- a/test/req.is.js
++++ b/test/req.is.js
+@@ -1,103 +1,168 @@
+ 
+-var express = require('../')
+-  , request = require('supertest');
+-
+-function req(ct) {
+-  var req = {
+-    headers: {
+-      'content-type': ct,
+-      'transfer-encoding': 'chunked'
+-    },
+-    __proto__: express.request
+-  };
+-
+-  return req;
+-}
+-
+-describe('req.is()', function(){
+-  it('should ignore charset', function(){
+-    req('application/json')
+-    .is('json')
+-    .should.equal('json');
++var express = require('..')
++var request = require('supertest')
++
++describe('req.is()', function () {
++  describe('when given a mime type', function () {
++    it('should return the type when matching', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('application/json'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, '"application/json"', done)
++    })
++
++    it('should return false when not matching', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('image/jpeg'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, 'false', done)
++    })
++
++    it('should ignore charset', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('application/json'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json; charset=UTF-8')
++      .send('{}')
++      .expect(200, '"application/json"', done)
++    })
+   })
+ 
+   describe('when content-type is not present', function(){
+-    it('should return false', function(){
+-      req('')
+-      .is('json')
+-      .should.be.false;
++    it('should return false', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('application/json'))
++      })
++
++      request(app)
++      .post('/')
++      .send('{}')
++      .expect(200, 'false', done)
+     })
+   })
+ 
+   describe('when given an extension', function(){
+-    it('should lookup the mime type', function(){
+-      req('application/json')
+-      .is('json')
+-      .should.equal('json');
+-
+-      req('text/html')
+-      .is('json')
+-      .should.be.false;
+-    })
+-  })
++    it('should lookup the mime type', function (done) {
++      var app = express()
+ 
+-  describe('when given a mime type', function(){
+-    it('should match', function(){
+-      req('application/json')
+-      .is('application/json')
+-      .should.equal('application/json');
++      app.use(function (req, res) {
++        res.json(req.is('json'))
++      })
+ 
+-      req('image/jpeg')
+-      .is('application/json')
+-      .should.be.false;
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, '"json"', done)
+     })
+   })
+ 
+   describe('when given */subtype', function(){
+-    it('should match', function(){
+-      req('application/json')
+-      .is('*/json')
+-      .should.equal('application/json');
+-
+-      req('image/jpeg')
+-      .is('*/json')
+-      .should.be.false;
++    it('should return the full type when matching', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('*/json'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, '"application/json"', done)
++    })
++
++    it('should return false when not matching', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('*/html'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, 'false', done)
+     })
+ 
+-    describe('with a charset', function(){
+-      it('should match', function(){
+-        req('text/html; charset=utf-8')
+-        .is('*/html')
+-        .should.equal('text/html');
++    it('should ignore charset', function (done) {
++      var app = express()
+ 
+-        req('text/plain; charset=utf-8')
+-        .is('*/html')
+-        .should.be.false;
++      app.use(function (req, res) {
++        res.json(req.is('*/json'))
+       })
++
++      request(app)
++      .post('/')
++      .type('application/json; charset=UTF-8')
++      .send('{}')
++      .expect(200, '"application/json"', done)
+     })
+   })
+ 
+   describe('when given type/*', function(){
+-    it('should match', function(){
+-      req('image/png')
+-      .is('image/*')
+-      .should.equal('image/png');
+-
+-      req('text/html')
+-      .is('image/*')
+-      .should.be.false;
++    it('should return the full type when matching', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('application/*'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, '"application/json"', done)
+     })
+ 
+-    describe('with a charset', function(){
+-      it('should match', function(){
+-        req('text/html; charset=utf-8')
+-        .is('text/*')
+-        .should.equal('text/html');
++    it('should return false when not matching', function (done) {
++      var app = express()
+ 
+-        req('something/html; charset=utf-8')
+-        .is('text/*')
+-        .should.be.false;
++      app.use(function (req, res) {
++        res.json(req.is('text/*'))
+       })
++
++      request(app)
++      .post('/')
++      .type('application/json')
++      .send('{}')
++      .expect(200, 'false', done)
++    })
++
++    it('should ignore charset', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.is('application/*'))
++      })
++
++      request(app)
++      .post('/')
++      .type('application/json; charset=UTF-8')
++      .send('{}')
++      .expect(200, '"application/json"', done)
+     })
+   })
+ })
+diff --git a/test/req.query.js b/test/req.query.js
+index 1915141199..d3d29abd16 100644
+--- a/test/req.query.js
++++ b/test/req.query.js
+@@ -43,7 +43,7 @@ describe('req', function(){
+         var app = createApp('simple');
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{"user[name]":"tj"}', done);
+       });
+     });
+@@ -55,7 +55,7 @@ describe('req', function(){
+         });
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{"length":17}', done);
+       });
+     });
+@@ -65,7 +65,7 @@ describe('req', function(){
+         var app = createApp(false);
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{}', done);
+       });
+     });
+@@ -75,7 +75,7 @@ describe('req', function(){
+         var app = createApp(true);
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{"user[name]":"tj"}', done);
+       });
+     });
+diff --git a/test/req.range.js b/test/req.range.js
+index 08cf8f91e9..09459d1e12 100644
+--- a/test/req.range.js
++++ b/test/req.range.js
+@@ -1,38 +1,104 @@
+ 
+ var assert = require('assert');
+ var express = require('..');
+-
+-function req(ret) {
+-  return {
+-      get: function(){ return ret }
+-    , __proto__: express.request
+-  };
+-}
++var request = require('supertest')
+ 
+ describe('req', function(){
+   describe('.range(size)', function(){
+-    it('should return parsed ranges', function(){
+-      var ret = [{ start: 0, end: 50 }, { start: 60, end: 100 }];
+-      ret.type = 'bytes';
+-      req('bytes=0-50,60-100').range(120).should.eql(ret);
++    it('should return parsed ranges', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.range(120))
++      })
++
++      request(app)
++      .get('/')
++      .set('Range', 'bytes=0-50,51-100')
++      .expect(200, '[{"start":0,"end":50},{"start":51,"end":100}]', done)
++    })
++
++    it('should cap to the given size', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.range(75))
++      })
++
++      request(app)
++      .get('/')
++      .set('Range', 'bytes=0-100')
++      .expect(200, '[{"start":0,"end":74}]', done)
++    })
++
++    it('should cap to the given size when open-ended', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.range(75))
++      })
++
++      request(app)
++      .get('/')
++      .set('Range', 'bytes=0-')
++      .expect(200, '[{"start":0,"end":74}]', done)
+     })
+ 
+-    it('should cap to the given size', function(){
+-      var ret = [{ start: 0, end: 74 }];
+-      ret.type = 'bytes';
+-      req('bytes=0-100').range(75).should.eql(ret);
++    it('should have a .type', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.range(120).type)
++      })
++
++      request(app)
++      .get('/')
++      .set('Range', 'bytes=0-100')
++      .expect(200, '"bytes"', done)
+     })
+ 
+-    it('should have a .type', function(){
+-      var ret = [{ start: 0, end: Infinity }];
+-      ret.type = 'users';
+-      req('users=0-').range(Infinity).should.eql(ret);
++    it('should accept any type', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.json(req.range(120).type)
++      })
++
++      request(app)
++      .get('/')
++      .set('Range', 'users=0-2')
++      .expect(200, '"users"', done)
+     })
+ 
+-    it('should return undefined if no range', function(){
+-      var ret = [{ start: 0, end: 50 }, { start: 60, end: 100 }];
+-      ret.type = 'bytes';
+-      assert(req('').range(120) === undefined);
++    it('should return undefined if no range', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.send(String(req.range(120)))
++      })
++
++      request(app)
++      .get('/')
++      .expect(200, 'undefined', done)
++    })
++  })
++
++  describe('.range(size, options)', function(){
++    describe('with "combine: true" option', function(){
++      it('should return combined ranges', function (done) {
++        var app = express()
++
++        app.use(function (req, res) {
++          res.json(req.range(120, {
++            combine: true
++          }))
++        })
++
++        request(app)
++        .get('/')
++        .set('Range', 'bytes=0-50,51-100')
++        .expect(200, '[{"start":0,"end":100}]', done)
++      })
+     })
+   })
+ })
+diff --git a/test/req.signedCookies.js b/test/req.signedCookies.js
+index 111a0f77df..73880b01b4 100644
+--- a/test/req.signedCookies.js
++++ b/test/req.signedCookies.js
+@@ -28,11 +28,7 @@ describe('req', function(){
+         request(app)
+         .get('/')
+         .set('Cookie', cookie)
+-        .end(function(err, res){
+-          if (err) return done(err);
+-          res.body.should.eql({ obj: { foo: 'bar' } });
+-          done();
+-        });
++        .expect(200, { obj: { foo: 'bar' } }, done)
+       });
+     })
+   })
+diff --git a/test/req.stale.js b/test/req.stale.js
+index c92c5a9fb8..30c9d05d51 100644
+--- a/test/req.stale.js
++++ b/test/req.stale.js
+@@ -36,8 +36,8 @@ describe('req', function(){
+     it('should return true without response headers', function(done){
+       var app = express();
+ 
++      app.disable('x-powered-by')
+       app.use(function(req, res){
+-        res._headers = null;
+         res.send(req.stale);
+       });
+ 
+diff --git a/test/res.clearCookie.js b/test/res.clearCookie.js
+index 92c9d049f0..4822057e92 100644
+--- a/test/res.clearCookie.js
++++ b/test/res.clearCookie.js
+@@ -13,11 +13,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        var val = 'sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+-        res.header['set-cookie'].should.eql([val]);
+-        done();
+-      })
++      .expect('Set-Cookie', 'sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
++      .expect(200, done)
+     })
+   })
+ 
+@@ -31,11 +28,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        var val = 'sid=; Path=/admin; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
+-        res.header['set-cookie'].should.eql([val]);
+-        done();
+-      })
++      .expect('Set-Cookie', 'sid=; Path=/admin; Expires=Thu, 01 Jan 1970 00:00:00 GMT')
++      .expect(200, done)
+     })
+   })
+ })
+diff --git a/test/res.cookie.js b/test/res.cookie.js
+index 8de6c0c6e3..4eeaaf094a 100644
+--- a/test/res.cookie.js
++++ b/test/res.cookie.js
+@@ -16,11 +16,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        var val = ['user=' + encodeURIComponent('j:{"name":"tobi"}') + '; Path=/'];
+-        res.headers['set-cookie'].should.eql(val);
+-        done();
+-      })
++      .expect('Set-Cookie', 'user=j%3A%7B%22name%22%3A%22tobi%22%7D; Path=/')
++      .expect(200, done)
+     })
+   })
+ 
+@@ -34,11 +31,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        var val = ['name=tobi; Path=/'];
+-        res.headers['set-cookie'].should.eql(val);
+-        done();
+-      })
++      .expect('Set-Cookie', 'name=tobi; Path=/')
++      .expect(200, done)
+     })
+ 
+     it('should allow multiple calls', function(done){
+@@ -72,11 +66,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        var val = ['name=tobi; Path=/; HttpOnly; Secure'];
+-        res.headers['set-cookie'].should.eql(val);
+-        done();
+-      })
++      .expect('Set-Cookie', 'name=tobi; Path=/; HttpOnly; Secure')
++      .expect(200, done)
+     })
+ 
+     describe('maxAge', function(){
+@@ -150,6 +141,22 @@ describe('res', function(){
+       })
+     })
+ 
++    describe('signed without secret', function(){
++      it('should throw an error', function(done){
++        var app = express();
++
++        app.use(cookieParser());
++
++        app.use(function(req, res){
++          res.cookie('name', 'tobi', { signed: true }).end();
++        });
++
++        request(app)
++        .get('/')
++        .expect(500, /secret\S+ required for signed cookies/, done);
++      })
++    })
++
+     describe('.signedCookie(name, string)', function(){
+       it('should set a signed cookie', function(done){
+         var app = express();
+@@ -162,11 +169,8 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          var val = ['name=s%3Atobi.xJjV2iZ6EI7C8E5kzwbfA9PVLl1ZR07UTnuTgQQ4EnQ; Path=/'];
+-          res.headers['set-cookie'].should.eql(val);
+-          done();
+-        })
++        .expect('Set-Cookie', 'name=s%3Atobi.xJjV2iZ6EI7C8E5kzwbfA9PVLl1ZR07UTnuTgQQ4EnQ; Path=/')
++        .expect(200, done)
+       })
+     })
+   })
+diff --git a/test/res.jsonp.js b/test/res.jsonp.js
+index 4892a56ef6..64b41fb9a6 100644
+--- a/test/res.jsonp.js
++++ b/test/res.jsonp.js
+@@ -2,6 +2,7 @@
+ var express = require('../')
+   , request = require('supertest')
+   , assert = require('assert');
++var utils = require('./support/utils');
+ 
+ describe('res', function(){
+   describe('.jsonp(object)', function(){
+@@ -136,11 +137,8 @@ describe('res', function(){
+       request(app)
+       .get('/')
+       .expect('Content-Type', 'application/vnd.example+json; charset=utf-8')
+-      .expect(200, '{"hello":"world"}', function (err, res) {
+-        if (err) return done(err);
+-        res.headers.should.not.have.property('x-content-type-options');
+-        done();
+-      });
++      .expect(utils.shouldNotHaveHeader('X-Content-Type-Options'))
++      .expect(200, '{"hello":"world"}', done);
+     })
+ 
+     it('should override previous Content-Types with callback', function(done){
+diff --git a/test/res.location.js b/test/res.location.js
+index 6481160174..bb9eb6f92e 100644
+--- a/test/res.location.js
++++ b/test/res.location.js
+@@ -13,10 +13,34 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.have.property('location', 'http://google.com');
+-        done();
++      .expect('Location', 'http://google.com')
++      .expect(200, done)
++    })
++
++    it('should encode "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.location('https://google.com?q=\u2603 §10').end()
+       })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%E2%98%83%20%C2%A710')
++      .expect(200, done)
++    })
++
++    it('should not touch already-encoded sequences in "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.location('https://google.com?q=%A710').end()
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%A710')
++      .expect(200, done)
+     })
+   })
+ })
+diff --git a/test/res.redirect.js b/test/res.redirect.js
+index 7ebc1ef01d..755bb1c1c6 100644
+--- a/test/res.redirect.js
++++ b/test/res.redirect.js
+@@ -1,7 +1,7 @@
+ 
+-var http = require('http');
+ var express = require('..');
+ var request = require('supertest');
++var utils = require('./support/utils');
+ 
+ describe('res', function(){
+   describe('.redirect(url)', function(){
+@@ -17,6 +17,32 @@ describe('res', function(){
+       .expect('location', 'http://google.com')
+       .expect(302, done)
+     })
++
++    it('should encode "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.redirect('https://google.com?q=\u2603 §10')
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%E2%98%83%20%C2%A710')
++      .expect(302, done)
++    })
++
++    it('should not touch already-encoded sequences in "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.redirect('https://google.com?q=%A710')
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%A710')
++      .expect(302, done)
++    })
+   })
+ 
+   describe('.redirect(status, url)', function(){
+@@ -29,11 +55,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.statusCode.should.equal(303);
+-        res.headers.should.have.property('location', 'http://google.com');
+-        done();
+-      })
++      .expect('Location', 'http://google.com')
++      .expect(303, done)
+     })
+   })
+ 
+@@ -47,11 +70,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.statusCode.should.equal(303);
+-        res.headers.should.have.property('location', 'http://google.com');
+-        done();
+-      })
++      .expect('Location', 'http://google.com')
++      .expect(303, done)
+     })
+   })
+ 
+@@ -65,11 +85,8 @@ describe('res', function(){
+ 
+       request(app)
+       .head('/')
+-      .end(function(err, res){
+-        res.headers.should.have.property('location', 'http://google.com');
+-        res.text.should.equal('');
+-        done();
+-      })
++      .expect('Location', 'http://google.com')
++      .expect(302, '', done)
+     })
+   })
+ 
+@@ -86,14 +103,14 @@ describe('res', function(){
+       .set('Accept', 'text/html')
+       .expect('Content-Type', /html/)
+       .expect('Location', 'http://google.com')
+-      .expect(302, '<p>' + http.STATUS_CODES[302] + '. Redirecting to <a href="http://google.com">http://google.com</a></p>', done);
++      .expect(302, '<p>Found. Redirecting to <a href="http://google.com">http://google.com</a></p>', done)
+     })
+ 
+     it('should escape the url', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.redirect('<lame>');
++        res.redirect('<la\'me>');
+       });
+ 
+       request(app)
+@@ -101,8 +118,8 @@ describe('res', function(){
+       .set('Host', 'http://example.com')
+       .set('Accept', 'text/html')
+       .expect('Content-Type', /html/)
+-      .expect('Location', '<lame>')
+-      .expect(302, '<p>' + http.STATUS_CODES[302] + '. Redirecting to <a href="&lt;lame&gt;">&lt;lame&gt;</a></p>', done);
++      .expect('Location', '%3Cla\'me%3E')
++      .expect(302, '<p>Found. Redirecting to <a href="%3Cla&#39;me%3E">%3Cla&#39;me%3E</a></p>', done)
+     })
+ 
+     it('should include the redirect type', function(done){
+@@ -134,7 +151,7 @@ describe('res', function(){
+       .set('Accept', 'text/plain, */*')
+       .expect('Content-Type', /plain/)
+       .expect('Location', 'http://google.com')
+-      .expect(302, http.STATUS_CODES[302] + '. Redirecting to http://google.com', done);
++      .expect(302, 'Found. Redirecting to http://google.com', done)
+     })
+ 
+     it('should encode the url', function(done){
+@@ -149,8 +166,8 @@ describe('res', function(){
+       .set('Host', 'http://example.com')
+       .set('Accept', 'text/plain, */*')
+       .expect('Content-Type', /plain/)
+-      .expect('Location', 'http://example.com/?param=<script>alert("hax");</script>')
+-      .expect(302, http.STATUS_CODES[302] + '. Redirecting to http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E', done);
++      .expect('Location', 'http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E')
++      .expect(302, 'Found. Redirecting to http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E', done)
+     })
+ 
+     it('should include the redirect type', function(done){
+@@ -182,11 +199,8 @@ describe('res', function(){
+       .set('Accept', 'application/octet-stream')
+       .expect('location', 'http://google.com')
+       .expect('content-length', '0')
+-      .expect(302, '', function(err, res){
+-        if (err) return done(err)
+-        res.headers.should.not.have.property('content-type');
+-        done();
+-      })
++      .expect(utils.shouldNotHaveHeader('Content-Type'))
++      .expect(302, '', done)
+     })
+   })
+ })
+diff --git a/test/res.render.js b/test/res.render.js
+index d4d2a7616d..2e3a16f137 100644
+--- a/test/res.render.js
++++ b/test/res.render.js
+@@ -1,5 +1,6 @@
+ 
+ var express = require('..');
++var path = require('path')
+ var request = require('supertest');
+ var tmpl = require('./support/tmpl');
+ 
+@@ -11,7 +12,7 @@ describe('res', function(){
+       app.locals.user = { name: 'tobi' };
+ 
+       app.use(function(req, res){
+-        res.render(__dirname + '/fixtures/user.tmpl');
++        res.render(path.join(__dirname, 'fixtures', 'user.tmpl'))
+       });
+ 
+       request(app)
+@@ -26,7 +27,7 @@ describe('res', function(){
+       app.set('view engine', 'tmpl');
+ 
+       app.use(function(req, res){
+-        res.render(__dirname + '/fixtures/user');
++        res.render(path.join(__dirname, 'fixtures', 'user'))
+       });
+ 
+       request(app)
+@@ -40,7 +41,7 @@ describe('res', function(){
+       app.locals.user = { name: 'tobi' };
+ 
+       app.use(function(req, res){
+-        res.render(__dirname + '/fixtures/user');
++        res.render(path.join(__dirname, 'fixtures', 'user'))
+       });
+ 
+       request(app)
+@@ -51,7 +52,7 @@ describe('res', function(){
+     it('should expose app.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+ 
+       app.use(function(req, res){
+@@ -66,7 +67,7 @@ describe('res', function(){
+     it('should expose app.locals with `name` property', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.name = 'tobi';
+ 
+       app.use(function(req, res){
+@@ -81,7 +82,7 @@ describe('res', function(){
+     it('should support index.<engine>', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.set('view engine', 'tmpl');
+ 
+       app.use(function(req, res){
+@@ -97,7 +98,7 @@ describe('res', function(){
+       it('should next(err)', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+ 
+         app.use(function(req, res){
+           res.render('user.tmpl');
+@@ -118,7 +119,7 @@ describe('res', function(){
+         var app = createApp();
+ 
+         app.set('view engine', 'tmpl');
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+ 
+         app.use(function(req, res){
+           res.render('email');
+@@ -134,7 +135,7 @@ describe('res', function(){
+       it('should lookup the file in the path', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures/default_layout');
++        app.set('views', path.join(__dirname, 'fixtures', 'default_layout'))
+ 
+         app.use(function(req, res){
+           res.render('user.tmpl', { user: { name: 'tobi' } });
+@@ -148,7 +149,10 @@ describe('res', function(){
+       describe('when array of paths', function(){
+         it('should lookup the file in the path', function(done){
+           var app = createApp();
+-          var views = [__dirname + '/fixtures/local_layout', __dirname + '/fixtures/default_layout'];
++          var views = [
++            path.join(__dirname, 'fixtures', 'local_layout'),
++            path.join(__dirname, 'fixtures', 'default_layout')
++          ]
+ 
+           app.set('views', views);
+ 
+@@ -163,7 +167,10 @@ describe('res', function(){
+ 
+         it('should lookup in later paths until found', function(done){
+           var app = createApp();
+-          var views = [__dirname + '/fixtures/local_layout', __dirname + '/fixtures/default_layout'];
++          var views = [
++            path.join(__dirname, 'fixtures', 'local_layout'),
++            path.join(__dirname, 'fixtures', 'default_layout')
++          ]
+ 
+           app.set('views', views);
+ 
+@@ -183,7 +190,7 @@ describe('res', function(){
+     it('should render the template', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+ 
+       var user = { name: 'tobi' };
+ 
+@@ -199,7 +206,7 @@ describe('res', function(){
+     it('should expose app.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+ 
+       app.use(function(req, res){
+@@ -214,7 +221,7 @@ describe('res', function(){
+     it('should expose res.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+ 
+       app.use(function(req, res){
+         res.locals.user = { name: 'tobi' };
+@@ -229,7 +236,7 @@ describe('res', function(){
+     it('should give precedence to res.locals over app.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+ 
+       app.use(function(req, res){
+@@ -245,7 +252,7 @@ describe('res', function(){
+     it('should give precedence to res.render() locals over res.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       var jane = { name: 'jane' };
+ 
+       app.use(function(req, res){
+@@ -261,7 +268,7 @@ describe('res', function(){
+     it('should give precedence to res.render() locals over app.locals', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+       app.locals.user = { name: 'tobi' };
+       var jane = { name: 'jane' };
+ 
+@@ -279,7 +286,7 @@ describe('res', function(){
+     it('should pass the resulting string', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+ 
+       app.use(function(req, res){
+         var tobi = { name: 'tobi' };
+@@ -299,7 +306,7 @@ describe('res', function(){
+     it('should pass the resulting string', function(done){
+       var app = createApp();
+ 
+-      app.set('views', __dirname + '/fixtures');
++      app.set('views', path.join(__dirname, 'fixtures'))
+ 
+       app.use(function(req, res){
+         res.locals.user = { name: 'tobi' };
+@@ -318,7 +325,7 @@ describe('res', function(){
+       it('should pass it to the callback', function(done){
+         var app = createApp();
+ 
+-        app.set('views', __dirname + '/fixtures');
++        app.set('views', path.join(__dirname, 'fixtures'))
+ 
+         app.use(function(req, res){
+           res.render('user.tmpl', function (err) {
+diff --git a/test/res.send.js b/test/res.send.js
+index 23aa5f7911..f2e7d759c1 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -3,8 +3,23 @@ var assert = require('assert');
+ var express = require('..');
+ var methods = require('methods');
+ var request = require('supertest');
++var utils = require('./support/utils');
+ 
+ describe('res', function(){
++  describe('.send()', function(){
++    it('should set body to ""', function(done){
++      var app = express();
++
++      app.use(function(req, res){
++        res.send();
++      });
++
++      request(app)
++      .get('/')
++      .expect(200, '', done);
++    })
++  })
++
+   describe('.send(null)', function(){
+     it('should set body to ""', function(done){
+       var app = express();
+@@ -104,12 +119,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.have.property('content-type', 'text/html; charset=utf-8');
+-        res.text.should.equal('<p>hey</p>');
+-        res.statusCode.should.equal(200);
+-        done();
+-      })
++      .expect('Content-Type', 'text/html; charset=utf-8')
++      .expect(200, '<p>hey</p>', done);
+     })
+ 
+     it('should set ETag', function (done) {
+@@ -122,7 +133,7 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
++      .expect('ETag', 'W/"3e7-qPnkJ3CVdVhFJQvUBfF10TmVA7g"')
+       .expect(200, done);
+     })
+ 
+@@ -176,12 +187,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.have.property('content-type', 'application/octet-stream');
+-        res.text.should.equal('hello');
+-        res.statusCode.should.equal(200);
+-        done();
+-      })
++      .expect('Content-Type', 'application/octet-stream')
++      .expect(200, 'hello', done);
+     })
+ 
+     it('should set ETag', function (done) {
+@@ -194,7 +201,7 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
++      .expect('ETag', 'W/"3e7-qPnkJ3CVdVhFJQvUBfF10TmVA7g"')
+       .expect(200, done);
+     })
+ 
+@@ -207,12 +214,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.have.property('content-type', 'text/plain; charset=utf-8');
+-        res.text.should.equal('hey');
+-        res.statusCode.should.equal(200);
+-        done();
+-      })
++      .expect('Content-Type', 'text/plain; charset=utf-8')
++      .expect(200, 'hey', done);
+     })
+   })
+ 
+@@ -255,13 +258,10 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.not.have.property('content-type');
+-        res.headers.should.not.have.property('content-length');
+-        res.headers.should.not.have.property('transfer-encoding');
+-        res.text.should.equal('');
+-        done();
+-      })
++      .expect(utils.shouldNotHaveHeader('Content-Type'))
++      .expect(utils.shouldNotHaveHeader('Content-Length'))
++      .expect(utils.shouldNotHaveHeader('Transfer-Encoding'))
++      .expect(204, '', done);
+     })
+   })
+ 
+@@ -275,13 +275,10 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .end(function(err, res){
+-        res.headers.should.not.have.property('content-type');
+-        res.headers.should.not.have.property('content-length');
+-        res.headers.should.not.have.property('transfer-encoding');
+-        res.text.should.equal('');
+-        done();
+-      })
++      .expect(utils.shouldNotHaveHeader('Content-Type'))
++      .expect(utils.shouldNotHaveHeader('Content-Length'))
++      .expect(utils.shouldNotHaveHeader('Transfer-Encoding'))
++      .expect(304, '', done);
+     })
+   })
+ 
+@@ -358,7 +355,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"c-ZUfd0NJ26qwjlKF4r8qb2g"')
++        .expect('ETag', 'W/"c-IgR/L5SF7CJQff4wxKGF/vfPuZ0"')
+         .expect(200, done);
+       });
+ 
+@@ -374,7 +371,7 @@ describe('res', function(){
+ 
+           request(app)
+           [method]('/')
+-          .expect('ETag', 'W/"c-ZUfd0NJ26qwjlKF4r8qb2g"')
++          .expect('ETag', 'W/"c-IgR/L5SF7CJQff4wxKGF/vfPuZ0"')
+           .expect(200, done);
+         })
+       });
+@@ -390,7 +387,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"0-1B2M2Y8AsgTpgAmY7PhCfg"')
++        .expect('ETag', 'W/"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"')
+         .expect(200, done);
+       })
+ 
+@@ -406,7 +403,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
++        .expect('ETag', 'W/"3e7-qPnkJ3CVdVhFJQvUBfF10TmVA7g"')
+         .expect(200, done);
+       });
+ 
+@@ -437,7 +434,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect(shouldNotHaveHeader('ETag'))
++        .expect(utils.shouldNotHaveHeader('ETag'))
+         .expect(200, done);
+       })
+     });
+@@ -455,7 +452,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect(shouldNotHaveHeader('ETag'))
++        .expect(utils.shouldNotHaveHeader('ETag'))
+         .expect(200, done);
+       });
+ 
+@@ -488,7 +485,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', '"d-Otu60XkfuuPskIiUxJY4cA"')
++        .expect('ETag', '"d-HwnTDHB9U/PRbFMN1z1wps51lqk"')
+         .expect(200, done);
+       })
+     })
+@@ -505,7 +502,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"d-Otu60XkfuuPskIiUxJY4cA"')
++        .expect('ETag', 'W/"d-HwnTDHB9U/PRbFMN1z1wps51lqk"')
+         .expect(200, done)
+       })
+     })
+@@ -545,15 +542,9 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect(shouldNotHaveHeader('ETag'))
++        .expect(utils.shouldNotHaveHeader('ETag'))
+         .expect(200, done);
+       })
+     })
+   })
+ })
+-
+-function shouldNotHaveHeader(header) {
+-  return function (res) {
+-    assert.ok(!(header.toLowerCase() in res.headers), 'should not have header ' + header)
+-  }
+-}
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index f4868b3976..be3a23ebc2 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -7,6 +7,7 @@ var onFinished = require('on-finished');
+ var path = require('path');
+ var should = require('should');
+ var fixtures = path.join(__dirname, 'fixtures');
++var utils = require('./support/utils');
+ 
+ describe('res', function(){
+   describe('.sendFile(path)', function () {
+@@ -115,6 +116,26 @@ describe('res', function(){
+       test.expect(200, cb);
+     })
+ 
++    describe('with "cacheControl" option', function () {
++      it('should enable cacheControl by default', function (done) {
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'))
++
++        request(app)
++        .get('/')
++        .expect('Cache-Control', 'public, max-age=0')
++        .expect(200, done)
++      })
++
++      it('should accept cacheControl option', function (done) {
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'), { cacheControl: false })
++
++        request(app)
++        .get('/')
++        .expect(utils.shouldNotHaveHeader('Cache-Control'))
++        .expect(200, done)
++      })
++    })
++
+     describe('with "dotfiles" option', function () {
+       it('should not serve dotfiles by default', function (done) {
+         var app = createApp(path.resolve(__dirname, 'fixtures/.name'));
+@@ -136,8 +157,8 @@ describe('res', function(){
+     describe('with "headers" option', function () {
+       it('should accept headers option', function (done) {
+         var headers = {
+-           'x-success': 'sent',
+-           'x-other': 'done'
++          'x-success': 'sent',
++          'x-other': 'done'
+         };
+         var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'), { headers: headers });
+ 
+@@ -154,11 +175,8 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect(404, function (err, res) {
+-          if (err) return done(err);
+-          res.headers.should.not.have.property('x-success');
+-          done();
+-        });
++        .expect(utils.shouldNotHaveHeader('X-Success'))
++        .expect(404, done);
+       });
+     });
+ 
+@@ -288,6 +306,14 @@ describe('res', function(){
+     })
+   })
+ 
++  describe('.sendFile(path, options)', function () {
++    it('should pass options to send module', function (done) {
++      request(createApp(path.resolve(fixtures, 'name.txt'), { start: 0, end: 1 }))
++      .get('/')
++      .expect(200, 'to', done)
++    })
++  })
++
+   describe('.sendfile(path, fn)', function(){
+     it('should invoke the callback when complete', function(done){
+       var app = express();
+@@ -484,8 +510,8 @@ describe('res', function(){
+     it('should accept headers option', function(done){
+       var app = express();
+       var headers = {
+-         'x-success': 'sent',
+-         'x-other': 'done'
++        'x-success': 'sent',
++        'x-other': 'done'
+       };
+ 
+       app.use(function(req, res){
+@@ -509,11 +535,8 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect(404, function (err, res) {
+-        if (err) return done(err);
+-        res.headers.should.not.have.property('x-success');
+-        done();
+-      });
++        .expect(utils.shouldNotHaveHeader('X-Success'))
++        .expect(404, done);
+     })
+ 
+     it('should transfer a file', function (done) {
+@@ -590,16 +613,13 @@ describe('res', function(){
+         var app = express();
+ 
+         app.use(function(req, res){
+-          res.sendfile(__dirname + '/fixtures/user.html');
++          res.sendfile(path.join(__dirname, '/fixtures/user.html'))
+         });
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          res.text.should.equal('<p>{{user.name}}</p>');
+-          res.headers.should.have.property('content-type', 'text/html; charset=UTF-8');
+-          done();
+-        });
++        .expect('Content-Type', 'text/html; charset=UTF-8')
++        .expect(200, '<p>{{user.name}}</p>', done);
+       })
+     })
+ 
+@@ -613,11 +633,8 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          res.text.should.equal('<p>{{user.name}}</p>');
+-          res.headers.should.have.property('content-type', 'text/html; charset=UTF-8');
+-          done();
+-        });
++        .expect('Content-Type', 'text/html; charset=UTF-8')
++        .expect(200, '<p>{{user.name}}</p>', done);
+       })
+ 
+       it('should serve relative to "root"', function(done){
+@@ -629,11 +646,8 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          res.text.should.equal('<p>{{user.name}}</p>');
+-          res.headers.should.have.property('content-type', 'text/html; charset=UTF-8');
+-          done();
+-        });
++        .expect('Content-Type', 'text/html; charset=UTF-8')
++        .expect(200, '<p>{{user.name}}</p>', done);
+       })
+ 
+       it('should consider ../ malicious when "root" is not set', function(done){
+@@ -704,7 +718,7 @@ describe('res', function(){
+             , calls = 0;
+ 
+           app.use(function(req, res){
+-            res.sendfile(__dirname + '/fixtures/name.txt');
++            res.sendfile(path.join(__dirname, '/fixtures/name.txt'))
+           });
+ 
+           request(app)
+@@ -716,6 +730,20 @@ describe('res', function(){
+   })
+ })
+ 
++describe('.sendfile(path, options)', function () {
++  it('should pass options to send module', function (done) {
++    var app = express()
++
++    app.use(function (req, res) {
++      res.sendfile(path.resolve(fixtures, 'name.txt'), { start: 0, end: 1 })
++    })
++
++    request(app)
++      .get('/')
++      .expect(200, 'to', done)
++  })
++})
++
+ function createApp(path, options, fn) {
+   var app = express();
+ 
+diff --git a/test/res.vary.js b/test/res.vary.js
+index 13c3af2bb7..9a2edd24c0 100644
+--- a/test/res.vary.js
++++ b/test/res.vary.js
+@@ -2,6 +2,7 @@
+ var assert = require('assert');
+ var express = require('..');
+ var request = require('supertest');
++var utils = require('./support/utils');
+ 
+ describe('res.vary()', function(){
+   describe('with no arguments', function(){
+@@ -15,7 +16,7 @@ describe('res.vary()', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect(shouldNotHaveHeader('Vary'))
++      .expect(utils.shouldNotHaveHeader('Vary'))
+       .expect(200, done);
+     })
+   })
+@@ -31,7 +32,7 @@ describe('res.vary()', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect(shouldNotHaveHeader('Vary'))
++      .expect(utils.shouldNotHaveHeader('Vary'))
+       .expect(200, done);
+     })
+   })
+@@ -88,9 +89,3 @@ describe('res.vary()', function(){
+     })
+   })
+ })
+-
+-function shouldNotHaveHeader(header) {
+-  return function (res) {
+-    assert.ok(!(header.toLowerCase() in res.headers), 'should not have header ' + header);
+-  };
+-}
+diff --git a/test/support/utils.js b/test/support/utils.js
+new file mode 100644
+index 0000000000..ec6b801bc0
+--- /dev/null
++++ b/test/support/utils.js
+@@ -0,0 +1,24 @@
++
++/**
++ * Module dependencies.
++ * @private
++ */
++var assert = require('assert');
++
++/**
++ * Module exports.
++ * @public
++ */
++exports.shouldNotHaveHeader = shouldNotHaveHeader;
++
++/**
++ * Assert that a supertest response does not have a header.
++ *
++ * @param {string} header Header name to check
++ * @returns {function}
++ */
++function shouldNotHaveHeader(header) {
++  return function (res) {
++    assert.ok(!(header.toLowerCase() in res.headers), 'should not have header ' + header);
++  };
++}
+diff --git a/test/utils.js b/test/utils.js
+index b7e8b52009..c49019fe12 100644
+--- a/test/utils.js
++++ b/test/utils.js
+@@ -5,23 +5,23 @@ var utils = require('../lib/utils');
+ describe('utils.etag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.etag('express!')
+-    .should.eql('"8-zZdv4imtWD49AHEviejT6A"')
++    .should.eql('"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.etag('express❤', 'utf8')
+-    .should.eql('"a-fsFba4IxwQS6h6Umb+FNxw"')
++    .should.eql('"a-JBiXf7GyzxwcrxY4hVXUwa7tmks"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.etag(buf)
+-    .should.eql('"8-zZdv4imtWD49AHEviejT6A"');
++    .should.eql('"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support empty string', function(){
+     utils.etag('')
+-    .should.eql('"0-1B2M2Y8AsgTpgAmY7PhCfg"');
++    .should.eql('"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"')
+   })
+ })
+ 
+@@ -50,29 +50,30 @@ describe('utils.setCharset(type, charset)', function () {
+ describe('utils.wetag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.wetag('express!')
+-    .should.eql('W/"8-zZdv4imtWD49AHEviejT6A"')
++    .should.eql('W/"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.wetag('express❤', 'utf8')
+-    .should.eql('W/"a-fsFba4IxwQS6h6Umb+FNxw"')
++    .should.eql('W/"a-JBiXf7GyzxwcrxY4hVXUwa7tmks"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.wetag(buf)
+-    .should.eql('W/"8-zZdv4imtWD49AHEviejT6A"');
++    .should.eql('W/"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support empty string', function(){
+     utils.wetag('')
+-    .should.eql('W/"0-1B2M2Y8AsgTpgAmY7PhCfg"');
++    .should.eql('W/"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"')
+   })
+ })
+ 
+ describe('utils.isAbsolute()', function(){
+   it('should support windows', function(){
+     assert(utils.isAbsolute('c:\\'));
++    assert(utils.isAbsolute('c:/'));
+     assert(!utils.isAbsolute(':\\'));
+   })
+ 

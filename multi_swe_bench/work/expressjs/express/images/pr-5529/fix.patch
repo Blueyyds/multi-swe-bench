@@ -1,0 +1,2517 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 80248fab69..09004fec75 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -1,8 +1,23 @@
+ name: ci
+ 
+ on:
+-- pull_request
+-- push
++  push:
++    branches:
++      - master
++      - develop
++      - '4.x'
++      - '5.x'
++    paths-ignore:
++      - '*.md'
++  pull_request:
++    paths-ignore:
++      - '*.md'
++
++# Cancel in progress workflows
++# in the scenario where we already had a run going for that PR/branch/tag but then triggered a new run
++concurrency:
++  group: "${{ github.workflow }} ✨ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
++  cancel-in-progress: true
+ 
+ jobs:
+   test:
+@@ -27,71 +42,105 @@ jobs:
+         - Node.js 12.x
+         - Node.js 13.x
+         - Node.js 14.x
++        - Node.js 15.x
++        - Node.js 16.x
++        - Node.js 17.x
++        - Node.js 18.x
++        - Node.js 19.x
++        - Node.js 20.x
++        - Node.js 21.x
++        - Node.js 22.x
+ 
+         include:
+         - name: Node.js 0.10
+           node-version: "0.10"
+-          npm-i: mocha@3.5.3 supertest@2.0.0
++          npm-i: mocha@3.5.3 nyc@10.3.2 supertest@2.0.0
+ 
+         - name: Node.js 0.12
+           node-version: "0.12"
+-          npm-i: mocha@3.5.3 supertest@2.0.0
++          npm-i: mocha@3.5.3 nyc@10.3.2 supertest@2.0.0
+ 
+         - name: io.js 1.x
+-          node-version: "1.8"
+-          npm-i: mocha@3.5.3 supertest@2.0.0
++          node-version: "1"
++          npm-i: mocha@3.5.3 nyc@10.3.2 supertest@2.0.0
+ 
+         - name: io.js 2.x
+-          node-version: "2.5"
+-          npm-i: mocha@3.5.3 supertest@2.0.0
++          node-version: "2"
++          npm-i: mocha@3.5.3 nyc@10.3.2 supertest@2.0.0
+ 
+         - name: io.js 3.x
+-          node-version: "3.3"
+-          npm-i: mocha@3.5.3 supertest@2.0.0
++          node-version: "3"
++          npm-i: mocha@3.5.3 nyc@10.3.2 supertest@2.0.0
+ 
+         - name: Node.js 4.x
+-          node-version: "4.9"
+-          npm-i: mocha@5.2.0 supertest@3.4.2
++          node-version: "4"
++          npm-i: mocha@5.2.0 nyc@11.9.0 supertest@3.4.2
+ 
+         - name: Node.js 5.x
+-          node-version: "5.12"
+-          npm-i: mocha@5.2.0 supertest@3.4.2
++          node-version: "5"
++          npm-i: mocha@5.2.0 nyc@11.9.0 supertest@3.4.2
+ 
+         - name: Node.js 6.x
+-          node-version: "6.17"
+-          npm-i: mocha@6.2.2
++          node-version: "6"
++          npm-i: mocha@6.2.2 nyc@14.1.1 supertest@3.4.2
+ 
+         - name: Node.js 7.x
+-          node-version: "7.10"
+-          npm-i: mocha@6.2.2
++          node-version: "7"
++          npm-i: mocha@6.2.2 nyc@14.1.1 supertest@6.1.6
+ 
+         - name: Node.js 8.x
+-          node-version: "8.17"
+-          npm-i: mocha@7.2.0
++          node-version: "8"
++          npm-i: mocha@7.2.0 nyc@14.1.1
+ 
+         - name: Node.js 9.x
+-          node-version: "9.11"
+-          npm-i: mocha@7.2.0
++          node-version: "9"
++          npm-i: mocha@7.2.0 nyc@14.1.1
+ 
+         - name: Node.js 10.x
+-          node-version: "10.24"
++          node-version: "10"
+           npm-i: mocha@8.4.0
+ 
+         - name: Node.js 11.x
+-          node-version: "11.15"
++          node-version: "11"
+           npm-i: mocha@8.4.0
+ 
+         - name: Node.js 12.x
+-          node-version: "12.22"
++          node-version: "12"
++          npm-i: mocha@9.2.2
+ 
+         - name: Node.js 13.x
+-          node-version: "13.14"
++          node-version: "13"
++          npm-i: mocha@9.2.2
+ 
+         - name: Node.js 14.x
+-          node-version: "14.18"
++          node-version: "14"
++
++        - name: Node.js 15.x
++          node-version: "15"
++
++        - name: Node.js 16.x
++          node-version: "16"
++
++        - name: Node.js 17.x
++          node-version: "17"
++
++        - name: Node.js 18.x
++          node-version: "18"
++
++        - name: Node.js 19.x
++          node-version: "19"
++
++        - name: Node.js 20.x
++          node-version: "20"
++
++        - name: Node.js 21.x
++          node-version: "21"
++
++        - name: Node.js 22.x
++          node-version: "22"
+ 
+     steps:
+-    - uses: actions/checkout@v2
++    - uses: actions/checkout@v4
+ 
+     - name: Install Node.js ${{ matrix.node-version }}
+       shell: bash -eo pipefail -l {0}
+@@ -99,11 +148,6 @@ jobs:
+         nvm install --default ${{ matrix.node-version }}
+         dirname "$(nvm which ${{ matrix.node-version }})" >> "$GITHUB_PATH"
+ 
+-    - name: Configure npm
+-      run: |
+-        npm config set loglevel error
+-        npm config set shrinkwrap false
+-
+     - name: Install npm module(s) ${{ matrix.npm-i }}
+       run: npm install --save-dev ${{ matrix.npm-i }}
+       if: matrix.npm-i != ''
+@@ -115,8 +159,8 @@ jobs:
+       shell: bash
+       run: |
+         # eslint for linting
+-        # - remove on Node.js < 10
+-        if [[ "$(cut -d. -f1 <<< "${{ matrix.node-version }}")" -lt 10 ]]; then
++        # - remove on Node.js < 12
++        if [[ "$(cut -d. -f1 <<< "${{ matrix.node-version }}")" -lt 12 ]]; then
+           node -pe 'Object.keys(require("./package").devDependencies).join("\n")' | \
+             grep -E '^eslint(-|$)' | \
+             sort -r | \
+@@ -133,28 +177,52 @@ jobs:
+         echo "node@$(node -v)"
+         echo "npm@$(npm -v)"
+         npm -s ls ||:
++        (npm -s ls --depth=0 ||:) | awk -F'[ @]' 'NR>1 && $2 { print $2 "=" $3 }' >> "$GITHUB_OUTPUT"
+ 
+     - name: Run tests
+       shell: bash
+-      run: npm run test-ci
++      run: |
++        npm run test-ci
++        cp coverage/lcov.info "coverage/${{ matrix.name }}.lcov"
+ 
+     - name: Lint code
+       if: steps.list_env.outputs.eslint != ''
+       run: npm run lint
+ 
+     - name: Collect code coverage
+-      uses: coverallsapp/github-action@master
++      run: |
++        mv ./coverage "./${{ matrix.name }}"
++        mkdir ./coverage
++        mv "./${{ matrix.name }}" "./coverage/${{ matrix.name }}"
++
++    - name: Upload code coverage
++      uses: actions/upload-artifact@v3
+       with:
+-        github-token: ${{ secrets.GITHUB_TOKEN }}
+-        flag-name: run-${{ matrix.test_number }}
+-        parallel: true
++        name: coverage
++        path: ./coverage
++        retention-days: 1
+ 
+   coverage:
+     needs: test
+     runs-on: ubuntu-latest
+     steps:
+-    - name: Upload code coverage
++    - uses: actions/checkout@v4
++
++    - name: Install lcov
++      shell: bash
++      run: sudo apt-get -y install lcov
++
++    - name: Collect coverage reports
++      uses: actions/download-artifact@v3
++      with:
++        name: coverage
++        path: ./coverage
++
++    - name: Merge coverage reports
++      shell: bash
++      run: find ./coverage -name lcov.info -exec printf '-a %q\n' {} \; | xargs lcov -o ./coverage/lcov.info
++
++    - name: Upload coverage report
+       uses: coverallsapp/github-action@master
+       with:
+-        github-token: ${{ secrets.github_token }}
+-        parallel-finished: true
++        github-token: ${{ secrets.GITHUB_TOKEN }}
+diff --git a/.github/workflows/codeql.yml b/.github/workflows/codeql.yml
+new file mode 100644
+index 0000000000..db4e01aff5
+--- /dev/null
++++ b/.github/workflows/codeql.yml
+@@ -0,0 +1,66 @@
++# For most projects, this workflow file will not need changing; you simply need
++# to commit it to your repository.
++#
++# You may wish to alter this file to override the set of languages analyzed,
++# or to provide custom queries or build logic.
++#
++# ******** NOTE ********
++# We have attempted to detect the languages in your repository. Please check
++# the `language` matrix defined below to confirm you have the correct set of
++# supported CodeQL languages.
++#
++name: "CodeQL"
++
++on:
++  push:
++    branches: ["master"]
++  pull_request:
++    # The branches below must be a subset of the branches above
++    branches: ["master"]
++  schedule:
++    - cron: "0 0 * * 1"
++
++permissions:
++  contents: read
++
++jobs:
++  analyze:
++    name: Analyze
++    runs-on: ubuntu-latest
++    permissions:
++      actions: read
++      contents: read
++      security-events: write
++
++    steps:
++      - name: Checkout repository
++        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
++
++      # Initializes the CodeQL tools for scanning.
++      - name: Initialize CodeQL
++        uses: github/codeql-action/init@3ab4101902695724f9365a384f86c1074d94e18c # v3.24.7
++        with:
++          languages: javascript
++          # If you wish to specify custom queries, you can do so here or in a config file.
++          # By default, queries listed here will override any specified in a config file.
++          # Prefix the list here with "+" to use these queries and those in the config file.
++
++      # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
++      # If this step fails, then you should remove it and run the build manually (see below)
++      # - name: Autobuild
++      #   uses: github/codeql-action/autobuild@3ab4101902695724f9365a384f86c1074d94e18c # v3.24.7
++
++      # ℹ️ Command-line programs to run using the OS shell.
++      # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
++
++      #   If the Autobuild fails above, remove it and uncomment the following three lines.
++      #   modify them (or add more) to build your code if your project, please refer to the EXAMPLE below for guidance.
++
++      # - run: |
++      #   echo "Run, Build Application using script"
++      #   ./location_of_script_within_repo/buildscript.sh
++
++      - name: Perform CodeQL Analysis
++        uses: github/codeql-action/analyze@3ab4101902695724f9365a384f86c1074d94e18c # v3.24.7
++        with:
++          category: "/language:javascript"
+diff --git a/.gitignore b/.gitignore
+index 5fee6a2dc9..3a673d9cc0 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,27 +1,15 @@
+-# OS X
+-.DS_Store*
+-Icon?
+-._*
+-
+-# Windows
+-Thumbs.db
+-ehthumbs.db
+-Desktop.ini
+-
+-# Linux
+-.directory
+-*~
+-
+-
+ # npm
+ node_modules
+ package-lock.json
+ *.log
+ *.gz
+ 
+-
+ # Coveralls
++.nyc_output
+ coverage
+ 
+ # Benchmarking
+ benchmarks/graphs
++
++# ignore additional files using core.excludesFile
++# https://git-scm.com/docs/gitignore
+diff --git a/.npmrc b/.npmrc
+new file mode 100644
+index 0000000000..43c97e719a
+--- /dev/null
++++ b/.npmrc
+@@ -0,0 +1,1 @@
++package-lock=false
+diff --git a/Charter.md b/Charter.md
+index f9647cb734..a906e52909 100644
+--- a/Charter.md
++++ b/Charter.md
+@@ -9,7 +9,7 @@ also easily visible to outsiders.
+ 
+ ## Section 1: Scope
+ 
+-Express is a http web server framework with a simple and expressive API
++Express is a HTTP web server framework with a simple and expressive API
+ which is highly aligned with Node.js core. We aim to be the best in
+ class for writing performant, spec compliant, and powerful web servers
+ in Node.js. As one of the oldest and most popular web frameworks in
+@@ -24,7 +24,7 @@ Express is made of many modules spread between three GitHub Orgs:
+   libraries
+ - [pillarjs](http://github.com/pillarjs/): Components which make up
+   Express but can also be used for other web frameworks
+-- [jshttp](http://github.com/jshttp/): Low level http libraries
++- [jshttp](http://github.com/jshttp/): Low level HTTP libraries
+ 
+ ### 1.2: Out-of-Scope
+ 
+diff --git a/Code-Of-Conduct.md b/Code-Of-Conduct.md
+index bbb8996a65..ca4c6b3146 100644
+--- a/Code-Of-Conduct.md
++++ b/Code-Of-Conduct.md
+@@ -127,7 +127,7 @@ project community.
+ 
+ ## Attribution
+ 
+-This Code of Conduct is adapted from the [Contributor Covenant, version 2.0](cc-20-doc).
++This Code of Conduct is adapted from the [Contributor Covenant, version 2.0][cc-20-doc].
+ 
+ Community Impact Guidelines were inspired by
+ [Mozilla's code of conduct enforcement ladder](https://github.com/mozilla/diversity).
+diff --git a/Contributing.md b/Contributing.md
+index 485dee597e..1654cee02f 100644
+--- a/Contributing.md
++++ b/Contributing.md
+@@ -12,6 +12,7 @@ contributors can be involved in decision making.
+ 
+ * A **Contributor** is any individual creating or commenting on an issue or pull request.
+ * A **Committer** is a subset of contributors who have been given write access to the repository.
++* A **Project Captain** is the lead maintainer of a repository.
+ * A **TC (Technical Committee)** is a group of committers representing the required technical
+ expertise to resolve rare disputes.
+ * A **Triager** is a subset of contributors who have been given triage access to the repository.
+@@ -62,29 +63,14 @@ compromise among committers be the default resolution mechanism.
+ Anyone can become a triager! Read more about the process of being a triager in
+ [the triage process document](Triager-Guide.md).
+ 
+-[Open an issue in `expressjs/express` repo](https://github.com/expressjs/express/issues/new)
+-to request the triage role. State that you have read and agree to the
+-[Code of Conduct](Code-Of-Conduct.md) and details of the role.
++Currently, any existing [organization member](https://github.com/orgs/expressjs/people) can nominate
++a new triager. If you are interested in becoming a triager, our best advice is to actively participate
++in the community by helping triaging issues and pull requests. As well we recommend
++to engage in other community activities like attending the TC meetings, and participating in the Slack
++discussions.
+ 
+-Here is an example issue content you can copy and paste:
+-
+-```
+-Title: Request triager role for <your GitHub username>
+-
+-I have read and understood the project's Code of Conduct.
+-I also have read and understood the process and best practices around Express triaging.
+-
+-I request for a triager role for the following GitHub organizations:
+-
+-jshttp
+-pillarjs
+-express
+-```
+-
+-Once you have opened your issue, a member of the TC will add you to the `triage` team in
+-the organizations requested. They will then close the issue.
+-
+-Happy triaging!
++You can also reach out to any of the [organization members](https://github.com/orgs/expressjs/people)
++if you have questions or need guidance.
+ 
+ ## Becoming a Committer
+ 
+@@ -102,12 +88,122 @@ If a consensus cannot be reached that has no objections then a majority wins vot
+ is called. It is also expected that the majority of decisions made by the TC are via
+ a consensus seeking process and that voting is only used as a last-resort.
+ 
+-Resolution may involve returning the issue to committers with suggestions on how to
+-move forward towards a consensus. It is not expected that a meeting of the TC
++Resolution may involve returning the issue to project captains with suggestions on
++how to move forward towards a consensus. It is not expected that a meeting of the TC
+ will resolve all issues on its agenda during that meeting and may prefer to continue
+-the discussion happening among the committers.
++the discussion happening among the project captains.
+ 
+-Members can be added to the TC at any time. Any committer can nominate another committer
++Members can be added to the TC at any time. Any TC member can nominate another committer
+ to the TC and the TC uses its standard consensus seeking process to evaluate whether or
+-not to add this new member. Members who do not participate consistently at the level of
+-a majority of the other members are expected to resign.
++not to add this new member. The TC will consist of a minimum of 3 active members and a
++maximum of 10. If the TC should drop below 5 members the active TC members should nominate
++someone new. If a TC member is stepping down, they are encouraged (but not required) to
++nominate someone to take their place.
++
++TC members will be added as admin's on the Github orgs, npm orgs, and other resources as
++necessary to be effective in the role.
++
++To remain "active" a TC member should have participation within the last 12 months and miss
++no more than six consecutive TC meetings. Our goal is to increase participation, not punish
++people for any lack of participation, this guideline should be only be used as such
++(replace an inactive member with a new active one, for example). Members who do not meet this
++are expected to step down. If A TC member does not step down, an issue can be opened in the
++discussions repo to move them to inactive status. TC members who step down or are removed due
++to inactivity will be moved into inactive status.
++
++Inactive status members can become active members by self nomination if the TC is not already
++larger than the maximum of 10. They will also be given preference if, while at max size, an
++active member steps down.
++
++## Project Captains
++
++The Express TC can designate captains for individual projects/repos in the
++organizations. These captains are responsible for being the primary
++day-to-day maintainers of the repo on a technical and community front.
++Repo captains are empowered with repo ownership and package publication rights.
++When there are conflicts, especially on topics that effect the Express project
++at large, captains are responsible to raise it up to the TC and drive
++those conflicts to resolution. Captains are also responsible for making sure
++community members follow the community guidelines, maintaining the repo
++and the published package, as well as in providing user support.
++
++Like TC members, Repo captains are a subset of committers.
++
++To become a captain for a project the candidate is expected to participate in that
++project for at least 6 months as a committer prior to the request. They should have
++helped with code contributions as well as triaging issues. They are also required to
++have 2FA enabled on both their GitHub and npm accounts. Any TC member or existing
++captain on the repo can nominate another committer to the captain role, submit a PR to
++this doc, under `Current Project Captains` section (maintaining the sort order) with
++the project, their GitHub handle and npm username (if different). The PR will require
++at least 2 approvals from TC members and 2 weeks hold time to allow for comment and/or
++dissent.  When the PR is merged, a TC member will add them to the proper GitHub/npm groups.
++
++### Active Projects and Captains
++
++- `expressjs/badgeboard`: @wesleytodd
++- `expressjs/basic-auth-connect`: N/A
++- `expressjs/body-parser`: @wesleytodd, @jonchurch
++- `expressjs/compression`: N/A
++- `expressjs/connect-multiparty`: N/A
++- `expressjs/cookie-parser`: @wesleytodd, @UlisesGascon
++- `expressjs/cookie-session`: N/A
++- `expressjs/cors`: @jonchurch
++- `expressjs/discussions`: @wesleytodd
++- `expressjs/errorhandler`: N/A
++- `expressjs/express-paginate`: N/A
++- `expressjs/express`: @wesleytodd
++- `expressjs/expressjs.com`: @crandmck, @jonchurch
++- `expressjs/flash`: N/A
++- `expressjs/generator`: @wesleytodd
++- `expressjs/method-override`: N/A
++- `expressjs/morgan`: @jonchurch
++- `expressjs/multer`: @LinusU
++- `expressjs/response-time`: @blakeembrey
++- `expressjs/serve-favicon`: N/A
++- `expressjs/serve-index`: N/A
++- `expressjs/serve-static`: N/A
++- `expressjs/session`: N/A
++- `expressjs/statusboard`: @wesleytodd
++- `expressjs/timeout`: N/A
++- `expressjs/vhost`: N/A
++- `jshttp/accepts`: @blakeembrey
++- `jshttp/basic-auth`: @blakeembrey
++- `jshttp/compressible`: @blakeembrey
++- `jshttp/content-disposition`: @blakeembrey
++- `jshttp/content-type`: @blakeembrey
++- `jshttp/cookie`: @wesleytodd
++- `jshttp/etag`: @blakeembrey
++- `jshttp/forwarded`: @blakeembrey
++- `jshttp/fresh`: @blakeembrey
++- `jshttp/http-assert`: @wesleytodd, @jonchurch
++- `jshttp/http-errors`: @wesleytodd, @jonchurch
++- `jshttp/media-typer`: @blakeembrey
++- `jshttp/methods`: @blakeembrey
++- `jshttp/mime-db`: @blakeembrey, @UlisesGascon 
++- `jshttp/mime-types`: @blakeembrey, @UlisesGascon 
++- `jshttp/negotiator`: @blakeembrey
++- `jshttp/on-finished`: @wesleytodd
++- `jshttp/on-headers`: @blakeembrey
++- `jshttp/proxy-addr`: @wesleytodd
++- `jshttp/range-parser`: @blakeembrey
++- `jshttp/statuses`: @blakeembrey
++- `jshttp/type-is`: @blakeembrey
++- `jshttp/vary`: @blakeembrey
++- `pillarjs/cookies`: @blakeembrey
++- `pillarjs/csrf`: N/A
++- `pillarjs/encodeurl`: @blakeembrey
++- `pillarjs/finalhandler`: @wesleytodd
++- `pillarjs/hbs`: N/A
++- `pillarjs/multiparty`: @blakeembrey
++- `pillarjs/parseurl`: @blakeembrey
++- `pillarjs/path-to-regexp`: @blakeembrey
++- `pillarjs/request`: @wesleytodd
++- `pillarjs/resolve-path`: @blakeembrey
++- `pillarjs/router`: @blakeembrey
++- `pillarjs/send`: @blakeembrey
++- `pillarjs/understanding-csrf`: N/A
++
++### Current Initiative Captains
++
++- Triage team [ref](https://github.com/expressjs/discussions/issues/227): @UlisesGascon
+diff --git a/History.md b/History.md
+index 41cacce786..c02b24ffba 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,116 @@
++unreleased
++==========
++
++  * deps: encodeurl@~2.0.0
++    - Removes encoding of `\`, `|`, and `^` to align better with URL spec
++  * Deprecate passing `options.maxAge` and `options.expires` to `res.clearCookie`
++    - Will be ignored in v5, clearCookie will set a cookie with an expires in the past to instruct clients to delete the cookie
++
++4.19.2 / 2024-03-25
++==========
++
++  * Improved fix for open redirect allow list bypass
++
++4.19.1 / 2024-03-20
++==========
++
++  * Allow passing non-strings to res.location with new encoding handling checks
++
++4.19.0 / 2024-03-20
++==========
++
++  * Prevent open redirect allow list bypass due to encodeurl
++  * deps: cookie@0.6.0
++
++4.18.3 / 2024-02-29
++==========
++
++  * Fix routing requests without method
++  * deps: body-parser@1.20.2
++    - Fix strict json error message on Node.js 19+
++    - deps: content-type@~1.0.5
++    - deps: raw-body@2.5.2
++  * deps: cookie@0.6.0
++    - Add `partitioned` option
++
++4.18.2 / 2022-10-08
++===================
++
++  * Fix regression routing a large stack in a single route
++  * deps: body-parser@1.20.1
++    - deps: qs@6.11.0
++    - perf: remove unnecessary object clone
++  * deps: qs@6.11.0
++
++4.18.1 / 2022-04-29
++===================
++
++  * Fix hanging on large stack of sync routes
++
++4.18.0 / 2022-04-25
++===================
++
++  * Add "root" option to `res.download`
++  * Allow `options` without `filename` in `res.download`
++  * Deprecate string and non-integer arguments to `res.status`
++  * Fix behavior of `null`/`undefined` as `maxAge` in `res.cookie`
++  * Fix handling very large stacks of sync middleware
++  * Ignore `Object.prototype` values in settings through `app.set`/`app.get`
++  * Invoke `default` with same arguments as types in `res.format`
++  * Support proper 205 responses using `res.send`
++  * Use `http-errors` for `res.format` error
++  * deps: body-parser@1.20.0
++    - Fix error message for json parse whitespace in `strict`
++    - Fix internal error when inflated body exceeds limit
++    - Prevent loss of async hooks context
++    - Prevent hanging when request already read
++    - deps: depd@2.0.0
++    - deps: http-errors@2.0.0
++    - deps: on-finished@2.4.1
++    - deps: qs@6.10.3
++    - deps: raw-body@2.5.1
++  * deps: cookie@0.5.0
++    - Add `priority` option
++    - Fix `expires` option to reject invalid dates
++  * deps: depd@2.0.0
++    - Replace internal `eval` usage with `Function` constructor
++    - Use instance methods on `process` to check for listeners
++  * deps: finalhandler@1.2.0
++    - Remove set content headers that break response
++    - deps: on-finished@2.4.1
++    - deps: statuses@2.0.1
++  * deps: on-finished@2.4.1
++    - Prevent loss of async hooks context
++  * deps: qs@6.10.3
++  * deps: send@0.18.0
++    - Fix emitted 416 error missing headers property
++    - Limit the headers removed for 304 response
++    - deps: depd@2.0.0
++    - deps: destroy@1.2.0
++    - deps: http-errors@2.0.0
++    - deps: on-finished@2.4.1
++    - deps: statuses@2.0.1
++  * deps: serve-static@1.15.0
++    - deps: send@0.18.0
++  * deps: statuses@2.0.1
++    - Remove code 306
++    - Rename `425 Unordered Collection` to standard `425 Too Early`
++
++4.17.3 / 2022-02-16
++===================
++
++  * deps: accepts@~1.3.8
++    - deps: mime-types@~2.1.34
++    - deps: negotiator@0.6.3
++  * deps: body-parser@1.19.2
++    - deps: bytes@3.1.2
++    - deps: qs@6.9.7
++    - deps: raw-body@2.4.3
++  * deps: cookie@0.4.2
++  * deps: qs@6.9.7
++    * Fix handling of `__proto__` keys
++  * pref: remove unnecessary regexp for trust proxy
++
+ 4.17.2 / 2021-12-16
+ ===================
+ 
+@@ -2033,7 +2146,7 @@
+  * deps: connect@2.21.0
+    - deprecate `connect(middleware)` -- use `app.use(middleware)` instead
+    - deprecate `connect.createServer()` -- use `connect()` instead
+-   - fix `res.setHeader()` patch to work with with get -> append -> set pattern
++   - fix `res.setHeader()` patch to work with get -> append -> set pattern
+    - deps: compression@~1.0.8
+    - deps: errorhandler@~1.1.1
+    - deps: express-session@~1.5.0
+@@ -3244,8 +3357,8 @@ Shaw]
+   * Added node v0.1.97 compatibility
+   * Added support for deleting cookies via Request#cookie('key', null)
+   * Updated haml submodule
+-  * Fixed not-found page, now using using charset utf-8
+-  * Fixed show-exceptions page, now using using charset utf-8
++  * Fixed not-found page, now using charset utf-8
++  * Fixed show-exceptions page, now using charset utf-8
+   * Fixed view support due to fs.readFile Buffers
+   * Changed; mime.type() no longer accepts ".type" due to node extname() changes
+ 
+@@ -3280,7 +3393,7 @@ Shaw]
+ ==================
+ 
+   * Added charset support via Request#charset (automatically assigned to 'UTF-8' when respond()'s
+-    encoding is set to 'utf8' or 'utf-8'.
++    encoding is set to 'utf8' or 'utf-8').
+   * Added "encoding" option to Request#render(). Closes #299
+   * Added "dump exceptions" setting, which is enabled by default.
+   * Added simple ejs template engine support
+@@ -3319,7 +3432,7 @@ Shaw]
+   * Added [haml.js](http://github.com/visionmedia/haml.js) submodule; removed haml-js
+   * Added callback function support to Request#halt() as 3rd/4th arg
+   * Added preprocessing of route param wildcards using param(). Closes #251
+-  * Added view partial support (with collections etc)
++  * Added view partial support (with collections etc.)
+   * Fixed bug preventing falsey params (such as ?page=0). Closes #286
+   * Fixed setting of multiple cookies. Closes #199
+   * Changed; view naming convention is now NAME.TYPE.ENGINE (for example page.html.haml)
+diff --git a/Readme.md b/Readme.md
+index b60d588c41..365c7b6104 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -1,12 +1,27 @@
+ [![Express Logo](https://i.cloudup.com/zfY6lL7eFa-3000x3000.png)](http://expressjs.com/)
+ 
+-  Fast, unopinionated, minimalist web framework for [node](http://nodejs.org).
++**Fast, unopinionated, minimalist web framework for [Node.js](http://nodejs.org).**
+ 
+-  [![NPM Version][npm-image]][npm-url]
+-  [![NPM Downloads][downloads-image]][downloads-url]
+-  [![Linux Build][ci-image]][ci-url]
+-  [![Windows Build][appveyor-image]][appveyor-url]
+-  [![Test Coverage][coveralls-image]][coveralls-url]
++**This project has a [Code of Conduct][].**
++
++## Table of contents
++
++* [Installation](#Installation)
++* [Features](#Features)
++* [Docs & Community](#docs--community)
++* [Quick Start](#Quick-Start)
++* [Running Tests](#Running-Tests)
++* [Philosophy](#Philosophy)
++* [Examples](#Examples)
++* [Contributing to Express](#Contributing)
++* [TC (Technical Committee)](#tc-technical-committee)
++* [Triagers](#triagers)
++* [License](#license)
++
++
++[![NPM Version][npm-version-image]][npm-url]
++[![NPM Install Size][npm-install-size-image]][npm-install-size-url]
++[![NPM Downloads][npm-downloads-image]][npm-downloads-url]
+ 
+ ```js
+ const express = require('express')
+@@ -33,7 +48,7 @@ the [`npm init` command](https://docs.npmjs.com/creating-a-package-json-file).
+ Installation is done using the
+ [`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+ 
+-```bash
++```console
+ $ npm install express
+ ```
+ 
+@@ -53,7 +68,7 @@ for more information.
+ ## Docs & Community
+ 
+   * [Website and Documentation](http://expressjs.com/) - [[website repo](https://github.com/expressjs/expressjs.com)]
+-  * [#express](https://webchat.freenode.net/?channels=express) on freenode IRC
++  * [#express](https://web.libera.chat/#express) on [Libera Chat](https://libera.chat) IRC
+   * [GitHub Organization](https://github.com/expressjs) for Official Middleware & Modules
+   * Visit the [Wiki](https://github.com/expressjs/express/wiki)
+   * [Google Group](https://groups.google.com/group/express-js) for discussion
+@@ -61,35 +76,31 @@ for more information.
+ 
+ **PROTIP** Be sure to read [Migrating from 3.x to 4.x](https://github.com/expressjs/express/wiki/Migrating-from-3.x-to-4.x) as well as [New features in 4.x](https://github.com/expressjs/express/wiki/New-features-in-4.x).
+ 
+-### Security Issues
+-
+-If you discover a security vulnerability in Express, please see [Security Policies and Procedures](Security.md).
+-
+ ## Quick Start
+ 
+   The quickest way to get started with express is to utilize the executable [`express(1)`](https://github.com/expressjs/generator) to generate an application as shown below:
+ 
+   Install the executable. The executable's major version will match Express's:
+ 
+-```bash
++```console
+ $ npm install -g express-generator@4
+ ```
+ 
+   Create the app:
+ 
+-```bash
++```console
+ $ express /tmp/foo && cd /tmp/foo
+ ```
+ 
+   Install dependencies:
+ 
+-```bash
++```console
+ $ npm install
+ ```
+ 
+   Start the server:
+ 
+-```bash
++```console
+ $ npm start
+ ```
+ 
+@@ -109,50 +120,136 @@ $ npm start
+ 
+   To view the examples, clone the Express repo and install the dependencies:
+ 
+-```bash
+-$ git clone git://github.com/expressjs/express.git --depth 1
++```console
++$ git clone https://github.com/expressjs/express.git --depth 1
+ $ cd express
+ $ npm install
+ ```
+ 
+   Then run whichever example you want:
+ 
+-```bash
++```console
+ $ node examples/content-negotiation
+ ```
+ 
+-## Tests
++## Contributing
++
++  [![Linux Build][github-actions-ci-image]][github-actions-ci-url]
++  [![Windows Build][appveyor-image]][appveyor-url]
++  [![Test Coverage][coveralls-image]][coveralls-url]
++
++The Express.js project welcomes all constructive contributions. Contributions take many forms,
++from code for bug fixes and enhancements, to additions and fixes to documentation, additional
++tests, triaging incoming pull requests and issues, and more!
+ 
+-  To run the test suite, first install the dependencies, then run `npm test`:
++See the [Contributing Guide](Contributing.md) for more technical details on contributing.
+ 
+-```bash
++### Security Issues
++
++If you discover a security vulnerability in Express, please see [Security Policies and Procedures](Security.md).
++
++### Running Tests
++
++To run the test suite, first install the dependencies, then run `npm test`:
++
++```console
+ $ npm install
+ $ npm test
+ ```
+ 
+-## Contributing
+-
+-[Contributing Guide](Contributing.md)
+-
+ ## People
+ 
+ The original author of Express is [TJ Holowaychuk](https://github.com/tj)
+ 
+-The current lead maintainer is [Douglas Christopher Wilson](https://github.com/dougwilson)
+-
+ [List of all contributors](https://github.com/expressjs/express/graphs/contributors)
+ 
++### TC (Technical Committee)
++
++* [UlisesGascon](https://github.com/UlisesGascon) - **Ulises Gascón** (he/him)
++* [jonchurch](https://github.com/jonchurch) - **Jon Church**
++* [wesleytodd](https://github.com/wesleytodd) - **Wes Todd**
++* [LinusU](https://github.com/LinusU) - **Linus Unnebäck**
++* [blakeembrey](https://github.com/blakeembrey) - **Blake Embrey**
++* [sheplu](https://github.com/sheplu) - **Jean Burellier**
++* [crandmck](https://github.com/crandmck) - **Rand McKinney**
++* [ctcpip](https://github.com/ctcpip) - **Chris de Almeida**
++
++<details>
++<summary>TC emeriti members</summary>
++
++#### TC emeriti members
++
++  * [dougwilson](https://github.com/dougwilson) - **Douglas Wilson**
++  * [hacksparrow](https://github.com/hacksparrow) - **Hage Yaapa**
++  * [jonathanong](https://github.com/jonathanong) - **jongleberry**
++  * [niftylettuce](https://github.com/niftylettuce) - **niftylettuce**
++  * [troygoode](https://github.com/troygoode) - **Troy Goode**
++</details>
++
++
++### Triagers
++
++* [aravindvnair99](https://github.com/aravindvnair99) - **Aravind Nair**
++* [carpasse](https://github.com/carpasse) - **Carlos Serrano**
++* [CBID2](https://github.com/CBID2) - **Christine Belzie**
++* [enyoghasim](https://github.com/enyoghasim) - **David Enyoghasim**
++* [UlisesGascon](https://github.com/UlisesGascon) - **Ulises Gascón** (he/him)
++* [mertcanaltin](https://github.com/mertcanaltin) - **Mert Can Altin**
++* [0ss](https://github.com/0ss) - **Salah**
++* [import-brain](https://github.com/import-brain) - **Eric Cheng** (he/him)
++* [3imed-jaberi](https://github.com/3imed-jaberi) - **Imed Jaberi**
++* [dakshkhetan](https://github.com/dakshkhetan) - **Daksh Khetan** (he/him)
++* [lucasraziel](https://github.com/lucasraziel) - **Lucas Soares Do Rego**
++* [Sushmeet](https://github.com/Sushmeet) - **Sushmeet Sunger**
++
++<details>
++<summary>Triagers emeriti members</summary>
++
++#### Emeritus Triagers
++
++  * [AuggieH](https://github.com/AuggieH) - **Auggie Hudak**
++  * [G-Rath](https://github.com/G-Rath) - **Gareth Jones**
++  * [MohammadXroid](https://github.com/MohammadXroid) - **Mohammad Ayashi**
++  * [NawafSwe](https://github.com/NawafSwe) - **Nawaf Alsharqi**
++  * [NotMoni](https://github.com/NotMoni) - **Moni**
++  * [VigneshMurugan](https://github.com/VigneshMurugan) - **Vignesh Murugan**
++  * [davidmashe](https://github.com/davidmashe) - **David Ashe**
++  * [digitaIfabric](https://github.com/digitaIfabric) - **David**
++  * [e-l-i-s-e](https://github.com/e-l-i-s-e) - **Elise Bonner**
++  * [fed135](https://github.com/fed135) - **Frederic Charette**
++  * [firmanJS](https://github.com/firmanJS) - **Firman Abdul Hakim**
++  * [getspooky](https://github.com/getspooky) - **Yasser Ameur**
++  * [ghinks](https://github.com/ghinks) - **Glenn**
++  * [ghousemohamed](https://github.com/ghousemohamed) - **Ghouse Mohamed**
++  * [gireeshpunathil](https://github.com/gireeshpunathil) - **Gireesh Punathil**
++  * [jake32321](https://github.com/jake32321) - **Jake Reed**
++  * [jonchurch](https://github.com/jonchurch) - **Jon Church**
++  * [lekanikotun](https://github.com/lekanikotun) - **Troy Goode**
++  * [marsonya](https://github.com/marsonya) - **Lekan Ikotun**
++  * [mastermatt](https://github.com/mastermatt) - **Matt R. Wilson**
++  * [maxakuru](https://github.com/maxakuru) - **Max Edell**
++  * [mlrawlings](https://github.com/mlrawlings) - **Michael Rawlings**
++  * [rodion-arr](https://github.com/rodion-arr) - **Rodion Abdurakhimov**
++  * [sheplu](https://github.com/sheplu) - **Jean Burellier**
++  * [tarunyadav1](https://github.com/tarunyadav1) - **Tarun yadav**
++  * [tunniclm](https://github.com/tunniclm) - **Mike Tunnicliffe**
++</details>
++
++
+ ## License
+ 
+   [MIT](LICENSE)
+ 
+-[ci-image]: https://img.shields.io/github/workflow/status/expressjs/express/ci/master.svg?label=linux
+-[ci-url]: https://github.com/expressjs/express/actions?query=workflow%3Aci
+-[npm-image]: https://img.shields.io/npm/v/express.svg
+-[npm-url]: https://npmjs.org/package/express
+-[downloads-image]: https://img.shields.io/npm/dm/express.svg
+-[downloads-url]: https://npmcharts.com/compare/express?minimal=true
+-[appveyor-image]: https://img.shields.io/appveyor/ci/dougwilson/express/master.svg?label=windows
++[appveyor-image]: https://badgen.net/appveyor/ci/dougwilson/express/master?label=windows
+ [appveyor-url]: https://ci.appveyor.com/project/dougwilson/express
+-[coveralls-image]: https://img.shields.io/coveralls/expressjs/express/master.svg
++[coveralls-image]: https://badgen.net/coveralls/c/github/expressjs/express/master
+ [coveralls-url]: https://coveralls.io/r/expressjs/express?branch=master
++[github-actions-ci-image]: https://badgen.net/github/checks/expressjs/express/master?label=linux
++[github-actions-ci-url]: https://github.com/expressjs/express/actions/workflows/ci.yml
++[npm-downloads-image]: https://badgen.net/npm/dm/express
++[npm-downloads-url]: https://npmcharts.com/compare/express?minimal=true
++[npm-install-size-image]: https://badgen.net/packagephobia/install/express
++[npm-install-size-url]: https://packagephobia.com/result?p=express
++[npm-url]: https://npmjs.org/package/express
++[npm-version-image]: https://badgen.net/npm/v/express
++[Code of Conduct]: https://github.com/expressjs/express/blob/master/Code-Of-Conduct.md
+diff --git a/Release-Process.md b/Release-Process.md
+index ae740972f7..9ca0a15ab4 100644
+--- a/Release-Process.md
++++ b/Release-Process.md
+@@ -77,6 +77,13 @@ non-patch flow.
+ - This branch contains the commits accepted so far that implement the proposal
+   in the tracking pull request.
+ 
++### Pre-release Versions
++
++Alpha and Beta releases are made from a proposal branch. The version number should be
++incremented to the next minor version with a `-beta` or `-alpha` suffix.
++For example, if the next beta release is `5.0.1`, the beta release would be `5.0.1-beta.0`.
++The pre-releases are unstable and not suitable for production use.
++
+ ### Patch flow
+ 
+ In the patch flow, simple changes are committed to the release branch which
+@@ -184,3 +191,9 @@ $ npm publish
+ 
+ **NOTE:** The version number to publish will be picked up automatically from
+           package.json.
++          
++### Step 7. Update documentation website
++
++The documentation website https://expressjs.com/ documents the current release version in various places.  For a new release:
++1. Change the value of `current_version` in https://github.com/expressjs/expressjs.com/blob/gh-pages/_data/express.yml to match the latest version number.
++2. Add a new section to the change log.  For example, for a 4.x release, https://github.com/expressjs/expressjs.com/blob/gh-pages/en/changelog/4x.md,
+diff --git a/Security.md b/Security.md
+index 858dfffc5b..dcfbe88abd 100644
+--- a/Security.md
++++ b/Security.md
+@@ -27,8 +27,13 @@ endeavor to keep you informed of the progress towards a fix and full
+ announcement, and may ask for additional information or guidance.
+ 
+ Report security bugs in third-party modules to the person or team maintaining
+-the module. You can also report a vulnerability through the
+-[Node Security Project](https://nodesecurity.io/report).
++the module.
++
++## Pre-release Versions
++
++Alpha and Beta releases are unstable and **not suitable for production use**.
++Vulnerabilities found in pre-releases should be reported according to the [Reporting a Bug](#reporting-a-bug) section.
++Due to the unstable nature of the branch it is not guaranteed that any fixes will be released in the next pre-release.
+ 
+ ## Disclosure Policy
+ 
+@@ -41,6 +46,10 @@ involving the following steps:
+   * Prepare fixes for all releases still under maintenance. These fixes will be
+     released as fast as possible to npm.
+ 
++## The Express Threat Model
++
++We are currently working on a new version of the security model, the most updated version can be found [here](https://github.com/expressjs/security-wg/blob/main/docs/ThreatModel.md)
++
+ ## Comments on this Policy
+ 
+ If you have suggestions on how this process could be improved please submit a
+diff --git a/appveyor.yml b/appveyor.yml
+index 785c799e8f..629499bf37 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -15,18 +15,30 @@ environment:
+     - nodejs_version: "11.15"
+     - nodejs_version: "12.22"
+     - nodejs_version: "13.14"
+-    - nodejs_version: "14.18"
++    - nodejs_version: "14.20"
++    - nodejs_version: "15.14"
++    - nodejs_version: "16.20"
++    - nodejs_version: "17.9"
++    - nodejs_version: "18.19"
++    - nodejs_version: "19.9"
++    - nodejs_version: "20.11"
++    - nodejs_version: "21.6"
++    - nodejs_version: "22.0"
+ cache:
+   - node_modules
+ install:
+   # Install Node.js
+   - ps: >-
+       try { Install-Product node $env:nodejs_version -ErrorAction Stop }
+-      catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) }
++      catch { Update-NodeJsInstallation (Get-NodeJsLatestBuild $env:nodejs_version) x64 }
+   # Configure npm
+   - ps: |
+       npm config set loglevel error
+-      npm config set shrinkwrap false
++      if ((npm config get package-lock) -eq "true") {
++        npm config set package-lock false
++      } else {
++        npm config set shrinkwrap false
++      }
+   # Remove all non-test dependencies
+   - ps: |
+       # Remove example dependencies
+@@ -43,6 +55,7 @@ install:
+       # - use 6.x for Node.js < 8
+       # - use 7.x for Node.js < 10
+       # - use 8.x for Node.js < 12
++      # - use 9.x for Node.js < 14
+       if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
+         npm install --silent --save-dev mocha@3.5.3
+       } elseif ([int]$env:nodejs_version.split(".")[0] -lt 6) {
+@@ -53,15 +66,32 @@ install:
+         npm install --silent --save-dev mocha@7.2.0
+       } elseif ([int]$env:nodejs_version.split(".")[0] -lt 12) {
+         npm install --silent --save-dev mocha@8.4.0
++      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 14) {
++        npm install --silent --save-dev mocha@9.2.2
++      }
++  - ps: |
++      # nyc for test coverage
++      # - use 10.3.2 for Node.js < 4
++      # - use 11.9.0 for Node.js < 6
++      # - use 14.1.1 for Node.js < 10
++      if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
++        npm install --silent --save-dev nyc@10.3.2
++      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 6) {
++        npm install --silent --save-dev nyc@11.9.0
++      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 10) {
++        npm install --silent --save-dev nyc@14.1.1
+       }
+   - ps: |
+       # supertest for http calls
+       # - use 2.0.0 for Node.js < 4
+-      # - use 3.4.2 for Node.js < 6
++      # - use 3.4.2 for Node.js < 7
++      # - use 6.1.6 for Node.js < 8
+       if ([int]$env:nodejs_version.split(".")[0] -lt 4) {
+         npm install --silent --save-dev supertest@2.0.0
+-      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 6) {
++      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 7) {
+         npm install --silent --save-dev supertest@3.4.2
++      } elseif ([int]$env:nodejs_version.split(".")[0] -lt 8) {
++        npm install --silent --save-dev supertest@6.1.6
+       }
+   # Update Node.js modules
+   - ps: |
+diff --git a/benchmarks/Makefile b/benchmarks/Makefile
+index baf0d6fce9..ed1ddfc4f3 100644
+--- a/benchmarks/Makefile
++++ b/benchmarks/Makefile
+@@ -1,13 +1,17 @@
+ 
+ all:
+-	@./run 1 middleware
+-	@./run 5 middleware
+-	@./run 10 middleware
+-	@./run 15 middleware
+-	@./run 20 middleware
+-	@./run 30 middleware
+-	@./run 50 middleware
+-	@./run 100 middleware
++	@./run 1 middleware 50
++	@./run 5 middleware 50
++	@./run 10 middleware 50
++	@./run 15 middleware 50
++	@./run 20 middleware 50
++	@./run 30 middleware 50
++	@./run 50 middleware 50
++	@./run 100 middleware 50
++	@./run 10 middleware 100
++	@./run 10 middleware 250
++	@./run 10 middleware 500
++	@./run 10 middleware 1000
+ 	@echo
+ 
+ .PHONY: all
+diff --git a/benchmarks/README.md b/benchmarks/README.md
+new file mode 100644
+index 0000000000..1894c527d6
+--- /dev/null
++++ b/benchmarks/README.md
+@@ -0,0 +1,34 @@
++# Express Benchmarks
++
++## Installation
++
++You will need to install [wrk](https://github.com/wg/wrk/blob/master/INSTALL) in order to run the benchmarks.
++
++## Running
++
++To run the benchmarks, first install the dependencies `npm i`, then run `make`
++
++The output will look something like this:
++
++```
++  50 connections
++  1 middleware
++ 7.15ms
++ 6784.01
++
++ [...redacted...]
++
++  1000 connections
++  10 middleware
++ 139.21ms
++ 6155.19
++
++```
++
++### Tip: Include Node.js version in output
++
++You can use `make && node -v` to include the node.js version in the output.
++
++### Tip: Save the results to a file
++
++You can use `make > results.log` to save the results to a file `results.log`.
+diff --git a/benchmarks/middleware.js b/benchmarks/middleware.js
+index df4df2c5ac..fed97ba8ce 100644
+--- a/benchmarks/middleware.js
++++ b/benchmarks/middleware.js
+@@ -13,7 +13,7 @@ while (n--) {
+   });
+ }
+ 
+-app.use(function(req, res, next){
++app.use(function(req, res){
+   res.send('Hello World')
+ });
+ 
+diff --git a/benchmarks/run b/benchmarks/run
+index 93b5bc52ff..ec8f55d564 100755
+--- a/benchmarks/run
++++ b/benchmarks/run
+@@ -4,13 +4,15 @@ echo
+ MW=$1 node $2 &
+ pid=$!
+ 
++echo "  $3 connections"
++
+ sleep 2
+ 
+ wrk 'http://localhost:3333/?foo[bar]=baz' \
+   -d 3 \
+-  -c 50 \
++  -c $3 \
+   -t 8 \
+-  | grep 'Requests/sec' \
+-  | awk '{ print "  " $2 }'
++  | grep 'Requests/sec\|Latency' \
++  | awk '{ print " " $2 }'
+ 
+ kill $pid
+diff --git a/examples/README.md b/examples/README.md
+index c19ed30a25..bd1f1f6310 100644
+--- a/examples/README.md
++++ b/examples/README.md
+@@ -13,7 +13,6 @@ This page contains list of examples using Express.
+ - [hello-world](./hello-world) - Simple request handler
+ - [markdown](./markdown) - Markdown as template engine
+ - [multi-router](./multi-router) - Working with multiple Express routers
+-- [multipart](./multipart) - Accepting multipart-encoded forms
+ - [mvc](./mvc) - MVC-style controllers
+ - [online](./online) - Tracking online user activity with `online` and `redis` packages
+ - [params](./params) - Working with route parameters
+diff --git a/examples/auth/index.js b/examples/auth/index.js
+index b8e854300c..36205d0f99 100644
+--- a/examples/auth/index.js
++++ b/examples/auth/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+@@ -59,14 +61,14 @@ function authenticate(name, pass, fn) {
+   if (!module.parent) console.log('authenticating %s:%s', name, pass);
+   var user = users[name];
+   // query the db for the given username
+-  if (!user) return fn(new Error('cannot find user'));
++  if (!user) return fn(null, null)
+   // apply the same algorithm to the POSTed password, applying
+   // the hash against the pass / salt, if there is a match we
+   // found the user
+   hash({ password: pass, salt: user.salt }, function (err, pass, salt, hash) {
+     if (err) return fn(err);
+     if (hash === user.hash) return fn(null, user)
+-    fn(new Error('invalid password'));
++    fn(null, null)
+   });
+ }
+ 
+@@ -99,8 +101,9 @@ app.get('/login', function(req, res){
+   res.render('login');
+ });
+ 
+-app.post('/login', function(req, res){
++app.post('/login', function (req, res, next) {
+   authenticate(req.body.username, req.body.password, function(err, user){
++    if (err) return next(err)
+     if (user) {
+       // Regenerate session when signing in
+       // to prevent fixation
+diff --git a/examples/auth/views/login.ejs b/examples/auth/views/login.ejs
+index 8a20411a2c..181c36caf7 100644
+--- a/examples/auth/views/login.ejs
++++ b/examples/auth/views/login.ejs
+@@ -6,12 +6,12 @@
+ Try accessing <a href="/restricted">/restricted</a>, then authenticate with "tj" and "foobar".
+ <form method="post" action="/login">
+   <p>
+-    <label>Username:</label>
+-    <input type="text" name="username">
++    <label for="username">Username:</label>
++    <input type="text" name="username" id="username">
+   </p>
+   <p>
+-    <label>Password:</label>
+-    <input type="text" name="password">
++    <label for="password">Password:</label>
++    <input type="text" name="password" id="password">
+   </p>
+   <p>
+     <input type="submit" value="Login">
+diff --git a/examples/content-negotiation/db.js b/examples/content-negotiation/db.js
+index 43fb04baa1..f59b23bf18 100644
+--- a/examples/content-negotiation/db.js
++++ b/examples/content-negotiation/db.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ var users = [];
+ 
+ users.push({ name: 'Tobi' });
+diff --git a/examples/content-negotiation/index.js b/examples/content-negotiation/index.js
+index 348929e852..280a4e2299 100644
+--- a/examples/content-negotiation/index.js
++++ b/examples/content-negotiation/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ var express = require('../../');
+ var app = module.exports = express();
+ var users = require('./db');
+diff --git a/examples/content-negotiation/users.js b/examples/content-negotiation/users.js
+index fe511072ec..fe703e73a9 100644
+--- a/examples/content-negotiation/users.js
++++ b/examples/content-negotiation/users.js
+@@ -1,3 +1,4 @@
++'use strict'
+ 
+ var users = require('./db');
+ 
+diff --git a/examples/cookie-sessions/index.js b/examples/cookie-sessions/index.js
+index 1dda15de61..83b6faee82 100644
+--- a/examples/cookie-sessions/index.js
++++ b/examples/cookie-sessions/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+@@ -11,13 +13,10 @@ var app = module.exports = express();
+ app.use(cookieSession({ secret: 'manny is cool' }));
+ 
+ // do something with the session
+-app.use(count);
+-
+-// custom middleware
+-function count(req, res) {
++app.get('/', function (req, res) {
+   req.session.count = (req.session.count || 0) + 1
+   res.send('viewed ' + req.session.count + ' times\n')
+-}
++})
+ 
+ /* istanbul ignore next */
+ if (!module.parent) {
+diff --git a/examples/cookies/index.js b/examples/cookies/index.js
+index 93515e5961..04093591f7 100644
+--- a/examples/cookies/index.js
++++ b/examples/cookies/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index 9321f3bf95..6b67e0c886 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -1,11 +1,17 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+ 
+ var express = require('../../');
+ var path = require('path');
++
+ var app = module.exports = express();
+ 
++// path to where the files are stored on disk
++var FILES_DIR = path.join(__dirname, 'files')
++
+ app.get('/', function(req, res){
+   res.send('<ul>' +
+     '<li>Download <a href="/files/notes/groceries.txt">notes/groceries.txt</a>.</li>' +
+@@ -18,9 +24,7 @@ app.get('/', function(req, res){
+ // /files/* is accessed via req.params[0]
+ // but here we name it :file
+ app.get('/files/:file(*)', function(req, res, next){
+-  var filePath = path.join(__dirname, 'files', req.params.file);
+-
+-  res.download(filePath, function (err) {
++  res.download(req.params.file, { root: FILES_DIR }, function (err) {
+     if (!err) return; // file sent
+     if (err.status !== 404) return next(err); // non-404 error
+     // file for download not found
+diff --git a/examples/ejs/index.js b/examples/ejs/index.js
+index 7278091293..a39d805a16 100644
+--- a/examples/ejs/index.js
++++ b/examples/ejs/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/error-pages/index.js b/examples/error-pages/index.js
+index 44333cb08f..efa815c474 100644
+--- a/examples/error-pages/index.js
++++ b/examples/error-pages/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/error/index.js b/examples/error/index.js
+index 07814d8520..d733a81172 100644
+--- a/examples/error/index.js
++++ b/examples/error/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+@@ -24,7 +26,7 @@ function error(err, req, res, next) {
+   res.send('Internal Server Error');
+ }
+ 
+-app.get('/', function(req, res){
++app.get('/', function () {
+   // Caught and passed down to the errorHandler middleware
+   throw new Error('something broke!');
+ });
+diff --git a/examples/hello-world/index.js b/examples/hello-world/index.js
+index 04382ac3d0..8c1855c2eb 100644
+--- a/examples/hello-world/index.js
++++ b/examples/hello-world/index.js
+@@ -1,6 +1,8 @@
++'use strict'
++
+ var express = require('../../');
+ 
+-var app = express();
++var app = module.exports = express()
+ 
+ app.get('/', function(req, res){
+   res.send('Hello World');
+diff --git a/examples/markdown/index.js b/examples/markdown/index.js
+index df8c195fb4..23d645e66b 100644
+--- a/examples/markdown/index.js
++++ b/examples/markdown/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+@@ -24,7 +26,7 @@ app.engine('md', function(path, options, fn){
+ 
+ app.set('views', path.join(__dirname, 'views'));
+ 
+-// make it the default so we dont need .md
++// make it the default, so we don't need .md
+ app.set('view engine', 'md');
+ 
+ app.get('/', function(req, res){
+diff --git a/examples/multi-router/controllers/api_v1.js b/examples/multi-router/controllers/api_v1.js
+index 08b7b5e6fd..a301e3ee72 100644
+--- a/examples/multi-router/controllers/api_v1.js
++++ b/examples/multi-router/controllers/api_v1.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ var express = require('../../..');
+ 
+ var apiv1 = express.Router();
+diff --git a/examples/multi-router/controllers/api_v2.js b/examples/multi-router/controllers/api_v2.js
+index 4dd708281c..e997fb1f88 100644
+--- a/examples/multi-router/controllers/api_v2.js
++++ b/examples/multi-router/controllers/api_v2.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ var express = require('../../..');
+ 
+ var apiv2 = express.Router();
+diff --git a/examples/multi-router/index.js b/examples/multi-router/index.js
+index 78bae9d6e3..dbfd284126 100644
+--- a/examples/multi-router/index.js
++++ b/examples/multi-router/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ var express = require('../..');
+ 
+ var app = module.exports = express();
+diff --git a/examples/multipart/index.js b/examples/multipart/index.js
+deleted file mode 100644
+index 42c2af23f7..0000000000
+--- a/examples/multipart/index.js
++++ /dev/null
+@@ -1,60 +0,0 @@
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../..');
+-var multiparty = require('multiparty');
+-var format = require('util').format;
+-
+-var app = module.exports = express();
+-
+-app.get('/', function(req, res){
+-  res.send('<form method="post" enctype="multipart/form-data">'
+-    + '<p>Title: <input type="text" name="title" /></p>'
+-    + '<p>Image: <input type="file" name="image" /></p>'
+-    + '<p><input type="submit" value="Upload" /></p>'
+-    + '</form>');
+-});
+-
+-app.post('/', function(req, res, next){
+-  // create a form to begin parsing
+-  var form = new multiparty.Form();
+-  var image;
+-  var title;
+-
+-  form.on('error', next);
+-  form.on('close', function(){
+-    res.send(format('\nuploaded %s (%d Kb) as %s'
+-      , image.filename
+-      , image.size / 1024 | 0
+-      , title));
+-  });
+-
+-  // listen on field event for title
+-  form.on('field', function(name, val){
+-    if (name !== 'title') return;
+-    title = val;
+-  });
+-
+-  // listen on part event for image file
+-  form.on('part', function(part){
+-    if (!part.filename) return;
+-    if (part.name !== 'image') return part.resume();
+-    image = {};
+-    image.filename = part.filename;
+-    image.size = 0;
+-    part.on('data', function(buf){
+-      image.size += buf.length;
+-    });
+-  });
+-
+-
+-  // parse the form
+-  form.parse(req);
+-});
+-
+-/* istanbul ignore next */
+-if (!module.parent) {
+-  app.listen(4000);
+-  console.log('Express started on port 4000');
+-}
+diff --git a/examples/mvc/controllers/main/index.js b/examples/mvc/controllers/main/index.js
+index 031862d345..74cde191cd 100644
+--- a/examples/mvc/controllers/main/index.js
++++ b/examples/mvc/controllers/main/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ exports.index = function(req, res){
+   res.redirect('/users');
+ };
+diff --git a/examples/mvc/controllers/pet/index.js b/examples/mvc/controllers/pet/index.js
+index 157a98e84e..214160f9a4 100644
+--- a/examples/mvc/controllers/pet/index.js
++++ b/examples/mvc/controllers/pet/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/mvc/controllers/user-pet/index.js b/examples/mvc/controllers/user-pet/index.js
+index 416b00741a..42a29adebe 100644
+--- a/examples/mvc/controllers/user-pet/index.js
++++ b/examples/mvc/controllers/user-pet/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/mvc/controllers/user/index.js b/examples/mvc/controllers/user/index.js
+index a7b0208c8e..ec3ae4c811 100644
+--- a/examples/mvc/controllers/user/index.js
++++ b/examples/mvc/controllers/user/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/mvc/db.js b/examples/mvc/db.js
+index c992afcfd7..94d1480f9b 100644
+--- a/examples/mvc/db.js
++++ b/examples/mvc/db.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ // faux database
+ 
+ var pets = exports.pets = [];
+diff --git a/examples/mvc/index.js b/examples/mvc/index.js
+index 77885a60ca..da4727b282 100644
+--- a/examples/mvc/index.js
++++ b/examples/mvc/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/mvc/lib/boot.js b/examples/mvc/lib/boot.js
+index 422330dc06..0216e5d76d 100644
+--- a/examples/mvc/lib/boot.js
++++ b/examples/mvc/lib/boot.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/online/index.js b/examples/online/index.js
+index f14474c08d..0b5fdffc86 100644
+--- a/examples/online/index.js
++++ b/examples/online/index.js
+@@ -1,3 +1,4 @@
++'use strict'
+ 
+ // install redis first:
+ // https://redis.io/
+diff --git a/examples/params/index.js b/examples/params/index.js
+index 5b57573d1e..f3cd8457eb 100644
+--- a/examples/params/index.js
++++ b/examples/params/index.js
+@@ -1,7 +1,10 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+ 
++var createError = require('http-errors')
+ var express = require('../../');
+ var app = module.exports = express();
+ 
+@@ -15,14 +18,6 @@ var users = [
+   , { name: 'bandit' }
+ ];
+ 
+-// Create HTTP error
+-
+-function createError(status, message) {
+-  var err = new Error(message);
+-  err.status = status;
+-  return err;
+-}
+-
+ // Convert :to and :from to integers
+ 
+ app.param(['to', 'from'], function(req, res, next, num, name){
+@@ -56,7 +51,7 @@ app.get('/', function(req, res){
+  * GET :user.
+  */
+ 
+-app.get('/user/:user', function(req, res, next){
++app.get('/user/:user', function (req, res) {
+   res.send('user ' + req.user.name);
+ });
+ 
+@@ -64,7 +59,7 @@ app.get('/user/:user', function(req, res, next){
+  * GET users :from - :to.
+  */
+ 
+-app.get('/users/:from-:to', function(req, res, next){
++app.get('/users/:from-:to', function (req, res) {
+   var from = req.params.from;
+   var to = req.params.to;
+   var names = users.map(function(user){ return user.name; });
+diff --git a/examples/resource/index.js b/examples/resource/index.js
+index b79ad923d2..ff1f6fe11f 100644
+--- a/examples/resource/index.js
++++ b/examples/resource/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/route-map/index.js b/examples/route-map/index.js
+index e7adf5fcb4..2bc28bd4b2 100644
+--- a/examples/route-map/index.js
++++ b/examples/route-map/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/route-middleware/index.js b/examples/route-middleware/index.js
+index e7a0901fa8..44ec13a95b 100644
+--- a/examples/route-middleware/index.js
++++ b/examples/route-middleware/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/route-separation/index.js b/examples/route-separation/index.js
+index 6512109134..5d48381111 100644
+--- a/examples/route-separation/index.js
++++ b/examples/route-separation/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/route-separation/post.js b/examples/route-separation/post.js
+index e3f12e7884..3a8e3a2d22 100644
+--- a/examples/route-separation/post.js
++++ b/examples/route-separation/post.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ // Fake posts database
+ 
+ var posts = [
+diff --git a/examples/route-separation/site.js b/examples/route-separation/site.js
+index a3d20bc8a1..aee36d1bd7 100644
+--- a/examples/route-separation/site.js
++++ b/examples/route-separation/site.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ exports.index = function(req, res){
+   res.render('index', { title: 'Route Separation Example' });
+ };
+diff --git a/examples/route-separation/user.js b/examples/route-separation/user.js
+index ef79b343a2..1c2aec7cd2 100644
+--- a/examples/route-separation/user.js
++++ b/examples/route-separation/user.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ // Fake user database
+ 
+ var users = [
+diff --git a/examples/route-separation/views/users/edit.ejs b/examples/route-separation/views/users/edit.ejs
+index 0ca2df7652..6df78a953a 100644
+--- a/examples/route-separation/views/users/edit.ejs
++++ b/examples/route-separation/views/users/edit.ejs
+@@ -3,7 +3,7 @@
+ <h1>Editing <%= user.name %></h1>
+ 
+ <div id="user">
+-  <form action="?_method=put", method="post">
++  <form action="?_method=put" method="post">
+     <p>
+       Name:
+       <input type="text" value="<%= user.name %>" name="user[name]" />
+diff --git a/examples/search/index.js b/examples/search/index.js
+index 246993caa5..0d19444e52 100644
+--- a/examples/search/index.js
++++ b/examples/search/index.js
+@@ -1,3 +1,4 @@
++'use strict'
+ 
+ // install redis first:
+ // https://redis.io/
+diff --git a/examples/search/public/client.js b/examples/search/public/client.js
+index 75c37d8e00..cd43faf71e 100644
+--- a/examples/search/public/client.js
++++ b/examples/search/public/client.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ var search = document.querySelector('[type=search]');
+ var code = document.querySelector('pre');
+ 
+diff --git a/examples/search/public/index.html b/examples/search/public/index.html
+index f67063c502..7353644ba6 100644
+--- a/examples/search/public/index.html
++++ b/examples/search/public/index.html
+@@ -4,7 +4,7 @@
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width,initial-scale=1">
+   <title>Search example</title>
+-  <style type="text/css">
++  <style>
+     body {
+       font: 14px "Helvetica Neue", Helvetica;
+       padding: 50px;
+@@ -15,7 +15,7 @@
+   <h2>Search</h2>
+   <p>Try searching for "ferret" or "cat".</p>
+   <input type="search" name="search" value="" />
+-  <pre />
++  <pre></pre>
+   <script src="/client.js" charset="utf-8"></script>
+ </body>
+ </html>
+diff --git a/examples/session/index.js b/examples/session/index.js
+index 9bae48b8d3..2bb2b109c8 100644
+--- a/examples/session/index.js
++++ b/examples/session/index.js
+@@ -1,3 +1,4 @@
++'use strict'
+ 
+ // install redis first:
+ // https://redis.io/
+diff --git a/examples/session/redis.js b/examples/session/redis.js
+index 1338d6e95e..bbbdc7fd3e 100644
+--- a/examples/session/redis.js
++++ b/examples/session/redis.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/static-files/index.js b/examples/static-files/index.js
+index 0e44313d15..609c546b47 100644
+--- a/examples/static-files/index.js
++++ b/examples/static-files/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/vhost/index.js b/examples/vhost/index.js
+index 4a0c17b850..a9499356b4 100644
+--- a/examples/vhost/index.js
++++ b/examples/vhost/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/view-constructor/github-view.js b/examples/view-constructor/github-view.js
+index 0a98a90843..43d29336ca 100644
+--- a/examples/view-constructor/github-view.js
++++ b/examples/view-constructor/github-view.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/view-constructor/index.js b/examples/view-constructor/index.js
+index 175a254e4e..3d673670e3 100644
+--- a/examples/view-constructor/index.js
++++ b/examples/view-constructor/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/examples/view-locals/index.js b/examples/view-locals/index.js
+index cb41509606..a2af24f355 100644
+--- a/examples/view-locals/index.js
++++ b/examples/view-locals/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+@@ -59,7 +61,7 @@ function users(req, res, next) {
+   })
+ }
+ 
+-app.get('/middleware', count, users, function(req, res, next){
++app.get('/middleware', count, users, function (req, res) {
+   res.render('index', {
+     title: 'Users',
+     count: req.count,
+@@ -97,7 +99,7 @@ function users2(req, res, next) {
+   })
+ }
+ 
+-app.get('/middleware-locals', count2, users2, function(req, res, next){
++app.get('/middleware-locals', count2, users2, function (req, res) {
+   // you can see now how we have much less
+   // to pass to res.render(). If we have
+   // several routes related to users this
+diff --git a/examples/view-locals/user.js b/examples/view-locals/user.js
+index 90ab1f389d..aaa6f85ff0 100644
+--- a/examples/view-locals/user.js
++++ b/examples/view-locals/user.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ module.exports = User;
+ 
+ // faux model
+diff --git a/examples/web-service/index.js b/examples/web-service/index.js
+index 3685619d10..d1a9036215 100644
+--- a/examples/web-service/index.js
++++ b/examples/web-service/index.js
+@@ -1,3 +1,5 @@
++'use strict'
++
+ /**
+  * Module dependencies.
+  */
+@@ -32,7 +34,7 @@ app.use('/api', function(req, res, next){
+   if (!key) return next(error(400, 'api key required'));
+ 
+   // key is invalid
+-  if (!~apiKeys.indexOf(key)) return next(error(401, 'invalid api key'));
++  if (apiKeys.indexOf(key) === -1) return next(error(401, 'invalid api key'))
+ 
+   // all good, store req.key for route access
+   req.key = key;
+@@ -70,12 +72,12 @@ var userRepos = {
+ // and simply expose the data
+ 
+ // example: http://localhost:3000/api/users/?api-key=foo
+-app.get('/api/users', function(req, res, next){
++app.get('/api/users', function (req, res) {
+   res.send(users);
+ });
+ 
+ // example: http://localhost:3000/api/repos/?api-key=foo
+-app.get('/api/repos', function(req, res, next){
++app.get('/api/repos', function (req, res) {
+   res.send(repos);
+ });
+ 
+diff --git a/lib/application.js b/lib/application.js
+index e65ba58895..ebb30b51b3 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -29,6 +29,13 @@ var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
+ var setPrototypeOf = require('setprototypeof')
++
++/**
++ * Module variables.
++ * @private
++ */
++
++var hasOwnProperty = Object.prototype.hasOwnProperty
+ var slice = Array.prototype.slice;
+ 
+ /**
+@@ -352,7 +359,17 @@ app.param = function param(name, fn) {
+ app.set = function set(setting, val) {
+   if (arguments.length === 1) {
+     // app.get(setting)
+-    return this.settings[setting];
++    var settings = this.settings
++
++    while (settings && settings !== Object.prototype) {
++      if (hasOwnProperty.call(settings, setting)) {
++        return settings[setting]
++      }
++
++      settings = Object.getPrototypeOf(settings)
++    }
++
++    return undefined
+   }
+ 
+   debug('set "%s" to %o', setting, val);
+diff --git a/lib/response.js b/lib/response.js
+index 48239a475a..68d969ff05 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -14,6 +14,7 @@
+ 
+ var Buffer = require('safe-buffer').Buffer
+ var contentDisposition = require('content-disposition');
++var createError = require('http-errors')
+ var deprecate = require('depd')('express');
+ var encodeUrl = require('encodeurl');
+ var escapeHtml = require('escape-html');
+@@ -64,6 +65,9 @@ var charsetRegExp = /;\s*charset\s*=/;
+  */
+ 
+ res.status = function status(code) {
++  if ((typeof code === 'string' || Math.floor(code) !== code) && code > 99 && code < 1000) {
++    deprecate('res.status(' + JSON.stringify(code) + '): use res.status(' + Math.floor(code) + ') instead')
++  }
+   this.statusCode = code;
+   return this;
+ };
+@@ -135,7 +139,7 @@ res.send = function send(body) {
+ 
+     deprecate('res.send(status): Use res.sendStatus(status) instead');
+     this.statusCode = chunk;
+-    chunk = statuses[chunk]
++    chunk = statuses.message[chunk]
+   }
+ 
+   switch (typeof chunk) {
+@@ -213,6 +217,13 @@ res.send = function send(body) {
+     chunk = '';
+   }
+ 
++  // alter headers for 205
++  if (this.statusCode === 205) {
++    this.set('Content-Length', '0')
++    this.removeHeader('Transfer-Encoding')
++    chunk = ''
++  }
++
+   if (req.method === 'HEAD') {
+     // skip body for HEAD
+     this.end();
+@@ -356,7 +367,7 @@ res.jsonp = function jsonp(obj) {
+  */
+ 
+ res.sendStatus = function sendStatus(statusCode) {
+-  var body = statuses[statusCode] || String(statusCode)
++  var body = statuses.message[statusCode] || String(statusCode)
+ 
+   this.statusCode = statusCode;
+   this.type('txt');
+@@ -524,7 +535,7 @@ res.sendfile = deprecate.function(res.sendfile,
+  * Optionally providing an alternate attachment `filename`,
+  * and optional callback `callback(err)`. The callback is invoked
+  * when the data transfer is complete, or when an error has
+- * ocurred. Be sure to check `res.headersSent` if you plan to respond.
++ * occurred. Be sure to check `res.headersSent` if you plan to respond.
+  *
+  * Optionally providing an `options` object to use with `res.sendFile()`.
+  * This function will set the `Content-Disposition` header, overriding
+@@ -551,6 +562,13 @@ res.download = function download (path, filename, options, callback) {
+     opts = null
+   }
+ 
++  // support optional filename, where options may be in it's place
++  if (typeof filename === 'object' &&
++    (typeof options === 'function' || options === undefined)) {
++    name = null
++    opts = filename
++  }
++
+   // set Content-Disposition when file is sent
+   var headers = {
+     'Content-Disposition': contentDisposition(name || path)
+@@ -572,7 +590,9 @@ res.download = function download (path, filename, options, callback) {
+   opts.headers = headers
+ 
+   // Resolve the full path for sendFile
+-  var fullPath = resolve(path);
++  var fullPath = !opts.root
++    ? resolve(path)
++    : path
+ 
+   // send file
+   return this.sendFile(fullPath, opts, done)
+@@ -665,9 +685,8 @@ res.format = function(obj){
+   var req = this.req;
+   var next = req.next;
+ 
+-  var fn = obj.default;
+-  if (fn) delete obj.default;
+-  var keys = Object.keys(obj);
++  var keys = Object.keys(obj)
++    .filter(function (v) { return v !== 'default' })
+ 
+   var key = keys.length > 0
+     ? req.accepts(keys)
+@@ -678,13 +697,12 @@ res.format = function(obj){
+   if (key) {
+     this.set('Content-Type', normalizeType(key).value);
+     obj[key](req, this, next);
+-  } else if (fn) {
+-    fn();
++  } else if (obj.default) {
++    obj.default(req, this, next)
+   } else {
+-    var err = new Error('Not Acceptable');
+-    err.status = err.statusCode = 406;
+-    err.types = normalizeTypes(keys).map(function(o){ return o.value });
+-    next(err);
++    next(createError(406, {
++      types: normalizeTypes(keys).map(function (o) { return o.value })
++    }))
+   }
+ 
+   return this;
+@@ -804,6 +822,14 @@ res.get = function(field){
+  */
+ 
+ res.clearCookie = function clearCookie(name, options) {
++  if (options) {
++    if (options.maxAge) {
++      deprecate('res.clearCookie: Passing "options.maxAge" is deprecated. In v5.0.0 of Express, this option will be ignored, as res.clearCookie will automatically set cookies to expire immediately. Please update your code to omit this option.');
++    }
++    if (options.expires) {
++      deprecate('res.clearCookie: Passing "options.expires" is deprecated. In v5.0.0 of Express, this option will be ignored, as res.clearCookie will automatically set cookies to expire immediately. Please update your code to omit this option.');
++    }
++  }
+   var opts = merge({ expires: new Date(1), path: '/' }, options);
+ 
+   return this.cookie(name, '', opts);
+@@ -850,9 +876,13 @@ res.cookie = function (name, value, options) {
+     val = 's:' + sign(val, secret);
+   }
+ 
+-  if ('maxAge' in opts) {
+-    opts.expires = new Date(Date.now() + opts.maxAge);
+-    opts.maxAge /= 1000;
++  if (opts.maxAge != null) {
++    var maxAge = opts.maxAge - 0
++
++    if (!isNaN(maxAge)) {
++      opts.expires = new Date(Date.now() + maxAge)
++      opts.maxAge = Math.floor(maxAge / 1000)
++    }
+   }
+ 
+   if (opts.path == null) {
+@@ -882,14 +912,15 @@ res.cookie = function (name, value, options) {
+  */
+ 
+ res.location = function location(url) {
+-  var loc = url;
++  var loc;
+ 
+   // "back" is an alias for the referrer
+   if (url === 'back') {
+     loc = this.req.get('Referrer') || '/';
++  } else {
++    loc = String(url);
+   }
+ 
+-  // set location
+   return this.set('Location', encodeUrl(loc));
+ };
+ 
+@@ -933,12 +964,12 @@ res.redirect = function redirect(url) {
+   // Support text/{plain,html} by default
+   this.format({
+     text: function(){
+-      body = statuses[status] + '. Redirecting to ' + address
++      body = statuses.message[status] + '. Redirecting to ' + address
+     },
+ 
+     html: function(){
+       var u = escapeHtml(address);
+-      body = '<p>' + statuses[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
++      body = '<p>' + statuses.message[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
+     },
+ 
+     default: function(){
+@@ -1113,7 +1144,7 @@ function sendfile(res, file, options, callback) {
+  * ability to escape characters that can trigger HTML sniffing.
+  *
+  * @param {*} value
+- * @param {function} replaces
++ * @param {function} replacer
+  * @param {number} spaces
+  * @param {boolean} escape
+  * @returns {string}
+diff --git a/lib/router/index.js b/lib/router/index.js
+index fbe94acdb4..abb3a6f589 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -36,7 +36,7 @@ var toString = Object.prototype.toString;
+  * Initialize a new `Router` with the given `options`.
+  *
+  * @param {Object} [options]
+- * @return {Router} which is an callable function
++ * @return {Router} which is a callable function
+  * @public
+  */
+ 
+@@ -108,8 +108,8 @@ proto.param = function param(name, fn) {
+   var ret;
+ 
+   if (name[0] === ':') {
+-    deprecate('router.param(' + JSON.stringify(name) + ', fn): Use router.param(' + JSON.stringify(name.substr(1)) + ', fn) instead');
+-    name = name.substr(1);
++    deprecate('router.param(' + JSON.stringify(name) + ', fn): Use router.param(' + JSON.stringify(name.slice(1)) + ', fn) instead')
++    name = name.slice(1)
+   }
+ 
+   for (var i = 0; i < len; ++i) {
+@@ -142,6 +142,7 @@ proto.handle = function handle(req, res, out) {
+   var protohost = getProtohost(req.url) || ''
+   var removed = '';
+   var slashAdded = false;
++  var sync = 0
+   var paramcalled = {};
+ 
+   // store options for OPTIONS request
+@@ -180,14 +181,14 @@ proto.handle = function handle(req, res, out) {
+ 
+     // remove added slash
+     if (slashAdded) {
+-      req.url = req.url.substr(1);
++      req.url = req.url.slice(1)
+       slashAdded = false;
+     }
+ 
+     // restore altered req.url
+     if (removed.length !== 0) {
+       req.baseUrl = parentUrl;
+-      req.url = protohost + removed + req.url.substr(protohost.length);
++      req.url = protohost + removed + req.url.slice(protohost.length)
+       removed = '';
+     }
+ 
+@@ -203,6 +204,11 @@ proto.handle = function handle(req, res, out) {
+       return;
+     }
+ 
++    // max sync stack
++    if (++sync > 100) {
++      return setImmediate(next, err)
++    }
++
+     // get pathname of request
+     var path = getPathname(req);
+ 
+@@ -251,7 +257,6 @@ proto.handle = function handle(req, res, out) {
+       // don't even bother matching route
+       if (!has_method && method !== 'HEAD') {
+         match = false;
+-        continue;
+       }
+     }
+ 
+@@ -274,21 +279,21 @@ proto.handle = function handle(req, res, out) {
+     // this should be done for the layer
+     self.process_params(layer, paramcalled, req, res, function (err) {
+       if (err) {
+-        return next(layerError || err);
+-      }
+-
+-      if (route) {
+-        return layer.handle_request(req, res, next);
++        next(layerError || err)
++      } else if (route) {
++        layer.handle_request(req, res, next)
++      } else {
++        trim_prefix(layer, layerError, layerPath, path)
+       }
+ 
+-      trim_prefix(layer, layerError, layerPath, path);
++      sync = 0
+     });
+   }
+ 
+   function trim_prefix(layer, layerError, layerPath, path) {
+     if (layerPath.length !== 0) {
+       // Validate path is a prefix match
+-      if (layerPath !== path.substr(0, layerPath.length)) {
++      if (layerPath !== path.slice(0, layerPath.length)) {
+         next(layerError)
+         return
+       }
+@@ -301,7 +306,7 @@ proto.handle = function handle(req, res, out) {
+       // middleware (.use stuff) needs to have the path stripped
+       debug('trim prefix (%s) from url %s', layerPath, req.url);
+       removed = layerPath;
+-      req.url = protohost + req.url.substr(protohost.length + removed.length);
++      req.url = protohost + req.url.slice(protohost.length + removed.length)
+ 
+       // Ensure leading slash
+       if (!protohost && req.url[0] !== '/') {
+@@ -547,10 +552,10 @@ function getProtohost(url) {
+   var pathLength = searchIndex !== -1
+     ? searchIndex
+     : url.length
+-  var fqdnIndex = url.substr(0, pathLength).indexOf('://')
++  var fqdnIndex = url.slice(0, pathLength).indexOf('://')
+ 
+   return fqdnIndex !== -1
+-    ? url.substr(0, url.indexOf('/', 3 + fqdnIndex))
++    ? url.substring(0, url.indexOf('/', 3 + fqdnIndex))
+     : undefined
+ }
+ 
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 178df0d516..a65756d6de 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -60,7 +60,10 @@ Route.prototype._handles_method = function _handles_method(method) {
+     return true;
+   }
+ 
+-  var name = method.toLowerCase();
++  // normalize name
++  var name = typeof method === 'string'
++    ? method.toLowerCase()
++    : method
+ 
+   if (name === 'head' && !this.methods['head']) {
+     name = 'get';
+@@ -98,11 +101,15 @@ Route.prototype._options = function _options() {
+ Route.prototype.dispatch = function dispatch(req, res, done) {
+   var idx = 0;
+   var stack = this.stack;
++  var sync = 0
++
+   if (stack.length === 0) {
+     return done();
+   }
++  var method = typeof req.method === 'string'
++    ? req.method.toLowerCase()
++    : req.method
+ 
+-  var method = req.method.toLowerCase();
+   if (method === 'head' && !this.methods['head']) {
+     method = 'get';
+   }
+@@ -122,20 +129,27 @@ Route.prototype.dispatch = function dispatch(req, res, done) {
+       return done(err)
+     }
+ 
+-    var layer = stack[idx++];
+-    if (!layer) {
+-      return done(err);
++    // max sync stack
++    if (++sync > 100) {
++      return setImmediate(next, err)
+     }
+ 
+-    if (layer.method && layer.method !== method) {
+-      return next(err);
++    var layer = stack[idx++]
++
++    // end of layers
++    if (!layer) {
++      return done(err)
+     }
+ 
+-    if (err) {
++    if (layer.method && layer.method !== method) {
++      next(err)
++    } else if (err) {
+       layer.handle_error(err, req, res, next);
+     } else {
+       layer.handle_request(req, res, next);
+     }
++
++    sync = 0
+   }
+ };
+ 
+diff --git a/lib/utils.js b/lib/utils.js
+index a9ef259ff1..56e12b9b54 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -117,16 +117,15 @@ exports.contentDisposition = deprecate.function(contentDisposition,
+ /**
+  * Parse accept params `str` returning an
+  * object with `.value`, `.quality` and `.params`.
+- * also includes `.originalIndex` for stable sorting
+  *
+  * @param {String} str
+  * @return {Object}
+  * @api private
+  */
+ 
+-function acceptParams(str, index) {
++function acceptParams (str) {
+   var parts = str.split(/ *; */);
+-  var ret = { value: parts[0], quality: 1, params: {}, originalIndex: index };
++  var ret = { value: parts[0], quality: 1, params: {} }
+ 
+   for (var i = 1; i < parts.length; ++i) {
+     var pms = parts[i].split(/ *= */);
+@@ -228,7 +227,8 @@ exports.compileTrust = function(val) {
+ 
+   if (typeof val === 'string') {
+     // Support comma-separated values
+-    val = val.split(/ *, */);
++    val = val.split(',')
++      .map(function (v) { return v.trim() })
+   }
+ 
+   return proxyaddr.compile(val || []);
+@@ -280,6 +280,7 @@ function createETagGenerator (options) {
+ /**
+  * Parse an extended query string with qs.
+  *
++ * @param {String} str
+  * @return {Object}
+  * @private
+  */
+diff --git a/lib/view.js b/lib/view.js
+index cf101caeab..c08ab4d8d5 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -74,7 +74,7 @@ function View(name, options) {
+ 
+   if (!opts.engines[this.ext]) {
+     // load engine
+-    var mod = this.ext.substr(1)
++    var mod = this.ext.slice(1)
+     debug('require "%s"', mod)
+ 
+     // default engine export
+diff --git a/package.json b/package.json
+index b5db814094..88e4206fe6 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Fast, unopinionated, minimalist web framework",
+-  "version": "4.17.2",
++  "version": "4.19.2",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [
+     "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+@@ -28,33 +28,34 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.3.7",
++    "accepts": "~1.3.8",
+     "array-flatten": "1.1.1",
+-    "body-parser": "1.19.1",
++    "body-parser": "1.20.2",
+     "content-disposition": "0.5.4",
+     "content-type": "~1.0.4",
+-    "cookie": "0.4.1",
++    "cookie": "0.6.0",
+     "cookie-signature": "1.0.6",
+     "debug": "2.6.9",
+-    "depd": "~1.1.2",
+-    "encodeurl": "~1.0.2",
++    "depd": "2.0.0",
++    "encodeurl": "~2.0.0",
+     "escape-html": "~1.0.3",
+     "etag": "~1.8.1",
+-    "finalhandler": "~1.1.2",
++    "finalhandler": "1.2.0",
+     "fresh": "0.5.2",
++    "http-errors": "2.0.0",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+-    "on-finished": "~2.3.0",
++    "on-finished": "2.4.1",
+     "parseurl": "~1.3.3",
+     "path-to-regexp": "0.1.7",
+     "proxy-addr": "~2.0.7",
+-    "qs": "6.9.6",
++    "qs": "6.11.0",
+     "range-parser": "~1.2.1",
+     "safe-buffer": "5.2.1",
+-    "send": "0.17.2",
+-    "serve-static": "1.14.2",
++    "send": "0.18.0",
++    "serve-static": "1.15.0",
+     "setprototypeof": "1.2.0",
+-    "statuses": "~1.5.0",
++    "statuses": "2.0.1",
+     "type-is": "~1.6.18",
+     "utils-merge": "1.0.1",
+     "vary": "~1.1.2"
+@@ -64,19 +65,17 @@
+     "connect-redis": "3.4.2",
+     "cookie-parser": "1.4.6",
+     "cookie-session": "2.0.0",
+-    "ejs": "3.1.6",
+-    "eslint": "7.32.0",
++    "ejs": "3.1.9",
++    "eslint": "8.47.0",
+     "express-session": "1.17.2",
+     "hbs": "4.2.0",
+-    "istanbul": "0.4.5",
+     "marked": "0.7.0",
+     "method-override": "3.0.0",
+-    "mocha": "9.1.3",
++    "mocha": "10.2.0",
+     "morgan": "1.10.0",
+-    "multiparty": "4.2.2",
++    "nyc": "15.1.0",
+     "pbkdf2-password": "1.2.1",
+-    "should": "13.2.3",
+-    "supertest": "6.1.6",
++    "supertest": "6.3.0",
+     "vhost": "~3.0.2"
+   },
+   "engines": {
+@@ -92,8 +91,8 @@
+   "scripts": {
+     "lint": "eslint .",
+     "test": "mocha --require test/support/env --reporter spec --bail --check-leaks test/ test/acceptance/",
+-    "test-ci": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --require test/support/env --reporter spec --check-leaks test/ test/acceptance/",
+-    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --require test/support/env --reporter dot --check-leaks test/ test/acceptance/",
++    "test-ci": "nyc --reporter=lcovonly --reporter=text npm test",
++    "test-cov": "nyc --reporter=html --reporter=text npm test",
+     "test-tap": "mocha --require test/support/env --reporter tap --check-leaks test/ test/acceptance/"
+   }
+ }

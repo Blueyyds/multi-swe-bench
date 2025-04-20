@@ -1,0 +1,33 @@
+diff --git a/History.md b/History.md
+index 0b54e1d27b..8d9d39b2b8 100644
+--- a/History.md
++++ b/History.md
+@@ -4,6 +4,7 @@ unreleased
+   * Add "root" option to `res.download`
+   * Allow `options` without `filename` in `res.download`
+   * Deprecate string and non-integer arguments to `res.status`
++  * Fix behavior of `null`/`undefined` as `maxAge` in `res.cookie`
+   * Ignore `Object.prototype` values in settings through `app.set`/`app.get`
+   * Invoke `default` with same arguments as types in `res.format`
+   * Support proper 205 responses using `res.send`
+diff --git a/lib/response.js b/lib/response.js
+index bfa7871434..eeeee1c806 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -868,9 +868,13 @@ res.cookie = function (name, value, options) {
+     val = 's:' + sign(val, secret);
+   }
+ 
+-  if ('maxAge' in opts) {
+-    opts.expires = new Date(Date.now() + opts.maxAge);
+-    opts.maxAge /= 1000;
++  if (opts.maxAge != null) {
++    var maxAge = opts.maxAge - 0
++
++    if (!isNaN(maxAge)) {
++      opts.expires = new Date(Date.now() + maxAge)
++      opts.maxAge = Math.floor(maxAge / 1000)
++    }
+   }
+ 
+   if (opts.path == null) {

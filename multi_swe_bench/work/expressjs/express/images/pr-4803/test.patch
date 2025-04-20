@@ -1,0 +1,96 @@
+diff --git a/test/config.js b/test/config.js
+index 8386a4471c..b04367fdbf 100644
+--- a/test/config.js
++++ b/test/config.js
+@@ -11,6 +11,12 @@ describe('config', function () {
+       assert.equal(app.get('foo'), 'bar');
+     })
+ 
++    it('should set prototype values', function () {
++      var app = express()
++      app.set('hasOwnProperty', 42)
++      assert.strictEqual(app.get('hasOwnProperty'), 42)
++    })
++
+     it('should return the app', function () {
+       var app = express();
+       assert.equal(app.set('foo', 'bar'), app);
+@@ -21,6 +27,17 @@ describe('config', function () {
+       assert.equal(app.set('foo', undefined), app);
+     })
+ 
++    it('should return set value', function () {
++      var app = express()
++      app.set('foo', 'bar')
++      assert.strictEqual(app.set('foo'), 'bar')
++    })
++
++    it('should return undefined for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.set('hasOwnProperty'), undefined)
++    })
++
+     describe('"etag"', function(){
+       it('should throw on bad value', function(){
+         var app = express();
+@@ -51,6 +68,11 @@ describe('config', function () {
+       assert.strictEqual(app.get('foo'), undefined);
+     })
+ 
++    it('should return undefined for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.get('hasOwnProperty'), undefined)
++    })
++
+     it('should otherwise return the value', function(){
+       var app = express();
+       app.set('foo', 'bar');
+@@ -125,6 +147,12 @@ describe('config', function () {
+       assert.equal(app.enable('tobi'), app);
+       assert.strictEqual(app.get('tobi'), true);
+     })
++
++    it('should set prototype values', function () {
++      var app = express()
++      app.enable('hasOwnProperty')
++      assert.strictEqual(app.get('hasOwnProperty'), true)
++    })
+   })
+ 
+   describe('.disable()', function(){
+@@ -133,6 +161,12 @@ describe('config', function () {
+       assert.equal(app.disable('tobi'), app);
+       assert.strictEqual(app.get('tobi'), false);
+     })
++
++    it('should set prototype values', function () {
++      var app = express()
++      app.disable('hasOwnProperty')
++      assert.strictEqual(app.get('hasOwnProperty'), false)
++    })
+   })
+ 
+   describe('.enabled()', function(){
+@@ -146,6 +180,11 @@ describe('config', function () {
+       app.set('foo', 'bar');
+       assert.strictEqual(app.enabled('foo'), true);
+     })
++
++    it('should default to false for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.enabled('hasOwnProperty'), false)
++    })
+   })
+ 
+   describe('.disabled()', function(){
+@@ -159,5 +198,10 @@ describe('config', function () {
+       app.set('foo', 'bar');
+       assert.strictEqual(app.disabled('foo'), false);
+     })
++
++    it('should default to true for prototype values', function () {
++      var app = express()
++      assert.strictEqual(app.disabled('hasOwnProperty'), true)
++    })
+   })
+ })

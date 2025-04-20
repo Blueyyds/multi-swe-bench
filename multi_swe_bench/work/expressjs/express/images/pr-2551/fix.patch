@@ -1,0 +1,63 @@
+diff --git a/lib/application.js b/lib/application.js
+index dc18fe37e3..b3614e8fbe 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -56,7 +56,6 @@ app.defaultConfiguration = function(){
+   this.set('env', env);
+   this.set('query parser', 'extended');
+   this.set('subdomain offset', 2);
+-  this.set('trust proxy', false);
+ 
+   debug('booting in %s mode', env);
+ 
+diff --git a/lib/request.js b/lib/request.js
+index 5cd3900ee0..80c743b0fd 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -12,6 +12,11 @@ var parseRange = require('range-parser');
+ var parse = require('parseurl');
+ var proxyaddr = require('proxy-addr');
+ 
++// Helper for proxy-addr
++function trustNone(){
++  return false;
++}
++
+ /**
+  * Request prototype.
+  */
+@@ -268,7 +273,7 @@ defineGetter(req, 'protocol', function protocol(){
+     : 'http';
+   var trust = this.app.get('trust proxy fn');
+ 
+-  if (!trust(this.connection.remoteAddress)) {
++  if (!trust || !trust(this.connection.remoteAddress)) {
+     return proto;
+   }
+ 
+@@ -303,7 +308,7 @@ defineGetter(req, 'secure', function secure(){
+ 
+ defineGetter(req, 'ip', function ip(){
+   var trust = this.app.get('trust proxy fn');
+-  return proxyaddr(this, trust);
++  return proxyaddr(this, trust || trustNone);
+ });
+ 
+ /**
+@@ -320,7 +325,7 @@ defineGetter(req, 'ip', function ip(){
+ 
+ defineGetter(req, 'ips', function ips() {
+   var trust = this.app.get('trust proxy fn');
+-  var addrs = proxyaddr.all(this, trust);
++  var addrs = proxyaddr.all(this, trust || trustNone);
+   return addrs.slice(1).reverse();
+ });
+ 
+@@ -378,7 +383,7 @@ defineGetter(req, 'hostname', function hostname(){
+   var trust = this.app.get('trust proxy fn');
+   var host = this.get('X-Forwarded-Host');
+ 
+-  if (!host || !trust(this.connection.remoteAddress)) {
++  if (!host || !trust || !trust(this.connection.remoteAddress)) {
+     host = this.get('Host');
+   }

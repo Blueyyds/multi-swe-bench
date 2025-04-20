@@ -1,0 +1,1185 @@
+diff --git a/.travis.yml b/.travis.yml
+index ebeed7008d..3773559581 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -7,19 +7,20 @@ node_js:
+   - "3.3"
+   - "4.9"
+   - "5.12"
+-  - "6.14"
++  - "6.17"
+   - "7.10"
+-  - "8.12"
++  - "8.17"
++  - "9.11"
++  - "10.19"
++  - "11.15"
++  - "12.16"
+ matrix:
+   include:
+-    - node_js: "9"
+-      env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+-    - node_js: "10"
++    - node_js: "13"
+       env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+   allow_failures:
+     # Allow the nightly installs to fail
+     - env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+-sudo: false
+ cache:
+   directories:
+     - node_modules
+@@ -35,15 +36,24 @@ before_install:
+   # Setup Node.js version-specific dependencies
+   - |
+     # mocha for testing
+-    # - use 3.x for Node.js < 6
+-    if [[ "$(cut -d. -f1 <<< "$TRAVIS_NODE_VERSION")" -lt 6 ]]; then
++    # - use 3.x for Node.js < 4
++    # - use 5.x for Node.js < 6
++    # - use 6.x for Node.js < 8
++    if [[ "$(cut -d. -f1 <<< "$TRAVIS_NODE_VERSION")" -lt 4 ]]; then
+       npm install --silent --save-dev mocha@3.5.3
++    elif [[ "$(cut -d. -f1 <<< "$TRAVIS_NODE_VERSION")" -lt 6 ]]; then
++      npm install --silent --save-dev mocha@5.2.0
++    elif [[ "$(cut -d. -f1 <<< "$TRAVIS_NODE_VERSION")" -lt 8 ]]; then
++      npm install --silent --save-dev mocha@6.2.2
+     fi
+   - |
+     # supertest for http calls
+     # - use 2.0.0 for Node.js < 4
++    # - use 3.4.2 for Node.js < 6
+     if [[ "$(cut -d. -f1 <<< "$TRAVIS_NODE_VERSION")" -lt 4 ]]; then
+       npm install --silent --save-dev supertest@2.0.0
++    elif [[ "$(cut -d. -f1 <<< "$TRAVIS_NODE_VERSION")" -lt 6 ]]; then
++      npm install --silent --save-dev supertest@3.4.2
+     fi
+   # Update Node.js modules
+   - |
+@@ -60,5 +70,5 @@ script:
+ after_script:
+   - |
+     # Upload coverage to coveralls
+-    npm install --save-dev coveralls@2.10.0
++    npm install --save-dev coveralls@2.12.0
+     coveralls < ./coverage/lcov.info
+diff --git a/Charter.md b/Charter.md
+new file mode 100644
+index 0000000000..f9647cb734
+--- /dev/null
++++ b/Charter.md
+@@ -0,0 +1,92 @@
++# Express Charter
++
++## Section 0: Guiding Principles
++
++The Express project is part of the OpenJS Foundation which operates
++transparently, openly, collaboratively, and ethically.
++Project proposals, timelines, and status must not merely be open, but
++also easily visible to outsiders.
++
++## Section 1: Scope
++
++Express is a http web server framework with a simple and expressive API
++which is highly aligned with Node.js core. We aim to be the best in
++class for writing performant, spec compliant, and powerful web servers
++in Node.js. As one of the oldest and most popular web frameworks in
++the ecosystem, we have an important place for new users and experts
++alike.
++
++### 1.1: In-scope
++
++Express is made of many modules spread between three GitHub Orgs:
++
++- [expressjs](http://github.com/expressjs/): Top level middleware and
++  libraries
++- [pillarjs](http://github.com/pillarjs/): Components which make up
++  Express but can also be used for other web frameworks
++- [jshttp](http://github.com/jshttp/): Low level http libraries
++
++### 1.2: Out-of-Scope
++
++Section Intentionally Left Blank
++
++## Section 2: Relationship with OpenJS Foundation CPC.
++
++Technical leadership for the projects within the OpenJS Foundation is
++delegated to the projects through their project charters by the OpenJS
++Cross Project Council (CPC). In the case of the Express project, it is
++delegated to the Express Technical Committee ("TC").
++
++This Technical Committee is in charge of both the day-to-day operations
++of the project, as well as its technical management. This charter can
++be amended by the TC requiring at least two approvals and a minimum two
++week comment period for other TC members or CPC members to object. Any
++changes the CPC wishes to propose will be considered a priority but
++will follow the same process.
++
++### 2.1 Other Formal Project Relationships
++
++Section Intentionally Left Blank
++
++## Section 3: Express Governing Body
++
++The Express project is managed by the Technical Committee ("TC").
++Members can be added to the TC at any time. Any committer can nominate
++another committer to the TC and the TC uses its standard consensus
++seeking process to evaluate whether or not to add this new member.
++Members who do not participate consistently at the level of a majority
++of the other members are expected to resign.
++
++## Section 4: Roles & Responsibilities
++
++The Express TC manages all aspects of both the technical and community
++parts of the project. Members of the TC should attend the regular
++meetings when possible, and be available for discussion of time
++sensitive or important issues.
++
++### Section 4.1 Project Operations & Management
++
++Section Intentionally Left Blank
++
++### Section 4.2: Decision-making, Voting, and/or Elections
++
++The Express TC uses a "consensus seeking" process for issues that are
++escalated to the TC. The group tries to find a resolution that has no
++open objections among TC members. If a consensus cannot be reached
++that has no objections then a majority wins vote is called. It is also
++expected that the majority of decisions made by the TC are via a
++consensus seeking process and that voting is only used as a last-resort.
++
++Resolution may involve returning the issue to committers with
++suggestions on how to move forward towards a consensus. It is not
++expected that a meeting of the TC will resolve all issues on its
++agenda during that meeting and may prefer to continue the discussion
++happening among the committers.
++
++### Section 4.3: Other Project Roles
++
++Section Intentionally Left Blank
++
++## Section 5: Definitions
++
++Section Intentionally Left Blank
+diff --git a/Code-Of-Conduct.md b/Code-Of-Conduct.md
+new file mode 100644
+index 0000000000..bbb8996a65
+--- /dev/null
++++ b/Code-Of-Conduct.md
+@@ -0,0 +1,139 @@
++# Contributor Covenant Code of Conduct
++
++As a member of the Open JS Foundation, Express has adopted the
++[Contributor Covenant 2.0][cc-20-doc].
++
++If an issue arises and you cannot resolve it directly with the parties
++involved, you can report it to the Express project TC through the following
++email: express-coc@lists.openjsf.org
++
++In addition, the OpenJS Foundation maintains a Code of Conduct Panel (CoCP).
++This is a foundation-wide team established to manage escalation when a reporter
++believes that a report to a member project or the CPC has not been properly
++handled. In order to escalate to the CoCP send an email to
++coc-escalation@lists.openjsf.org.
++
++## Our Pledge
++
++We as members, contributors, and leaders pledge to make participation in our
++community a harassment-free experience for everyone, regardless of age, body
++size, visible or invisible disability, ethnicity, sex characteristics, gender
++identity and expression, level of experience, education, socio-economic status,
++nationality, personal appearance, race, religion, or sexual identity and
++orientation.
++
++We pledge to act and interact in ways that contribute to an open, welcoming,
++diverse, inclusive, and healthy community.
++
++## Our Standards
++
++Examples of behavior that contributes to a positive environment for our
++community include:
++
++* Demonstrating empathy and kindness toward other people
++* Being respectful of differing opinions, viewpoints, and experiences
++* Giving and gracefully accepting constructive feedback
++* Accepting responsibility and apologizing to those affected by our mistakes,
++  and learning from the experience
++* Focusing on what is best not just for us as individuals, but for the overall
++  community
++
++Examples of unacceptable behavior include:
++
++* The use of sexualized language or imagery, and sexual attention or advances
++  of any kind
++* Trolling, insulting or derogatory comments, and personal or political attacks
++* Public or private harassment
++* Publishing others' private information, such as a physical or email address,
++  without their explicit permission
++* Other conduct which could reasonably be considered inappropriate in a
++  professional setting
++
++## Enforcement Responsibilities
++
++Community leaders are responsible for clarifying and enforcing our standards of
++acceptable behavior and will take appropriate and fair corrective action in
++response to any behavior that they deem inappropriate, threatening, offensive,
++or harmful.
++
++Community leaders have the right and responsibility to remove, edit, or reject
++comments, commits, code, wiki edits, issues, and other contributions that are
++not aligned to this Code of Conduct, and will communicate reasons for
++moderation decisions when appropriate.
++
++## Scope
++
++This Code of Conduct applies within all community spaces, and also applies when
++an individual is officially representing the community in public spaces.
++Examples of representing our community include using an official e-mail
++address, posting via an official social media account, or acting as an
++appointed representative at an online or offline event.
++
++## Enforcement
++
++Instances of abusive, harassing, or otherwise unacceptable behavior may be
++reported to the community leaders responsible for enforcement at
++express-coc@lists.openjsf.org. All complaints will be reviewed and
++investigated promptly and fairly.
++
++All community leaders are obligated to respect the privacy and security of the
++reporter of any incident.
++
++## Enforcement Guidelines
++
++Community leaders will follow these Community Impact Guidelines in determining
++the consequences for any action they deem in violation of this Code of Conduct:
++
++### 1. Correction
++
++**Community Impact**: Use of inappropriate language or other behavior deemed
++unprofessional or unwelcome in the community.
++
++**Consequence**: A private, written warning from community leaders, providing
++clarity around the nature of the violation and an explanation of why the
++behavior was inappropriate. A public apology may be requested.
++
++### 2. Warning
++
++**Community Impact**: A violation through a single incident or series of
++actions.
++
++**Consequence**: A warning with consequences for continued behavior. No
++interaction with the people involved, including unsolicited interaction with
++those enforcing the Code of Conduct, for a specified period of time. This
++includes avoiding interactions in community spaces as well as external channels
++like social media. Violating these terms may lead to a temporary or permanent
++ban.
++
++### 3. Temporary Ban
++
++**Community Impact**: A serious violation of community standards, including
++sustained inappropriate behavior.
++
++**Consequence**: A temporary ban from any sort of interaction or public
++communication with the community for a specified period of time. No public or
++private interaction with the people involved, including unsolicited
++interaction with those enforcing the Code of Conduct, is allowed during this
++period. Violating these terms may lead to a permanent ban.
++
++### 4. Permanent Ban
++
++**Community Impact**: Demonstrating a pattern of violation of community
++standards, including sustained inappropriate behavior,  harassment of an
++individual, or aggression toward or disparagement of classes of individuals.
++
++**Consequence**: A permanent ban from any sort of public interaction within the
++project community.
++
++## Attribution
++
++This Code of Conduct is adapted from the [Contributor Covenant, version 2.0](cc-20-doc).
++
++Community Impact Guidelines were inspired by
++[Mozilla's code of conduct enforcement ladder](https://github.com/mozilla/diversity).
++
++[cc-20-doc]: https://www.contributor-covenant.org/version/2/0/code_of_conduct/
++
++For answers to common questions about this code of conduct, see the FAQ at
++https://www.contributor-covenant.org/faq. Translations are available at
++https://www.contributor-covenant.org/translations.
+diff --git a/Collaborator-Guide.md b/Collaborator-Guide.md
+index 75d4e7c8f2..3c73307d61 100644
+--- a/Collaborator-Guide.md
++++ b/Collaborator-Guide.md
+@@ -1,3 +1,4 @@
++# Express Collaborator Guide
+ 
+ ## Website Issues
+ 
+@@ -21,7 +22,7 @@ a future release of Express.
+ 
+ 1. [Create an issue](https://github.com/expressjs/express/issues/new) for the
+    bug you want to fix or the feature that you want to add.
+-2. Create your own [fork](https://github.com/expressjs/express) on github, then
++2. Create your own [fork](https://github.com/expressjs/express) on GitHub, then
+    checkout your fork.
+ 3. Write your code in your local copy. It's good practice to create a branch for
+    each new issue you work on, although not compulsory.
+diff --git a/Contributing.md b/Contributing.md
+index 41386568d6..485dee597e 100644
+--- a/Contributing.md
++++ b/Contributing.md
+@@ -14,12 +14,13 @@ contributors can be involved in decision making.
+ * A **Committer** is a subset of contributors who have been given write access to the repository.
+ * A **TC (Technical Committee)** is a group of committers representing the required technical
+ expertise to resolve rare disputes.
++* A **Triager** is a subset of contributors who have been given triage access to the repository.
+ 
+-# Logging Issues
++## Logging Issues
+ 
+ Log an issue for any question or problem you might have. When in doubt, log an issue, and
+ any additional policies about what to include will be provided in the responses. The only
+-exception is security dislosures which should be sent privately.
++exception is security disclosures which should be sent privately.
+ 
+ Committers may direct you to another repository, ask for additional clarifications, and
+ add appropriate metadata before the issue is addressed.
+@@ -27,7 +28,7 @@ add appropriate metadata before the issue is addressed.
+ Please be courteous and respectful. Every participant is expected to follow the
+ project's Code of Conduct.
+ 
+-# Contributions
++## Contributions
+ 
+ Any change to resources in this repository must be through pull requests. This applies to all changes
+ to documentation, code, binary files, etc. Even long term committers and TC members must use
+@@ -41,7 +42,7 @@ weekends and other holiday periods to ensure active committers all have reasonab
+ become involved in the discussion and review process if they wish.
+ 
+ The default for each contribution is that it is accepted once no committer has an objection.
+-During review committers may also request that a specific contributor who is most versed in a
++During a review, committers may also request that a specific contributor who is most versed in a
+ particular area gives a "LGTM" before the PR can be merged. There is no additional "sign off"
+ process for contributions to land. Once all issues brought by committers are addressed it can
+ be landed by any committer.
+@@ -56,7 +57,36 @@ discuss pending contributions in order to find a resolution. It is expected that
+ small minority of issues be brought to the TC for resolution and that discussion and
+ compromise among committers be the default resolution mechanism.
+ 
+-# Becoming a Committer
++## Becoming a Triager
++
++Anyone can become a triager! Read more about the process of being a triager in
++[the triage process document](Triager-Guide.md).
++
++[Open an issue in `expressjs/express` repo](https://github.com/expressjs/express/issues/new)
++to request the triage role. State that you have read and agree to the
++[Code of Conduct](Code-Of-Conduct.md) and details of the role.
++
++Here is an example issue content you can copy and paste:
++
++```
++Title: Request triager role for <your GitHub username>
++
++I have read and understood the project's Code of Conduct.
++I also have read and understood the process and best practices around Express triaging.
++
++I request for a triager role for the following GitHub organizations:
++
++jshttp
++pillarjs
++express
++```
++
++Once you have opened your issue, a member of the TC will add you to the `triage` team in
++the organizations requested. They will then close the issue.
++
++Happy triaging!
++
++## Becoming a Committer
+ 
+ All contributors who land a non-trivial contribution should be on-boarded in a timely manner,
+ and added as a committer, and be given write access to the repository.
+@@ -64,7 +94,7 @@ and added as a committer, and be given write access to the repository.
+ Committers are expected to follow this policy and continue to send pull requests, go through
+ proper review, and have other committers merge their pull requests.
+ 
+-# TC Process
++## TC Process
+ 
+ The TC uses a "consensus seeking" process for issues that are escalated to the TC.
+ The group tries to find a resolution that has no open objections among TC members.
+@@ -81,5 +111,3 @@ Members can be added to the TC at any time. Any committer can nominate another c
+ to the TC and the TC uses its standard consensus seeking process to evaluate whether or
+ not to add this new member. Members who do not participate consistently at the level of
+ a majority of the other members are expected to resign.
+-
+-
+diff --git a/History.md b/History.md
+index 2f6eab101a..6e62a6ddb8 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,59 @@
++4.17.1 / 2019-05-25
++===================
++
++  * Revert "Improve error message for `null`/`undefined` to `res.status`"
++
++4.17.0 / 2019-05-16
++===================
++
++  * Add `express.raw` to parse bodies into `Buffer`
++  * Add `express.text` to parse bodies into string
++  * Improve error message for non-strings to `res.sendFile`
++  * Improve error message for `null`/`undefined` to `res.status`
++  * Support multiple hosts in `X-Forwarded-Host`
++  * deps: accepts@~1.3.7
++  * deps: body-parser@1.19.0
++    - Add encoding MIK
++    - Add petabyte (`pb`) support
++    - Fix parsing array brackets after index
++    - deps: bytes@3.1.0
++    - deps: http-errors@1.7.2
++    - deps: iconv-lite@0.4.24
++    - deps: qs@6.7.0
++    - deps: raw-body@2.4.0
++    - deps: type-is@~1.6.17
++  * deps: content-disposition@0.5.3
++  * deps: cookie@0.4.0
++    - Add `SameSite=None` support
++  * deps: finalhandler@~1.1.2
++    - Set stricter `Content-Security-Policy` header
++    - deps: parseurl@~1.3.3
++    - deps: statuses@~1.5.0
++  * deps: parseurl@~1.3.3
++  * deps: proxy-addr@~2.0.5
++    - deps: ipaddr.js@1.9.0
++  * deps: qs@6.7.0
++    - Fix parsing array brackets after index
++  * deps: range-parser@~1.2.1
++  * deps: send@0.17.1
++    - Set stricter CSP header in redirect & error responses
++    - deps: http-errors@~1.7.2
++    - deps: mime@1.6.0
++    - deps: ms@2.1.1
++    - deps: range-parser@~1.2.1
++    - deps: statuses@~1.5.0
++    - perf: remove redundant `path.normalize` call
++  * deps: serve-static@1.14.1
++    - Set stricter CSP header in redirect response
++    - deps: parseurl@~1.3.3
++    - deps: send@0.17.1
++  * deps: setprototypeof@1.1.1
++  * deps: statuses@~1.5.0
++    - Add `103 Early Hints`
++  * deps: type-is@~1.6.18
++    - deps: mime-types@~2.1.24
++    - perf: prevent internal `throw` on invalid type
++
+ 4.16.4 / 2018-10-10
+ ===================
+ 
+@@ -294,7 +350,7 @@
+     - Fix including type extensions in parameters in `Accept` parsing
+     - Fix parsing `Accept` parameters with quoted equals
+     - Fix parsing `Accept` parameters with quoted semicolons
+-    - Many performance improvments
++    - Many performance improvements
+     - deps: mime-types@~2.1.11
+     - deps: negotiator@0.6.1
+   * deps: content-type@~1.0.2
+@@ -309,7 +365,7 @@
+     - perf: enable strict mode
+     - perf: hoist regular expression
+     - perf: use for loop in parse
+-    - perf: use string concatination for serialization
++    - perf: use string concatenation for serialization
+   * deps: finalhandler@0.5.0
+     - Change invalid or non-numeric status code to 500
+     - Overwrite status message to match set status code
+@@ -319,7 +375,7 @@
+   * deps: proxy-addr@~1.1.2
+     - Fix accepting various invalid netmasks
+     - Fix IPv6-mapped IPv4 validation edge cases
+-    - IPv4 netmasks must be contingous
++    - IPv4 netmasks must be contiguous
+     - IPv6 addresses cannot be used as a netmask
+     - deps: ipaddr.js@1.1.1
+   * deps: qs@6.2.0
+@@ -1097,13 +1153,13 @@
+    - deps: negotiator@0.4.6
+  * deps: debug@1.0.2
+  * deps: send@0.4.3
+-   - Do not throw un-catchable error on file open race condition
++   - Do not throw uncatchable error on file open race condition
+    - Use `escape-html` for HTML escaping
+    - deps: debug@1.0.2
+    - deps: finished@1.2.2
+    - deps: fresh@0.2.2
+  * deps: serve-static@1.2.3
+-   - Do not throw un-catchable error on file open race condition
++   - Do not throw uncatchable error on file open race condition
+    - deps: send@0.4.3
+ 
+ 4.4.2 / 2014-06-09
+@@ -1983,7 +2039,7 @@
+    - deps: serve-static@1.2.3
+  * deps: debug@1.0.2
+  * deps: send@0.4.3
+-   - Do not throw un-catchable error on file open race condition
++   - Do not throw uncatchable error on file open race condition
+    - Use `escape-html` for HTML escaping
+    - deps: debug@1.0.2
+    - deps: finished@1.2.2
+@@ -3168,7 +3224,7 @@ Shaw]
+   * Updated haml submodule
+   * Changed ETag; removed inode, modified time only
+   * Fixed LF to CRLF for setting multiple cookies
+-  * Fixed cookie complation; values are now urlencoded
++  * Fixed cookie compilation; values are now urlencoded
+   * Fixed cookies parsing; accepts quoted values and url escaped cookies
+ 
+ 0.11.0 / 2010-05-06
+@@ -3363,7 +3419,7 @@ Shaw]
+ 
+   * Added "plot" format option for Profiler (for gnuplot processing)
+   * Added request number to Profiler plugin
+-  * Fixed binary encoding for multi-part file uploads, was previously defaulting to UTF8
++  * Fixed binary encoding for multipart file uploads, was previously defaulting to UTF8
+   * Fixed issue with routes not firing when not files are present. Closes #184
+   * Fixed process.Promise -> events.Promise
+ 
+@@ -3409,7 +3465,7 @@ Shaw]
+   * Updated sample chat app to show messages on load
+   * Updated libxmljs parseString -> parseHtmlString
+   * Fixed `make init` to work with older versions of git
+-  * Fixed specs can now run independent specs for those who cant build deps. Closes #127
++  * Fixed specs can now run independent specs for those who can't build deps. Closes #127
+   * Fixed issues introduced by the node url module changes. Closes 126.
+   * Fixed two assertions failing due to Collection#keys() returning strings
+   * Fixed faulty Collection#toArray() spec due to keys() returning strings
+diff --git a/Readme.md b/Readme.md
+index 582e8958c5..f1ddaef0be 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -9,8 +9,8 @@
+   [![Test Coverage][coveralls-image]][coveralls-url]
+ 
+ ```js
+-var express = require('express')
+-var app = express()
++const express = require('express')
++const app = express()
+ 
+ app.get('/', function (req, res) {
+   res.send('Hello World')
+@@ -27,6 +27,9 @@ This is a [Node.js](https://nodejs.org/en/) module available through the
+ Before installing, [download and install Node.js](https://nodejs.org/en/download/).
+ Node.js 0.10 or higher is required.
+ 
++If this is a brand new project, make sure to create a `package.json` first with
++the [`npm init` command](https://docs.npmjs.com/creating-a-package-json-file).
++
+ Installation is done using the
+ [`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+ 
+@@ -90,10 +93,12 @@ $ npm install
+ $ npm start
+ ```
+ 
++  View the website at: http://localhost:3000
++
+ ## Philosophy
+ 
+   The Express philosophy is to provide small, robust tooling for HTTP servers, making
+-  it a great solution for single page applications, web sites, hybrids, or public
++  it a great solution for single page applications, websites, hybrids, or public
+   HTTP APIs.
+ 
+   Express does not force you to use any specific ORM or template engine. With support for over
+@@ -125,6 +130,10 @@ $ npm install
+ $ npm test
+ ```
+ 
++## Contributing
++
++[Contributing Guide](Contributing.md)
++
+ ## People
+ 
+ The original author of Express is [TJ Holowaychuk](https://github.com/tj)
+@@ -140,14 +149,10 @@ The current lead maintainer is [Douglas Christopher Wilson](https://github.com/d
+ [npm-image]: https://img.shields.io/npm/v/express.svg
+ [npm-url]: https://npmjs.org/package/express
+ [downloads-image]: https://img.shields.io/npm/dm/express.svg
+-[downloads-url]: https://npmjs.org/package/express
++[downloads-url]: https://npmcharts.com/compare/express?minimal=true
+ [travis-image]: https://img.shields.io/travis/expressjs/express/master.svg?label=linux
+ [travis-url]: https://travis-ci.org/expressjs/express
+ [appveyor-image]: https://img.shields.io/appveyor/ci/dougwilson/express/master.svg?label=windows
+ [appveyor-url]: https://ci.appveyor.com/project/dougwilson/express
+ [coveralls-image]: https://img.shields.io/coveralls/expressjs/express/master.svg
+ [coveralls-url]: https://coveralls.io/r/expressjs/express?branch=master
+-[gratipay-image-visionmedia]: https://img.shields.io/gratipay/visionmedia.svg
+-[gratipay-url-visionmedia]: https://gratipay.com/visionmedia/
+-[gratipay-image-dougwilson]: https://img.shields.io/gratipay/dougwilson.svg
+-[gratipay-url-dougwilson]: https://gratipay.com/dougwilson/
+diff --git a/Triager-Guide.md b/Triager-Guide.md
+new file mode 100644
+index 0000000000..a2909ef30d
+--- /dev/null
++++ b/Triager-Guide.md
+@@ -0,0 +1,63 @@
++# Express Triager Guide
++
++## Issue Triage Process
++
++When a new issue or pull request is opened the issue will be labeled with `needs triage`.
++If a triage team member is available they can help make sure all the required information
++is provided. Depending on the issue or PR there are several next labels they can add for further
++classification:
++
++* `needs triage`: This can be kept if the triager is unsure which next steps to take
++* `awaiting more info`: If more info has been requested from the author, apply this label.
++* `question`: User questions that do not appear to be bugs or enhancements.
++* `discuss`: Topics for discussion. Might end in an `enhancement` or `question` label.
++* `bug`: Issues that present a reasonable conviction there is a reproducible bug.
++* `enhancement`: Issues that are found to be a reasonable candidate feature additions.
++
++In all cases, issues may be closed by maintainers if they don't receive a timely response when
++further information is sought, or when additional questions are asked.
++
++## Approaches and Best Practices for getting into triage contributions
++
++Review the organization's [StatusBoard](https://expressjs.github.io/statusboard/),
++pay special attention to these columns: stars, watchers, open issues, and contributors.
++This gives you a general idea about the criticality and health of the repository.
++Pick a few projects based on that criteria, your interests, and skills (existing or aspiring).
++
++Review the project's contribution guideline if present. In a nutshell,
++commit to the community's standards and values. Review the
++documentation, for most of the projects it is just the README.md, and
++make sure you understand the key APIs, semantics, configurations, and use cases.
++
++It might be helpful to write your own test apps to re-affirm your
++understanding of the key functions. This may identify some gaps in
++documentation, record those as they might be good PR's to open.
++Skim through the issue backlog; identify low hanging issues and mostly new ones.
++From those, attempt to recreate issues based on the OP description and
++ask questions if required. No question is a bad question!
++
++## Removal of Triage Role
++
++There are a few cases where members can be removed as triagers:
++
++- Breaking the CoC or project contributor guidelines
++- Abuse or misuse of the role as deemed by the TC
++- Lack of participation for more than 6 months
++
++If any of these happen we will discuss as a part of the triage portion of the regular TC meetings.
++If you have questions feel free to reach out to any of the TC members.
++
++## Other Helpful Hints:
++
++- Everyone is welcome to attend the [Express Technical Committee Meetings](https://github.com/expressjs/discussions#expressjs-tc-meetings), and as a triager, it might help to get a better idea of what's happening with the project.
++- When exploring the module's functionality there are a few helpful steps:
++  - Turn on `DEBUG=*` (see https://www.npmjs.com/package/debug) to get detailed log information
++  - It is also a good idea to do live debugging to follow the control flow, try using `node --inspect`
++  - It is a good idea to make at least one pass of reading through the entire source
++- When reviewing the list of open issues there are some common types and suggested actions:
++  - New/unattended issues or simple questions: A good place to start
++  - Hard bugs & ongoing discussions: always feel free to chime in and help
++  - Issues that imply gaps in the documentation: open PRs with changes or help the user to do so
++- For recurring issues, it is helpful to create functional examples to demonstrate (publish as gists or a repo)
++- Review and identify the maintainers. If necessary, at-mention one or more of them if you are unsure what to do
++- Make sure all your interactions are professional, welcoming, and respectful to the parties involved.
+diff --git a/appveyor.yml b/appveyor.yml
+index fc3582e4a5..94d25b3d53 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -7,9 +7,13 @@ environment:
+     - nodejs_version: "3.3"
+     - nodejs_version: "4.9"
+     - nodejs_version: "5.12"
+-    - nodejs_version: "6.14"
++    - nodejs_version: "6.17"
+     - nodejs_version: "7.10"
+-    - nodejs_version: "8.12"
++    - nodejs_version: "8.16"
++    - nodejs_version: "9.11"
++    - nodejs_version: "10.19"
++    - nodejs_version: "11.15"
++    - nodejs_version: "12.16"
+ cache:
+   - node_modules
+ install:
+@@ -28,15 +32,24 @@ install:
+   # Setup Node.js version-specific dependencies
+   - ps: |
+       # mocha for testing
+-      # - use 3.x for Node.js < 6
+-      if ($env:nodejs_version.split(".")[0] -lt 6) {
++      # - use 3.x for Node.js < 4
++      # - use 5.x for Node.js < 6
++      # - use 6.x for Node.js < 8
++      if ($env:nodejs_version.split(".")[0] -lt 4) {
+         npm install --silent --save-dev mocha@3.5.3
++      } elseif ($env:nodejs_version.split(".")[0] -lt 6) {
++        npm install --silent --save-dev mocha@5.2.0
++      } elseif ($env:nodejs_version.split(".")[0] -lt 8) {
++        npm install --silent --save-dev mocha@6.2.2
+       }
+   - ps: |
+       # supertest for http calls
+       # - use 2.0.0 for Node.js < 4
++      # - use 3.4.2 for Node.js < 6
+       if ($env:nodejs_version.split(".")[0] -lt 4) {
+         npm install --silent --save-dev supertest@2.0.0
++      } elseif ($env:nodejs_version.split(".")[0] -lt 6) {
++        npm install --silent --save-dev supertest@3.4.2
+       }
+   # Update Node.js modules
+   - ps: |
+diff --git a/examples/README.md b/examples/README.md
+new file mode 100644
+index 0000000000..c19ed30a25
+--- /dev/null
++++ b/examples/README.md
+@@ -0,0 +1,30 @@
++# Express examples
++
++This page contains list of examples using Express.
++
++- [auth](./auth) - Authentication with login and password
++- [content-negotiation](./content-negotiation) - HTTP content negotiation
++- [cookie-sessions](./cookie-sessions) - Working with cookie-based sessions
++- [cookies](./cookies) - Working with cookies
++- [downloads](./downloads) - Transferring files to client
++- [ejs](./ejs) - Working with Embedded JavaScript templating (ejs)
++- [error-pages](./error-pages) - Creating error pages
++- [error](./error) - Working with error middleware
++- [hello-world](./hello-world) - Simple request handler
++- [markdown](./markdown) - Markdown as template engine
++- [multi-router](./multi-router) - Working with multiple Express routers
++- [multipart](./multipart) - Accepting multipart-encoded forms
++- [mvc](./mvc) - MVC-style controllers
++- [online](./online) - Tracking online user activity with `online` and `redis` packages
++- [params](./params) - Working with route parameters
++- [resource](./resource) - Multiple HTTP operations on the same resource
++- [route-map](./route-map) - Organizing routes using a map
++- [route-middleware](./route-middleware) - Working with route middleware
++- [route-separation](./route-separation) - Organizing routes per each resource
++- [search](./search) - Search API
++- [session](./session) - User sessions
++- [static-files](./static-files) - Serving static files
++- [vhost](./vhost) - Working with virtual hosts
++- [view-constructor](./view-constructor) - Rendering views dynamically
++- [view-locals](./view-locals) - Saving data in request object between middleware calls
++- [web-service](./web-service) - Simple API service
+diff --git a/examples/auth/views/head.ejs b/examples/auth/views/head.ejs
+index 0a919f4929..65386267d0 100644
+--- a/examples/auth/views/head.ejs
++++ b/examples/auth/views/head.ejs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+   <head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width,initial-scale=1">
+     <title><%= title %></title>
+     <style>
+       body {
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index e6f3fa9db6..5f0772697c 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -21,7 +21,7 @@ app.get('/files/:file(*)', function(req, res, next){
+ 
+   res.download(filePath, function (err) {
+     if (!err) return; // file sent
+-    if (err && err.status !== 404) return next(err); // non-404 error
++    if (err.status !== 404) return next(err); // non-404 error
+     // file for download not found
+     res.statusCode = 404;
+     res.send('Cant find that file, sorry!');
+diff --git a/examples/ejs/views/header.html b/examples/ejs/views/header.html
+index 4396bc444f..c642a15f63 100644
+--- a/examples/ejs/views/header.html
++++ b/examples/ejs/views/header.html
+@@ -2,6 +2,7 @@
+ <html lang="en">
+ <head>
+   <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
+   <title><%= title %></title>
+   <link rel="stylesheet" href="/stylesheets/style.css">
+ </head>
+diff --git a/examples/error-pages/views/error_header.ejs b/examples/error-pages/views/error_header.ejs
+index 6d541dd9f5..b2451ab324 100644
+--- a/examples/error-pages/views/error_header.ejs
++++ b/examples/error-pages/views/error_header.ejs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Error</title>
+ </head>
+ 
+diff --git a/examples/error-pages/views/index.ejs b/examples/error-pages/views/index.ejs
+index 04a1a7847b..ae8c92820a 100644
+--- a/examples/error-pages/views/index.ejs
++++ b/examples/error-pages/views/index.ejs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Custom Pages Example</title>
+ </head>
+ 
+diff --git a/examples/mvc/controllers/pet/views/edit.ejs b/examples/mvc/controllers/pet/views/edit.ejs
+index fc697c2550..655666e010 100644
+--- a/examples/mvc/controllers/pet/views/edit.ejs
++++ b/examples/mvc/controllers/pet/views/edit.ejs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
+ <link rel="stylesheet" href="/style.css">
+ <title>Edit <%= pet.name %></title>
+ </head>
+diff --git a/examples/mvc/controllers/pet/views/show.ejs b/examples/mvc/controllers/pet/views/show.ejs
+index 2ec7b0bf06..7e1e338e7d 100644
+--- a/examples/mvc/controllers/pet/views/show.ejs
++++ b/examples/mvc/controllers/pet/views/show.ejs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width,initial-scale=1">
+ <link rel="stylesheet" href="/style.css">
+ <title><%= pet.name %></title>
+ </head>
+diff --git a/examples/mvc/controllers/user/views/edit.hbs b/examples/mvc/controllers/user/views/edit.hbs
+index d356f5ee7f..2be7ddc4a9 100644
+--- a/examples/mvc/controllers/user/views/edit.hbs
++++ b/examples/mvc/controllers/user/views/edit.hbs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
+   <link rel="stylesheet" href="/style.css">
+   <title>Edit {{user.name}}</title>
+ </head>
+diff --git a/examples/mvc/controllers/user/views/list.hbs b/examples/mvc/controllers/user/views/list.hbs
+index 191867de3f..448c66f8c7 100644
+--- a/examples/mvc/controllers/user/views/list.hbs
++++ b/examples/mvc/controllers/user/views/list.hbs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
+   <link rel="stylesheet" href="/style.css">
+   <title>Users</title>
+ </head>
+diff --git a/examples/mvc/controllers/user/views/show.hbs b/examples/mvc/controllers/user/views/show.hbs
+index f064cf54f1..f3fccfe046 100644
+--- a/examples/mvc/controllers/user/views/show.hbs
++++ b/examples/mvc/controllers/user/views/show.hbs
+@@ -1,6 +1,8 @@
+ <!DOCTYPE html>
+ <html>
+ <head>
++  <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
+   <link rel="stylesheet" href="/style.css">
+   <title>{{user.name}}</title>
+ </head>
+diff --git a/examples/mvc/public/style.css b/examples/mvc/public/style.css
+index 69fde2e23a..8a23f9d41c 100644
+--- a/examples/mvc/public/style.css
++++ b/examples/mvc/public/style.css
+@@ -1,6 +1,6 @@
+ body {
+   padding: 50px;
+-  font: 16px "Helvetica Neue", Helvetica, Arial;
++  font: 16px "Helvetica Neue", Helvetica, Arial, sans-serif;
+ }
+ a {
+   color: #107aff;
+diff --git a/examples/mvc/views/404.ejs b/examples/mvc/views/404.ejs
+index 18d7e4afe3..21a86f8a65 100644
+--- a/examples/mvc/views/404.ejs
++++ b/examples/mvc/views/404.ejs
+@@ -2,6 +2,7 @@
+ <html>
+   <head>
+     <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width,initial-scale=1">
+     <title>Not Found</title>
+     <link rel="stylesheet" href="/style.css">
+   </head>
+diff --git a/examples/mvc/views/5xx.ejs b/examples/mvc/views/5xx.ejs
+index ea0f246ddf..190f580543 100644
+--- a/examples/mvc/views/5xx.ejs
++++ b/examples/mvc/views/5xx.ejs
+@@ -2,6 +2,7 @@
+ <html>
+   <head>
+     <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width,initial-scale=1">
+     <title>Internal Server Error</title>
+     <link rel="stylesheet" href="/style.css">
+   </head>
+diff --git a/examples/route-map/index.js b/examples/route-map/index.js
+index f2b192ac1d..e7adf5fcb4 100644
+--- a/examples/route-map/index.js
++++ b/examples/route-map/index.js
+@@ -2,6 +2,7 @@
+  * Module dependencies.
+  */
+ 
++var escapeHtml = require('escape-html')
+ var express = require('../../lib/express');
+ 
+ var verbose = process.env.NODE_ENV !== 'test'
+@@ -31,7 +32,7 @@ var users = {
+   },
+ 
+   get: function(req, res){
+-    res.send('user ' + req.params.uid);
++    res.send('user ' +  escapeHtml(req.params.uid))
+   },
+ 
+   delete: function(req, res){
+@@ -41,11 +42,11 @@ var users = {
+ 
+ var pets = {
+   list: function(req, res){
+-    res.send('user ' + req.params.uid + '\'s pets');
++    res.send('user ' + escapeHtml(req.params.uid) + '\'s pets')
+   },
+ 
+   delete: function(req, res){
+-    res.send('delete ' + req.params.uid + '\'s pet ' + req.params.pid);
++    res.send('delete ' + escapeHtml(req.params.uid) + '\'s pet ' + escapeHtml(req.params.pid))
+   }
+ };
+ 
+diff --git a/examples/route-separation/views/header.ejs b/examples/route-separation/views/header.ejs
+index 141f114ddb..4300325e0a 100644
+--- a/examples/route-separation/views/header.ejs
++++ b/examples/route-separation/views/header.ejs
+@@ -2,6 +2,7 @@
+ <html lang="en">
+ <head>
+   <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
+   <title><%= title %></title>
+   <link rel="stylesheet" href="/style.css">
+ </head>
+diff --git a/examples/search/public/index.html b/examples/search/public/index.html
+index 4a5540fdf3..f67063c502 100644
+--- a/examples/search/public/index.html
++++ b/examples/search/public/index.html
+@@ -2,6 +2,7 @@
+ <html lang="en">
+ <head>
+   <meta charset="utf-8">
++  <meta name="viewport" content="width=device-width,initial-scale=1">
+   <title>Search example</title>
+   <style type="text/css">
+     body {
+diff --git a/examples/static-files/public/js/app.js b/examples/static-files/public/js/app.js
+index 257cc5642c..775eb734b0 100644
+--- a/examples/static-files/public/js/app.js
++++ b/examples/static-files/public/js/app.js
+@@ -1,1 +1,1 @@
+-foo
++// foo
+diff --git a/examples/view-locals/views/index.ejs b/examples/view-locals/views/index.ejs
+index 1cbfc40bc0..287f34bc28 100644
+--- a/examples/view-locals/views/index.ejs
++++ b/examples/view-locals/views/index.ejs
+@@ -2,6 +2,7 @@
+ <html>
+   <head>
+     <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width,initial-scale=1">
+     <title><%= title %></title>
+     <style media="screen">
+       body {
+diff --git a/lib/express.js b/lib/express.js
+index 594007b5b4..d188a16db7 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -77,7 +77,9 @@ exports.Router = Router;
+ 
+ exports.json = bodyParser.json
+ exports.query = require('./middleware/query');
++exports.raw = bodyParser.raw
+ exports.static = require('serve-static');
++exports.text = bodyParser.text
+ exports.urlencoded = bodyParser.urlencoded
+ 
+ /**
+diff --git a/lib/request.js b/lib/request.js
+index 8bb86a9acc..a9400ef99d 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -430,6 +430,10 @@ defineGetter(req, 'hostname', function hostname(){
+ 
+   if (!host || !trust(this.connection.remoteAddress, 0)) {
+     host = this.get('Host');
++  } else if (host.indexOf(',') !== -1) {
++    // Note: X-Forwarded-Host is normally only ever a
++    //       single value, but this is to be safe.
++    host = host.substring(0, host.indexOf(',')).trimRight()
+   }
+ 
+   if (!host) return;
+diff --git a/lib/response.js b/lib/response.js
+index 2e445ac02c..c9f08cd54f 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -411,6 +411,10 @@ res.sendFile = function sendFile(path, options, callback) {
+     throw new TypeError('path argument is required to res.sendFile');
+   }
+ 
++  if (typeof path !== 'string') {
++    throw new TypeError('path must be a string to res.sendFile')
++  }
++
+   // support function as second arg
+   if (typeof options === 'function') {
+     done = options;
+@@ -814,7 +818,7 @@ res.clearCookie = function clearCookie(name, options) {
+  *    // "Remember Me" for 15 minutes
+  *    res.cookie('rememberme', '1', { expires: new Date(Date.now() + 900000), httpOnly: true });
+  *
+- *    // save as above
++ *    // same as above
+  *    res.cookie('rememberme', '1', { maxAge: 900000, httpOnly: true })
+  *
+  * @param {String} name
+@@ -1127,6 +1131,7 @@ function stringify (value, replacer, spaces, escape) {
+           return '\\u003e'
+         case 0x26:
+           return '\\u0026'
++        /* istanbul ignore next: unreachable default */
+         default:
+           return c
+       }
+diff --git a/package.json b/package.json
+index 74196ad68e..9b841872f4 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Fast, unopinionated, minimalist web framework",
+-  "version": "4.16.4",
++  "version": "4.17.1",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [
+     "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+@@ -20,6 +20,7 @@
+     "framework",
+     "sinatra",
+     "web",
++    "http",
+     "rest",
+     "restful",
+     "router",
+@@ -27,55 +28,55 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.3.5",
++    "accepts": "~1.3.7",
+     "array-flatten": "1.1.1",
+-    "body-parser": "1.18.3",
+-    "content-disposition": "0.5.2",
++    "body-parser": "1.19.0",
++    "content-disposition": "0.5.3",
+     "content-type": "~1.0.4",
+-    "cookie": "0.3.1",
++    "cookie": "0.4.0",
+     "cookie-signature": "1.0.6",
+     "debug": "2.6.9",
+     "depd": "~1.1.2",
+     "encodeurl": "~1.0.2",
+     "escape-html": "~1.0.3",
+     "etag": "~1.8.1",
+-    "finalhandler": "1.1.1",
++    "finalhandler": "~1.1.2",
+     "fresh": "0.5.2",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+     "on-finished": "~2.3.0",
+-    "parseurl": "~1.3.2",
++    "parseurl": "~1.3.3",
+     "path-to-regexp": "0.1.7",
+-    "proxy-addr": "~2.0.4",
+-    "qs": "6.5.2",
+-    "range-parser": "~1.2.0",
++    "proxy-addr": "~2.0.5",
++    "qs": "6.7.0",
++    "range-parser": "~1.2.1",
+     "safe-buffer": "5.1.2",
+-    "send": "0.16.2",
+-    "serve-static": "1.13.2",
+-    "setprototypeof": "1.1.0",
+-    "statuses": "~1.4.0",
+-    "type-is": "~1.6.16",
++    "send": "0.17.1",
++    "serve-static": "1.14.1",
++    "setprototypeof": "1.1.1",
++    "statuses": "~1.5.0",
++    "type-is": "~1.6.18",
+     "utils-merge": "1.0.1",
+     "vary": "~1.1.2"
+   },
+   "devDependencies": {
+     "after": "0.8.2",
+-    "connect-redis": "3.4.0",
+-    "cookie-parser": "~1.4.3",
+-    "cookie-session": "1.3.2",
+-    "ejs": "2.6.1",
++    "connect-redis": "3.4.2",
++    "cookie-parser": "~1.4.4",
++    "cookie-session": "1.3.3",
++    "ejs": "2.7.2",
+     "eslint": "2.13.1",
+-    "express-session": "1.15.6",
+-    "hbs": "4.0.1",
++    "express-session": "1.17.0",
++    "hbs": "4.1.0",
+     "istanbul": "0.4.5",
+-    "marked": "0.5.1",
++    "marked": "0.7.0",
+     "method-override": "3.0.0",
+-    "mocha": "5.2.0",
++    "mocha": "7.0.1",
+     "morgan": "1.9.1",
+     "multiparty": "4.2.1",
+     "pbkdf2-password": "1.2.1",
+     "should": "13.2.3",
+-    "supertest": "3.3.0",
++    "supertest": "4.0.2",
+     "vhost": "~3.0.2"
+   },
+   "engines": {
+diff --git "a/test/fixtures/snow \342\230\203/.gitkeep" "b/test/fixtures/snow \342\230\203/.gitkeep"
+new file mode 100644
+index 0000000000..e69de29bb2

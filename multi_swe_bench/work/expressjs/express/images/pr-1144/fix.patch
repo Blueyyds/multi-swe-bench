@@ -1,0 +1,2605 @@
+diff --git a/.gitignore b/.gitignore
+index a89a15eaed..bc4f9ab0ad 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -16,3 +16,9 @@ testing
+ .coverage_data
+ cover_html
+ test.js
++
++test/app.router.js
++
++lib/application.js
++
++lib/view.js
+diff --git a/.npmignore b/.npmignore
+index 98d8e485d5..caf574de4d 100644
+--- a/.npmignore
++++ b/.npmignore
+@@ -6,3 +6,4 @@ test/
+ testing.js
+ .DS_Store
+ coverage.html
++lib-cov
+diff --git a/History.md b/History.md
+index 040b6e402b..150c922ed5 100644
+--- a/History.md
++++ b/History.md
+@@ -1,4 +1,51 @@
+ 
++3.0.0alpha5 / 2012-05-30 
++==================
++
++  * Added `req.ip`
++  * Added `{ signed: true }` option to `res.cookie()`
++  * Removed `res.signedCookie()`
++  * Changed: dont reverse `req.ips`
++  * Fixed "trust proxy" setting check for `req.ips`
++
++3.0.0alpha4 / 2012-05-09 
++==================
++
++  * Added: allow `[]` in jsonp callback. Closes #1128
++  * Added `PORT` env var support in generated template. Closes #1118 [benatkin]
++  * Updated: connect 2.2.2
++
++3.0.0alpha3 / 2012-05-04 
++==================
++
++  * Added public `app.routes`. Closes #887
++  * Added _view-locals_ example
++  * Added _mvc_ example
++  * Added `res.locals.use()`. Closes #1120
++  * Added conditional-GET support to `res.send()`
++  * Added: coerce `res.set()` values to strings
++  * Changed: moved `static()` in generated apps below router
++  * Changed: `res.send()` only set ETag when not previously set
++  * Changed connect 2.2.1 dep
++  * Changed: `make test` now runs unit / acceptance tests
++  * Fixed req/res proto inheritance
++
++3.0.0alpha2 / 2012-04-26 
++==================
++
++  * Added `make benchmark` back
++  * Added `res.send()` support for `String` objects
++  * Added client-side data exposing example
++  * Added `res.header()` and `req.header()` aliases for BC
++  * Added `express.createServer()` for BC
++  * Perf: memoize parsed urls
++  * Perf: connect 2.2.0 dep
++  * Changed: make `expressInit()` middleware self-aware
++  * Fixed: use app.get() for all core settings
++  * Fixed redis session example
++  * Fixed session example. Closes #1105
++  * Fixed generated express dep. Closes #1078
++
+ 3.0.0alpha1 / 2012-04-15 
+ ==================
+ 
+diff --git a/Makefile b/Makefile
+index a230b4e343..94d22ad304 100644
+--- a/Makefile
++++ b/Makefile
+@@ -10,13 +10,15 @@ docs/%.md: lib/%.js
+ 	@mkdir -p docs
+ 	dox --raw < $< | ./support/docs > $@
+ 
+-test:
++test: test-unit test-acceptance
++
++test-unit:
+ 	@NODE_ENV=test ./node_modules/.bin/mocha \
+ 		--reporter $(REPORTER)
+ 
+ test-acceptance:
+ 	@NODE_ENV=test ./node_modules/.bin/mocha \
+-		--reporter spec \
++		--reporter $(REPORTER) \
+ 		test/acceptance/*.js
+ 
+ test-cov: lib-cov
+@@ -28,4 +30,7 @@ lib-cov:
+ docclean:
+ 	rm -fr docs
+ 
+-.PHONY: docs docclean site test test-acceptance
++benchmark:
++	@./support/bench
++
++.PHONY: docs docclean test test-unit test-acceptance benchmark
+diff --git a/Readme.md b/Readme.md
+index e82bde1623..ff3b2df50b 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -1,7 +1,7 @@
+ 
+ ![express logo](http://f.cl.ly/items/0V2S1n0K1i3y1c122g04/Screen%20Shot%202012-04-11%20at%209.59.42%20AM.png)
+ 
+-  Fast, unopinionated, minimalist web framework for [node](http://nodejs.org).
++  Fast, unopinionated, minimalist web framework for [node](http://nodejs.org). [![Build Status](https://secure.travis-ci.org/visionmedia/express.png)](http://travis-ci.org/visionmedia/express)
+ 
+ ```js
+ var express = require('express');
+diff --git a/bin/express b/bin/express
+index 22805f65e9..be87780f00 100755
+--- a/bin/express
++++ b/bin/express
+@@ -57,7 +57,7 @@ var index = [
+  */
+ 
+ var jadeLayout = [
+-    '!!!'
++    'doctype 5'
+   , 'html'
+   , '  head'
+   , '    title= title'
+@@ -181,14 +181,15 @@ var app = [
+   , 'var app = express();'
+   , ''
+   , 'app.configure(function(){'
++  , '  app.set(\'port\', process.env.PORT || 3000);'
+   , '  app.set(\'views\', __dirname + \'/views\');'
+   , '  app.set(\'view engine\', \':TEMPLATE\');'
+   , '  app.use(express.favicon());'
+-  , '  app.use(express.logger(\'dev\'));{css}'
+-  , '  app.use(express.static(__dirname + \'/public\'));'
++  , '  app.use(express.logger(\'dev\'));'
+   , '  app.use(express.bodyParser());'
+   , '  app.use(express.methodOverride());{sess}'
+-  , '  app.use(app.router);'
++  , '  app.use(app.router);{css}'
++  , '  app.use(express.static(__dirname + \'/public\'));'
+   , '});'
+   , ''
+   , 'app.configure(\'development\', function(){'
+@@ -197,9 +198,9 @@ var app = [
+   , ''
+   , 'app.get(\'/\', routes.index);'
+   , ''
+-  , 'http.createServer(app).listen(3000);'
+-  , ''
+-  , 'console.log("Express server listening on port 3000");'
++  , 'http.createServer(app).listen(app.get(\'port\'), function(){'
++  , '  console.log("Express server listening on port " + app.get(\'port\'));'
++  , '});'
+   , ''
+ ].join(eol);
+ 
+@@ -284,7 +285,7 @@ function createApplicationAt(path) {
+         app = app.replace('{css}', eol + '  app.use(require(\'less-middleware\')({ src: __dirname + \'/public\' }));');
+         break;
+       case 'stylus':
+-        app = app.replace('{css}', eol + '  app.use(require(\'stylus\').middleware({ src: __dirname + \'/public\' }));');
++        app = app.replace('{css}', eol + '  app.use(require(\'stylus\').middleware(__dirname + \'/public\'));');
+         break;
+       default:
+         app = app.replace('{css}', '');
+diff --git a/examples/auth/app.js b/examples/auth/app.js
+index 771725994f..c799253ae0 100644
+--- a/examples/auth/app.js
++++ b/examples/auth/app.js
+@@ -48,7 +48,7 @@ function hash(msg, key) {
+ 
+ // Authenticate using our plain-object database of doom!
+ function authenticate(name, pass, fn) {
+-  console.log('authenticating %s:%s', name, pass);
++  if (!module.parent) console.log('authenticating %s:%s', name, pass);
+   var user = users[name];
+   // query the db for the given username
+   if (!user) return fn(new Error('cannot find user'));
+diff --git a/examples/big-view/index.js b/examples/big-view/index.js
+new file mode 100644
+index 0000000000..2cb1a04258
+--- /dev/null
++++ b/examples/big-view/index.js
+@@ -0,0 +1,24 @@
++
++var express = require('../..')
++  , app = express();
++
++app.set('views', __dirname);
++app.set('view engine', 'jade');
++
++var pets = [];
++
++var n = 1000;
++while (n--) {
++  pets.push({ name: 'Tobi', age: 2, species: 'ferret' });
++  pets.push({ name: 'Loki', age: 1, species: 'ferret' });
++  pets.push({ name: 'Jane', age: 6, species: 'ferret' });
++}
++
++app.use(express.logger('dev'));
++
++app.get('/', function(req, res){
++  res.render('pets', { pets: pets });
++});
++
++app.listen(3000);
++console.log('Express listening on port 3000');
+\ No newline at end of file
+diff --git a/examples/big-view/pets.jade b/examples/big-view/pets.jade
+new file mode 100644
+index 0000000000..25abd26bf1
+--- /dev/null
++++ b/examples/big-view/pets.jade
+@@ -0,0 +1,12 @@
++style
++  body {
++    padding: 50px;
++    font: 16px "Helvetica Neue", Helvetica;
++  }
++
++table
++  for pet in pets
++    tr
++      td= pet.name
++      td= pet.age
++      td= pet.species
+\ No newline at end of file
+diff --git a/examples/blog/index.js b/examples/blog/index.js
+deleted file mode 100644
+index ca6a314a4b..0000000000
+--- a/examples/blog/index.js
++++ /dev/null
+@@ -1,50 +0,0 @@
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../../')
+-  , app = module.exports = express();
+-
+-// config
+-
+-app.set('views', __dirname + '/views');
+-app.set('view engine', 'jade');
+-
+-// middleware
+-
+-app.configure('development',function(){
+-  app.use(express.logger('dev'));
+-})
+-
+-app.configure(function(){
+-  app.use(express.bodyParser());
+-  app.use(express.methodOverride());
+-  app.use(express.cookieParser('keyboard cat'));
+-  app.use(express.session());
+-  app.use(app.router);
+-  app.use(express.static(__dirname + '/public'));
+-  app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+-});
+-
+-// Locals
+-
+-app.locals.use(function(req, res){
+-  // expose "error" and "message" to all
+-  // views that are rendered.
+-  res.locals.error = req.session.error || '';
+-  res.locals.message = req.session.message || '';
+-  // remove them so they're not displayed on subsequent renders
+-  delete req.session.error;
+-  delete req.session.message;
+-});
+-
+-// Routes
+-
+-require('./routes/site')(app);
+-require('./routes/post')(app);
+-
+-if (!module.parent) {
+-  app.listen(3000);
+-  console.log('Express started on port 3000');
+-}
+\ No newline at end of file
+diff --git a/examples/blog/models/post.js b/examples/blog/models/post.js
+deleted file mode 100644
+index 9c7f93d9c0..0000000000
+--- a/examples/blog/models/post.js
++++ /dev/null
+@@ -1,67 +0,0 @@
+-
+-// Fake data store
+-
+-var ids = 0
+-  , db = {};
+-
+-var Post = exports = module.exports = function Post(title, body) {
+-  this.id = ++ids;
+-  this.title = title;
+-  this.body = body;
+-  this.createdAt = new Date;
+-};
+-
+-Post.prototype.save = function(fn){
+-  db[this.id] = this;
+-  fn();
+-};
+-
+-Post.prototype.validate = function(fn){
+-  if (!this.title) return fn(new Error('title required'));
+-  if (!this.body) return fn(new Error('body required'));
+-  if (this.body.length < 10) {
+-    return fn(new Error(
+-        'body should be at least 10 characters long, was only ' + this.title.length));
+-  }
+-  fn();
+-};
+-
+-
+-Post.prototype.update = function(data, fn){
+-  this.updatedAt = new Date;
+-  for (var key in data) {
+-    if (undefined != data[key]) {
+-      this[key] = data[key];
+-    }
+-  }
+-  this.save(fn);
+-};
+-
+-Post.prototype.destroy = function(fn){
+-  exports.destroy(this.id, fn);
+-};
+-
+-exports.count = function(fn){
+-  fn(null, Object.keys(db).length);
+-};
+-
+-exports.all = function(fn){
+-  var arr = Object.keys(db).reduce(function(arr, id){
+-    arr.push(db[id]);
+-    return arr;
+-  }, []);
+-  fn(null, arr);
+-};
+-
+-exports.get = function(id, fn){
+-  fn(null, db[id]);
+-};
+-
+-exports.destroy = function(id, fn) {
+-  if (db[id]) {
+-    delete db[id];
+-    fn();
+-  } else {
+-    fn(new Error('post ' + id + ' does not exist'));
+-  }
+-};
+\ No newline at end of file
+diff --git a/examples/blog/public/style.css b/examples/blog/public/style.css
+deleted file mode 100644
+index 3e4668a2cb..0000000000
+--- a/examples/blog/public/style.css
++++ /dev/null
+@@ -1,56 +0,0 @@
+-body {
+-  font: 13px "Helvetica Neue", Arial, sans-serif;
+-  color: #111;
+-  padding: 60px 80px;
+-}
+-h1, h2 {
+-  color: #c00;
+-}
+-a {
+-  color: #c00;
+-  text-decoration: none;
+-}
+-a:hover {
+-  text-decoration: underline;
+-}
+-label {
+-  padding: 6px 0;
+-  display: block;
+-  text-transform: lowercase;
+-}
+-textarea,
+-input {
+-  outline: none;
+-  padding: 5px;
+-  background: #f1f1f1;
+-  border: 1px solid #aaa;
+-}
+-textarea:focus,
+-input:focus {
+-  background: #fff;
+-}
+-textarea {
+-  width: 500px;
+-  height: 200px;
+-}
+-a.edit {
+-  margin-left: 10px;
+-  font-size: 11px;
+-  font-weight: normal;
+-}
+-.date {
+-  font-size: 11px;
+-}
+-p.error,
+-p.message {
+-  padding: 10px;
+-  border: 1px solid;
+-}
+-p.error {
+-  background: #FDEAE7;
+-  color: #E4250C;
+-}
+-p.message {
+-  color: #2EBBE6;
+-  background: #F7FBFD;
+-}
+\ No newline at end of file
+diff --git a/examples/blog/routes/post.js b/examples/blog/routes/post.js
+deleted file mode 100644
+index 6aa868849a..0000000000
+--- a/examples/blog/routes/post.js
++++ /dev/null
+@@ -1,96 +0,0 @@
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var basicAuth = require('../../../lib/express').basicAuth
+-  , Post = require('../models/post');
+-
+-module.exports = function(app){
+-  /**
+-   * Apply basic auth to all post related routes
+-   */
+-
+-  app.all('/post(/*)?', basicAuth(function(user, pass){
+-    return 'admin' == user && 'express' == pass;
+-  }));
+-
+-  /**
+-   * Map :post to the database, loading
+-   * every time :post is present.
+-   */
+-
+-  app.param('post', function(req, res, next, id){
+-    Post.get(id, function(err, post){
+-      if (err) return next(err);
+-      if (!post) return next(new Error('failed to load post ' + id));
+-      req.post = post;
+-      next();
+-    });
+-  });
+-
+-  /**
+-   * Add a post.
+-   */
+-
+-  app.get('/post/add', function(req, res){
+-    res.render('post/form', { post: {}});
+-  });
+-
+-  /**
+-   * Save a post.
+-   */
+-
+-  app.post('/post', function(req, res){
+-    var data = req.body.post || {}
+-      , post = new Post(data.title, data.body);
+-    
+-    post.validate(function(err){
+-      if (err) {
+-        req.session.error = err.message;
+-        return res.redirect('back');
+-      }
+-
+-      post.save(function(err){
+-        req.session.message = 'Successfully created the post.';
+-        res.redirect('/post/' + post.id);
+-      });  
+-    });
+-  });
+-
+-  /**
+-   * Display the post.
+-   */
+-
+-  app.get('/post/:post', function(req, res){
+-    res.render('post', { post: req.post });
+-  });
+-
+-  /**
+-   * Display the post edit form.
+-   */
+-
+-  app.get('/post/:post/edit', function(req, res){
+-    res.render('post/form', { post: req.post });
+-  });
+-
+-  /**
+-   * Update post. Typically a data layer would handle this stuff.
+-   */
+-
+-  app.put('/post/:post', function(req, res, next){
+-    var post = req.post;
+-    post.validate(function(err){
+-      if (err) {
+-        req.session.error = err.message;
+-        return res.redirect('back');
+-      }
+-
+-      post.update(req.body.post, function(err){
+-        if (err) return next(err);
+-        req.session.message = 'Successfully updated post';
+-        res.redirect('back');
+-      });
+-    });
+-  });
+-};
+\ No newline at end of file
+diff --git a/examples/blog/routes/site.js b/examples/blog/routes/site.js
+deleted file mode 100644
+index 880895d0f9..0000000000
+--- a/examples/blog/routes/site.js
++++ /dev/null
+@@ -1,19 +0,0 @@
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var Post = require('../models/post');
+-
+-module.exports = function(app){
+-  app.get('/', function(req, res){
+-    Post.count(function(err, count){
+-      Post.all(function(err, posts){
+-        res.render('index', {
+-            count: count
+-          , posts: posts
+-        });
+-      });
+-    });
+-  });
+-};
+\ No newline at end of file
+diff --git a/examples/blog/views/index.jade b/examples/blog/views/index.jade
+deleted file mode 100644
+index a228d49aa5..0000000000
+--- a/examples/blog/views/index.jade
++++ /dev/null
+@@ -1,22 +0,0 @@
+-extends layout
+-
+-block content
+-  h1 Blog
+-
+-  if count
+-    p Display all #{count} post(s)
+-    #posts
+-      each post in posts
+-        include post/index
+-  else
+-    p 
+-      | It looks like you have no posts!
+-    p
+-      | Click
+-      a(href='/post/add') here 
+-      | to create a post. Login
+-      | as
+-      em "admin" 
+-      | and
+-      em "express"
+-      | .
+diff --git a/examples/blog/views/layout.jade b/examples/blog/views/layout.jade
+deleted file mode 100644
+index f153a99ad4..0000000000
+--- a/examples/blog/views/layout.jade
++++ /dev/null
+@@ -1,8 +0,0 @@
+-!!! 5
+-html
+-  head
+-    title Blog
+-    link(rel='stylesheet', href='/style.css')
+-  body
+-    #container
+-      block content
+\ No newline at end of file
+diff --git a/examples/blog/views/messages.jade b/examples/blog/views/messages.jade
+deleted file mode 100644
+index 7c8034b651..0000000000
+--- a/examples/blog/views/messages.jade
++++ /dev/null
+@@ -1,6 +0,0 @@
+-
+-if error
+-  p.error= error
+-
+-if message
+-  p.message= message
+\ No newline at end of file
+diff --git a/examples/blog/views/post/form.jade b/examples/blog/views/post/form.jade
+deleted file mode 100644
+index 8e06cd1f64..0000000000
+--- a/examples/blog/views/post/form.jade
++++ /dev/null
+@@ -1,22 +0,0 @@
+-extends ../layout
+-
+-block content
+-  if post.title
+-    h1 Editing #{post.title}
+-  else
+-    h1 New Post
+-
+-  include ../messages
+-
+-  form#post(action='/post' + (post.title ? '/' + post.id : ''), method='post')
+-    if post.title
+-      input(type='hidden', name='_method', value='put')
+-    p
+-      label(for='post[title]') Title:
+-      input(type='text', name='post[title]', value=post.title)
+-    p
+-      label(for='post[body]') Body:
+-      textarea(name='post[body]')= post.body || ''
+-    p
+-      input(type='submit', value=post.title ? 'Update' : 'Create')
+-    
+\ No newline at end of file
+diff --git a/examples/blog/views/post/index.jade b/examples/blog/views/post/index.jade
+deleted file mode 100644
+index 14cf1b097e..0000000000
+--- a/examples/blog/views/post/index.jade
++++ /dev/null
+@@ -1,18 +0,0 @@
+-extends ../layout
+-
+-block content
+-  .post
+-    // title
+-    h2
+-      = post.title
+-      a.edit(href='/post/' + post.id + '/edit') Edit
+-    
+-    include ../messages
+-    
+-    // dates
+-    p.date.created Created at #{post.createdAt}
+-    if post.updatedAt
+-      p.date.updated Updated at #{post.updatedAt}
+-    
+-    // body
+-    pre.body= post.body
+\ No newline at end of file
+diff --git a/examples/error-pages/app.js b/examples/error-pages/index.js
+similarity index 100%
+rename from examples/error-pages/app.js
+rename to examples/error-pages/index.js
+diff --git a/examples/error/app.js b/examples/error/index.js
+similarity index 84%
+rename from examples/error/app.js
+rename to examples/error/index.js
+index c5ab6829d0..be9cfb5177 100644
+--- a/examples/error/app.js
++++ b/examples/error/index.js
+@@ -4,10 +4,10 @@
+  */
+ 
+ var express = require('../../')
+-  , app = module.exports = express();
++  , app = module.exports = express()
++  , test = app.get('env') == 'test';
+ 
+-if ('test' != process.env.NODE_ENV)
+-  app.use(express.logger('dev'));
++if (!test) app.use(express.logger('dev'));
+ app.use(app.router);
+ 
+ // the error handler is strategically
+@@ -24,8 +24,7 @@ app.use(error);
+ 
+ function error(err, req, res, next) {
+   // log it
+-  if ('test' != process.env.NODE_ENV)
+-    console.error(err.stack);
++  if (!test) console.error(err.stack);
+ 
+   // respond with 500 "Internal Server Error".
+   res.send(500);
+diff --git a/examples/form/app.js b/examples/form/app.js
+deleted file mode 100644
+index 593b2f5366..0000000000
+--- a/examples/form/app.js
++++ /dev/null
+@@ -1,79 +0,0 @@
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../../');
+-
+-var app = module.exports = express();
+-
+-// Here we use the bodyDecoder middleware
+-// to parse urlencoded request bodies
+-// which populates req.body
+-app.use(express.bodyParser());
+-    
+-// The methodOverride middleware allows us
+-// to set a hidden input of _method to an arbitrary
+-// HTTP method to support app.put(), app.del() etc
+-app.use(express.methodOverride());
+-
+-// Required by session
+-app.use(express.cookieParser());
+-
+-// Required by req.flash() for persistent
+-// notifications
+-app.use(express.session({ secret: 'keyboard cat' }));
+-
+-app.get('/', function(req, res){
+-  // get ?name=foo
+-  var name = req.param('name') || '';
+-  
+-  // Switch the button label based if we have a name
+-  var label = name ? 'Update' : 'Save';
+-
+-  // Buffer all flash messages.
+-  // Typically this would all be done in a template
+-  // however for illustration purposes we iterate
+-  // here.
+-  
+-  // The messages in req.flash() persist until called,
+-  // at which time they are flushed from the session
+-  var msgs = '<ul>',
+-      flash = req.flash();
+-  Object.keys(flash).forEach(function(type){
+-    flash[type].forEach(function(msg){
+-      msgs += '<li class="' + type + '">' + msg + '</li>';
+-    });
+-  });
+-  msgs += '</ul>';
+-
+-  // If we have a name, we are updating,
+-  // so add the hidden _method input
+-  res.send(msgs
+-    + '<form method="post">'
+-    + (name ? '<input type="hidden" value="put" name="_method" />' : '')
+-    + 'Name: <input type="text" name="name" value="' + name + '" />'
+-    + '<input type="submit" value="' + label + '" />'
+-    + '</form>');
+-});
+-
+-app.post('/', function(req, res){
+-  if (req.body.name) {
+-    // Typically here we would create a resource
+-    req.flash('info', 'Saved ' + req.body.name);
+-    res.redirect('/?name=' + req.body.name);
+-  } else {
+-    req.flash('error', 'Error: name required');
+-    res.redirect('/');
+-  }
+-});
+-
+-app.put('/', function(req, res){
+-  // Typically here we would update a resource
+-  req.flash('info', 'Updated ' + req.body.name);
+-  res.redirect('/?name=' + req.body.name);
+-});
+-
+-if (!module.parent) {
+-  app.listen(3000);
+-  console.log('Express started on port 3000');
+-}
+\ No newline at end of file
+diff --git a/examples/github/app.js b/examples/github/app.js
+deleted file mode 100644
+index f558261ca8..0000000000
+--- a/examples/github/app.js
++++ /dev/null
+@@ -1,113 +0,0 @@
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../../lib/express')
+-  , http = require('http');
+-
+-var app = express();
+-
+-// Expose our views
+-
+-app.set('views', __dirname + '/views');
+-app.set('view engine', 'jade');
+-
+-/**
+- * Request github json api `path`.
+- *
+- * @param {String} path
+- * @param {Function} fn
+- * @api public
+- */
+-
+-function request(path, fn){
+-  var client = http.createClient(80, 'github.com')
+-    , req = client.request('GET', '/api/v2/json' + path, { Host: 'github.com' });
+-  req.on('response', function(res){
+-    res.body = '';
+-    res.on('data', function(chunk){ res.body += chunk; });
+-    res.on('end', function(){
+-      try {
+-        fn(null, JSON.parse(res.body));
+-      } catch (err) {
+-        fn(err);
+-      }
+-    });
+-  });
+-  req.end();
+-}
+-
+-/**
+- * Sort repositories by watchers desc.
+- *
+- * @param {Array} repos
+- * @api public
+- */
+-
+-function sort(repos){
+-  return repos.sort(function(a, b){
+-    if (a.watchers == b.watchers) return 0;
+-    if (a.watchers > b.watchers) return -1;
+-    if (a.watchers < b.watchers) return 1;
+-  });
+-}
+-
+-/**
+- * Tally up total watchers.
+- *
+- * @param {Array} repos
+- * @return {Number}
+- * @api public
+- */
+-
+-function totalWatchers(repos) {
+-  return repos.reduce(function(sum, repo){
+-    return sum + repo.watchers;
+-  }, 0);
+-}
+-
+-/**
+- * Default to my user name :)
+- */
+-
+-app.get('/', function(req, res){
+-  res.redirect('/repos/visionmedia');
+-});
+-
+-/**
+- * Display repos.
+- */
+-
+-app.get('/repos/*', function(req, res, next){
+-  var names = req.params[0].split('/')
+-    , users = [];
+-  (function fetchData(name){
+-    // We have a user name
+-    if (name) {
+-      console.log('... fetching \x1b[33m%s\x1b[0m', name);
+-      request('/repos/show/' + name, function(err, user){
+-        if (err) {
+-          next(err)
+-        } else {
+-          user.totalWatchers = totalWatchers(user.repositories);
+-          user.repos = sort(user.repositories);
+-          user.name = name;
+-          users.push(user);
+-          fetchData(names.shift());
+-        }
+-      });
+-    // No more users
+-    } else {
+-      console.log('... done');
+-      res.render('index', { users: users });
+-    }
+-  })(names.shift());
+-});
+-
+-// Serve statics from ./public
+-app.use(express.static(__dirname + '/public'));
+-
+-// Listen on port 3000
+-app.listen(3000);
+-console.log('Express app started on port 3000');
+\ No newline at end of file
+diff --git a/examples/github/public/style.css b/examples/github/public/style.css
+deleted file mode 100644
+index a54215e462..0000000000
+--- a/examples/github/public/style.css
++++ /dev/null
+@@ -1,19 +0,0 @@
+-body {
+-  padding: 30px 50px;
+-  font: 12px/1.4 "Helvetica Neue", Arial, sans-serif;
+-}
+-a {
+-  color: #00AAFF;
+-  text-decoration: none;
+-}
+-a:hover {
+-  text-decoration: underline;
+-}
+-.user {
+-  margin: 0 10px;
+-  float: left;
+-  width: 300px;
+-}
+-table td:nth-child(2) {
+-  padding: 0 5px;
+-}
+\ No newline at end of file
+diff --git a/examples/github/views/index.jade b/examples/github/views/index.jade
+deleted file mode 100644
+index 4ef28ebd79..0000000000
+--- a/examples/github/views/index.jade
++++ /dev/null
+@@ -1,14 +0,0 @@
+-
+-extends layout
+-
+-block content
+-  each user in users
+-    .user
+-      h2= user.name
+-      p.summary
+-        | <a href="http://github.com/#{user.name}">#{user.name}</a> has
+-        | <strong>#{user.repos.length}</strong> repositories 
+-        | with a total of <strong>#{user.totalWatchers}</strong> watchers.
+-      table#repos
+-        for repo in user.repos
+-          include repo
+\ No newline at end of file
+diff --git a/examples/github/views/layout.jade b/examples/github/views/layout.jade
+deleted file mode 100644
+index ed54c40b49..0000000000
+--- a/examples/github/views/layout.jade
++++ /dev/null
+@@ -1,8 +0,0 @@
+-!!!
+-html
+-  head
+-    title Github Example
+-    link(rel="stylesheet", href="/style.css")
+-  body
+-    #container
+-      block content
+\ No newline at end of file
+diff --git a/examples/github/views/repo.jade b/examples/github/views/repo.jade
+deleted file mode 100644
+index 861ab56594..0000000000
+--- a/examples/github/views/repo.jade
++++ /dev/null
+@@ -1,5 +0,0 @@
+-tr.repo
+-  td.name
+-    a(href: repo.homepage || repo.url)= repo.name
+-  td.watchers
+-    = repo.watchers
+\ No newline at end of file
+diff --git a/examples/helloworld/app.js b/examples/hello-world/index.js
+similarity index 84%
+rename from examples/helloworld/app.js
+rename to examples/hello-world/index.js
+index ccd34fcfb7..2cd9fc456c 100644
+--- a/examples/helloworld/app.js
++++ b/examples/hello-world/index.js
+@@ -1,8 +1,4 @@
+ 
+-/**
+- * Module dependencies.
+- */
+-
+ var express = require('../../');
+ 
+ var app = express();
+diff --git a/examples/mvc/controllers/main/index.js b/examples/mvc/controllers/main/index.js
+new file mode 100644
+index 0000000000..636de80f56
+--- /dev/null
++++ b/examples/mvc/controllers/main/index.js
+@@ -0,0 +1,4 @@
++
++exports.index = function(req, res){
++  res.redirect('/users');
++};
+\ No newline at end of file
+diff --git a/examples/mvc/controllers/pet/index.js b/examples/mvc/controllers/pet/index.js
+new file mode 100644
+index 0000000000..bce0eacb4b
+--- /dev/null
++++ b/examples/mvc/controllers/pet/index.js
+@@ -0,0 +1,26 @@
++
++var db = require('../../db');
++
++exports.engine = 'jade';
++
++exports.before = function(req, res, next){
++  var pet = db.pets[req.params.pet_id];
++  if (!pet) return next(new Error('Pet not found'));
++  req.pet = pet;
++  next();
++};
++
++exports.show = function(req, res, next){
++  res.render('show', { pet: req.pet });
++};
++
++exports.edit = function(req, res, next){
++  res.render('edit', { pet: req.pet });
++};
++
++exports.update = function(req, res, next){
++  var body = req.body;
++  req.pet.name = body.user.name;
++  res.message('Information updated!');
++  res.redirect('/pet/' + req.pet.id);
++};
+diff --git a/examples/mvc/controllers/pet/views/edit.jade b/examples/mvc/controllers/pet/views/edit.jade
+new file mode 100644
+index 0000000000..911a54a308
+--- /dev/null
++++ b/examples/mvc/controllers/pet/views/edit.jade
+@@ -0,0 +1,7 @@
++link(rel='stylesheet', href='/style.css')
++h1= pet.name
++form(action='/pet/#{pet.id}', method='post')
++  input(type='hidden', name='_method', value='put')
++  label Name: 
++    input(type='text', name='user[name]', value=pet.name)
++  input(type='submit', value='Update')
+diff --git a/examples/mvc/controllers/pet/views/show.jade b/examples/mvc/controllers/pet/views/show.jade
+new file mode 100644
+index 0000000000..ad57ae7384
+--- /dev/null
++++ b/examples/mvc/controllers/pet/views/show.jade
+@@ -0,0 +1,6 @@
++link(rel='stylesheet', href='/style.css')
++
++h1= pet.name
++  a(href='/pet/#{pet.id}/edit')  edit
++
++p You are viewing #{pet.name}
+diff --git a/examples/mvc/controllers/user-pet/index.js b/examples/mvc/controllers/user-pet/index.js
+new file mode 100644
+index 0000000000..e6e9535b8b
+--- /dev/null
++++ b/examples/mvc/controllers/user-pet/index.js
+@@ -0,0 +1,17 @@
++
++var db = require('../../db');
++
++exports.name = 'pet';
++exports.prefix = '/user/:user_id';
++
++exports.create = function(req, res, next){
++  var id = req.params.user_id;
++  var user = db.users[id];
++  var body = req.body;
++  if (!user) return next(new Error('User not found'));
++  var pet = { name: body.pet.name };
++  pet.id = db.pets.push(pet) - 1;
++  user.pets.push(pet);
++  res.message('Added pet ' + body.pet.name);
++  res.redirect('/user/' + id);
++};
+diff --git a/examples/mvc/controllers/user/index.js b/examples/mvc/controllers/user/index.js
+new file mode 100644
+index 0000000000..a5bd030edb
+--- /dev/null
++++ b/examples/mvc/controllers/user/index.js
+@@ -0,0 +1,34 @@
++
++var db = require('../../db');
++
++exports.before = function(req, res, next){
++  var id = req.params.user_id;
++  if (!id) return next();
++  // pretend to query a database...
++  process.nextTick(function(){
++    req.user = db.users[id];
++    // cant find that user
++    if (!req.user) return next(new Error('User not found'));
++    // found it, move on to the routes
++    next();
++  });
++}
++
++exports.list = function(req, res, next){
++  res.render('list', { users: db.users });
++};
++
++exports.edit = function(req, res, next){
++  res.render('edit', { user: req.user });
++};
++
++exports.show = function(req, res, next){
++  res.render('show', { user: req.user });
++};
++
++exports.update = function(req, res, next){
++  var body = req.body;
++  req.user.name = body.user.name;
++  res.message('Information updated!');
++  res.redirect('/user/' + req.user.id);
++};
+diff --git a/examples/mvc/controllers/user/views/edit.html b/examples/mvc/controllers/user/views/edit.html
+new file mode 100644
+index 0000000000..f5b9ae9b5c
+--- /dev/null
++++ b/examples/mvc/controllers/user/views/edit.html
+@@ -0,0 +1,12 @@
++<link rel="stylesheet" href="/style.css" />
++<h1><%= user.name %></h1>
++<form action='/user/<%= user.id %>' method='post'>
++  <input type="hidden" name="_method" value="put" />
++  <label>Name: <input type="text" name="user[name]" value="<%= user.name %>" /></label>
++  <input type="submit" value="Update" />
++</form>
++
++<form action='/user/<%= user.id %>/pet' method='post'>
++  <label>Pet: <input type="text" name="pet[name]" placeholder="name" /></label>
++  <input type="submit" value="Add" />
++</form>
+\ No newline at end of file
+diff --git a/examples/mvc/controllers/user/views/list.html b/examples/mvc/controllers/user/views/list.html
+new file mode 100644
+index 0000000000..736025f06f
+--- /dev/null
++++ b/examples/mvc/controllers/user/views/list.html
+@@ -0,0 +1,8 @@
++<link rel="stylesheet" href="/style.css" />
++<h1>Users</h1>
++<p>Click a user below to view their pets.</p>
++<ul>
++  <% users.forEach(function(user){ %>
++    <li><a href="/user/<%= user.id %>"><%= user.name %></a></li>
++  <% }) %>
++</ul>
+\ No newline at end of file
+diff --git a/examples/mvc/controllers/user/views/show.html b/examples/mvc/controllers/user/views/show.html
+new file mode 100644
+index 0000000000..814a11a8d8
+--- /dev/null
++++ b/examples/mvc/controllers/user/views/show.html
+@@ -0,0 +1,21 @@
++<link rel="stylesheet" href="/style.css" />
++<h1><%= user.name %> <a href="/user/<%= user.id %>/edit">edit</a></h1>
++
++<% if (hasMessages) { %>
++  <ul id="messages">
++    <% messages.forEach(function(msg){ %>
++      <li><%= msg %></li>
++    <% }) %>
++  </ul>
++<% } %>
++
++<% if (user.pets.length) { %>
++  <p>View <%= user.name %>s pets:</p>
++  <ul>
++    <% user.pets.forEach(function(pet){ %>
++      <li><a href="/pet/<%= pet.id %>"><%= pet.name %></a></li>
++    <% }) %>
++  </ul>
++<% } else { %>
++  <p>No pets!</p>
++<% } %>
+\ No newline at end of file
+diff --git a/examples/mvc/db.js b/examples/mvc/db.js
+new file mode 100644
+index 0000000000..16fd6fac3d
+--- /dev/null
++++ b/examples/mvc/db.js
+@@ -0,0 +1,15 @@
++
++// faux database
++
++var pets = exports.pets = [];
++
++pets.push({ name: 'Tobi', id: 0 });
++pets.push({ name: 'Loki', id: 1 });
++pets.push({ name: 'Jane', id: 2 });
++pets.push({ name: 'Raul', id: 3 });
++
++var users = exports.users = [];
++
++users.push({ name: 'TJ', pets: [pets[0], pets[1], pets[2]], id: 0  });
++users.push({ name: 'Guillermo', pets: [pets[3]], id: 1 });
++users.push({ name: 'Nathan', pets: [], id: 2 });
+\ No newline at end of file
+diff --git a/examples/mvc/index.js b/examples/mvc/index.js
+new file mode 100644
+index 0000000000..c6b571a2f9
+--- /dev/null
++++ b/examples/mvc/index.js
+@@ -0,0 +1,92 @@
++
++var express = require('../..');
++
++var app = module.exports = express();
++
++// settings
++
++// map .renderFile to ".html" files
++app.engine('html', require('ejs').renderFile);
++
++// make ".html" the default
++app.set('view engine', 'html');
++
++// set views for error and 404 pages
++app.set('views', __dirname + '/views');
++
++// define a custom res.message() method
++// which stores messages in the session
++app.response.message = function(msg){
++  // reference `req.session` via the `this.req` reference
++  var sess = this.req.session;
++  // simply add the msg to an array for later
++  sess.messages = sess.messages || [];
++  sess.messages.push(msg);
++  return this;
++};
++
++// expose the "messages" local variable when views are rendered
++app.locals.use(function(req, res){
++  var msgs = req.session.messages || [];
++
++  // expose "messages" local variable
++  res.locals.messages = msgs;
++
++  // expose "hasMessages"
++  res.locals.hasMessages = !! msgs.length;
++
++  /* This is equivalent:
++   res.locals({
++     messages: msgs,
++     hasMessages: !! msgs.length
++   });
++  */
++
++  // empty or "flush" the messages so they
++  // don't build up
++  req.session.messages = [];
++});
++
++// log
++if (!module.parent) app.use(express.logger('dev'));
++
++// serve static files
++app.use(express.static(__dirname + '/public'));
++
++// session support
++app.use(express.cookieParser('some secret here'));
++app.use(express.session());
++
++// parse request bodies (req.body)
++app.use(express.bodyParser());
++
++// support _method (PUT in forms etc)
++app.use(express.methodOverride());
++
++// load controllers
++require('./lib/boot')(app, { verbose: !module.parent });
++
++// assume "not found" in the error msgs
++// is a 404. this is somewhat silly, but
++// valid, you can do whatever you like, set
++// properties, use instanceof etc.
++app.use(function(err, req, res, next){
++  // treat as 404
++  if (~err.message.indexOf('not found')) return next();
++
++  // log it
++  console.error(err.stack);
++
++  // error page
++  res.status(500).render('5xx');
++});
++
++// assume 404 since no middleware responded
++app.use(function(req, res, next){
++  res.status(404).render('404', { url: req.originalUrl });
++});
++
++if (!module.parent) {
++  app.listen(3000);
++  console.log('\n  listening on port 3000\n');
++}
+\ No newline at end of file
+diff --git a/examples/mvc/lib/boot.js b/examples/mvc/lib/boot.js
+new file mode 100644
+index 0000000000..c7ac811aaa
+--- /dev/null
++++ b/examples/mvc/lib/boot.js
+@@ -0,0 +1,74 @@
++
++var express = require('../../..')
++  , fs = require('fs');
++
++module.exports = function(parent, options){
++  var verbose = options.verbose;
++  fs.readdirSync(__dirname + '/../controllers').forEach(function(name){
++    verbose && console.log('\n   %s:', name);
++    var obj = require('./../controllers/' + name)
++      , name = obj.name || name
++      , prefix = obj.prefix || ''
++      , app = express()
++      , method
++      , path;
++
++    // allow specifying the view engine
++    if (obj.engine) app.set('view engine', obj.engine);
++    app.set('views', __dirname + '/../controllers/' + name + '/views');
++
++    // before middleware support
++    if (obj.before) {
++      path = '/' + name + '/:' + name + '_id';
++      app.all(path, obj.before);
++      verbose && console.log('     ALL %s -> before', path);
++      path = '/' + name + '/:' + name + '_id/*';
++      app.all(path, obj.before);
++      verbose && console.log('     ALL %s -> before', path);
++    }
++
++    // generate routes based
++    // on the exported methods
++    for (var key in obj) {
++      // "reserved" exports
++      if (~['name', 'prefix', 'engine', 'before'].indexOf(key)) continue;
++      // route exports
++      switch (key) {
++        case 'show':
++          method = 'get';
++          path = '/' + name + '/:' + name + '_id';
++          app[method](path, obj[key]);
++          break;
++        case 'list':
++          method = 'get';
++          path = '/' + name + 's';
++          break;
++        case 'edit':
++          method = 'get';
++          path = '/' + name + '/:' + name + '_id/edit';
++          break;
++        case 'update':
++          method = 'put';
++          path = '/' + name + '/:' + name + '_id';
++          break;
++        case 'create':
++          method = 'post';
++          path = '/' + name;
++          break;
++        case 'index':
++          method = 'get';
++          path = '/';
++          break;
++        default:
++          throw new Error('unrecognized route: ' + name + '.' + key);
++      }
++
++      path = prefix + path;
++      app[method](path, obj[key]);
++      verbose && console.log('     %s %s -> %s', method.toUpperCase(), path, key);
++    }
++
++    // mount the app
++    parent.use(app);
++  });
++};
+\ No newline at end of file
+diff --git a/examples/mvc/public/style.css b/examples/mvc/public/style.css
+new file mode 100644
+index 0000000000..69fde2e23a
+--- /dev/null
++++ b/examples/mvc/public/style.css
+@@ -0,0 +1,14 @@
++body {
++  padding: 50px;
++  font: 16px "Helvetica Neue", Helvetica, Arial;
++}
++a {
++  color: #107aff;
++  text-decoration: none;
++}
++a:hover {
++  text-decoration: underline;
++}
++h1 a {
++  font-size: 16px;
++}
+diff --git a/examples/mvc/views/404.html b/examples/mvc/views/404.html
+new file mode 100644
+index 0000000000..5710154e15
+--- /dev/null
++++ b/examples/mvc/views/404.html
+@@ -0,0 +1,3 @@
++<link rel="stylesheet" href="/style.css" />
++<h1>404: Not Found</h1>
++<p>Sorry we can't find <%= url %></p>
+\ No newline at end of file
+diff --git a/examples/mvc/views/5xx.html b/examples/mvc/views/5xx.html
+new file mode 100644
+index 0000000000..2d810558dd
+--- /dev/null
++++ b/examples/mvc/views/5xx.html
+@@ -0,0 +1,3 @@
++<link rel="stylesheet" href="/style.css" />
++<h1>500: Internal Server Error</h1>
++<p>Looks like something blew up!</p>
+\ No newline at end of file
+diff --git a/examples/view-locals/index.js b/examples/view-locals/index.js
+new file mode 100644
+index 0000000000..0ad3e5a08f
+--- /dev/null
++++ b/examples/view-locals/index.js
+@@ -0,0 +1,133 @@
++
++var express = require('../..')
++  , User = require('./user')
++  , app = express();
++
++app.set('views', __dirname);
++app.set('view engine', 'jade');
++
++// filter ferrets only
++
++function ferrets(user) {
++  return user.species == 'ferret';
++}
++
++// naive nesting approach,
++// delegating errors to next(err)
++// in order to expose the "count"
++// and "users" locals
++
++app.get('/', function(req, res, next){
++  User.count(function(err, count){
++    if (err) return next(err);
++    User.all(function(err, users){
++      if (err) return next(err);
++      res.render('user', {
++        title: 'Users',
++        count: count,
++        users: users.filter(ferrets)
++      });
++    })
++  })
++});
++
++
++
++
++// this approach is cleaner,
++// less nesting and we have
++// the variables available
++// on the request object
++
++function count(req, res, next) {
++  User.count(function(err, count){
++    if (err) return next(err);
++    req.count = count;
++    next();
++  })
++}
++
++function users(req, res, next) {
++  User.all(function(err, users){
++    if (err) return next(err);
++    req.users = users;
++    next();
++  })
++}
++
++app.get('/middleware', count, users, function(req, res, next){
++  res.render('user', {
++    title: 'Users',
++    count: req.count,
++    users: req.users.filter(ferrets)
++  });
++});
++
++
++
++
++// this approach is much like the last
++// however we're explicitly exposing
++// the locals within each middleware
++// 
++// note that this may not always work
++// well, for example here we filter
++// the users in the middleware, which
++// may not be ideal for our application.
++// so in that sense the previous example
++// is more flexible with `req.users`.
++
++function count2(req, res, next) {
++  User.count(function(err, count){
++    if (err) return next(err);
++    res.locals.count = count;
++    next();
++  })
++}
++
++function users2(req, res, next) {
++  User.all(function(err, users){
++    if (err) return next(err);
++    // this would not be ideal for *this*
++    res.locals.users = users.filter(ferrets);
++    next();
++  })
++}
++
++app.get('/middleware-locals', count2, users2, function(req, res, next){
++  // you can see now how we have much less
++  // to pass to res.render(). If we have
++  // several routes related to users this
++  // can be a great productivity booster
++  res.render('user', { title: 'Users' });
++});
++
++
++
++
++// let's assume we wanted to load the users
++// and count for every res.render() call, we
++// could use app.locals.use() for this. These
++// are callbacks which run in parallel ONLY
++// when res.render() is invoked. If no views
++// are rendered, there is no overhead.
++
++// This may be ideal if you want to load auxiliary
++// user information, but only for templates. Note
++// that (req, res) are available to you, so you may
++// access req.session.user etc.
++
++// Keep in mind these execute in *parallel*, so these
++// callbacks should not depend on each other, this
++// also makes them slightly more efficient than
++// using middleware which execute sequentially
++
++app.locals.use(count2);
++app.locals.use(users2);
++
++app.get('/locals', function(req, res){
++  res.render('user', { title: 'Users' });
++});
++
++app.listen(3000);
++console.log('Application listening on port 3000');
+\ No newline at end of file
+diff --git a/examples/view-locals/layout.jade b/examples/view-locals/layout.jade
+new file mode 100644
+index 0000000000..45a2d105a7
+--- /dev/null
++++ b/examples/view-locals/layout.jade
+@@ -0,0 +1,12 @@
++doctype 5
++html
++  head
++    title= title
++    style
++      body {
++        padding: 50px;
++        font: 16px Helvetica, Arial;
++      }
++  body
++    h2= title
++    block content
+\ No newline at end of file
+diff --git a/examples/view-locals/user.jade b/examples/view-locals/user.jade
+new file mode 100644
+index 0000000000..b07d2b1756
+--- /dev/null
++++ b/examples/view-locals/user.jade
+@@ -0,0 +1,8 @@
++
++extends layout
++
++block content
++  for user in users
++    .user
++      h3= user.name
++      p #{user.name} is a #{user.age} year old #{user.species}.
+\ No newline at end of file
+diff --git a/examples/view-locals/user.js b/examples/view-locals/user.js
+new file mode 100644
+index 0000000000..27b80e7dac
+--- /dev/null
++++ b/examples/view-locals/user.js
+@@ -0,0 +1,32 @@
++
++module.exports = User;
++
++// faux model
++
++function User(name, age, species) {
++  this.name = name;
++  this.age = age;
++  this.species = species;
++}
++
++User.all = function(fn){
++  process.nextTick(function(){
++    fn(null, users);
++  });
++};
++
++User.count = function(fn){
++  process.nextTick(function(){
++    fn(null, users.length);
++  });
++};
++
++// faux database
++
++var users = [];
++
++users.push(new User('Tobi', 2, 'ferret'));
++users.push(new User('Loki', 1, 'ferret'));
++users.push(new User('Jane', 6, 'ferret'));
++users.push(new User('Luna', 1, 'cat'));
++users.push(new User('Manny', 1, 'cat'));
+diff --git a/lib/application.js b/lib/application.js
+index 7a912b778a..2b359cfe00 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express - proto
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+@@ -15,6 +9,7 @@ var connect = require('connect')
+   , middleware = require('./middleware')
+   , debug = require('debug')('express:application')
+   , lookupView = require('./utils').lookupView
++  , locals = require('./utils').locals
+   , View = require('./view')
+   , url = require('url')
+   , utils = connect.utils
+@@ -65,28 +60,17 @@ app.defaultConfiguration = function(){
+   this.use(connect.query());
+   this.use(middleware.init(this));
+ 
+-  // app locals
+-  this.locals = function(obj){
+-    for (var key in obj) self.locals[key] = obj[key];
+-    return self;
+-  };
+-
+-  // response locals
+-  this.locals.use = function(fn){
+-    if (3 == fn.length) {
+-      self.viewCallbacks.push(fn);
+-    } else {
+-      self.viewCallbacks.push(function(req, res, done){
+-        fn(req, res);
+-        done();
+-      });
+-    }
+-    return this;
+-  };
++  // inherit view callbacks
++  this.on('mount', function(parent){
++    this.request.__proto__ = parent.request;
++    this.response.__proto__ = parent.response;
++    this.engines.__proto__ = parent.engines;
++    this.viewCallbacks = parent.viewCallbacks.slice(0);
++  });
+ 
+   // router
+   this._router = new Router(this);
+-  this.routes = this._router.routes;
++  this.routes = this._router.map;
+   this.__defineGetter__('router', function(){
+     this._usedRouter = true;
+     this._router.caseSensitive = this.enabled('case sensitive routing');
+@@ -94,6 +78,9 @@ app.defaultConfiguration = function(){
+     return this._router.middleware;
+   });
+ 
++  // setup locals
++  this.locals = locals(this);
++
+   // default locals
+   this.locals.settings = this.settings;
+ 
+@@ -135,6 +122,8 @@ app.use = function(route, fn){
+       var orig = req.app;
+       app.handle(req, res, function(err){
+         req.app = res.app = orig;
++        req.__proto__ = orig.request;
++        res.__proto__ = orig.response;
+         next(err);
+       });
+     };
+@@ -164,7 +153,7 @@ app.use = function(route, fn){
+  * For engines that do not provide `.__express` out of the box,
+  * or if you wish to "map" a different extension to the template engine
+  * you may use this method. For example mapping the EJS template engine to
+- * ".html" files
++ * ".html" files:
+  *
+  *     app.engine('html', require('ejs').renderFile);
+  *
+@@ -382,7 +371,7 @@ app.disable = function(setting){
+  * Note:
+  *
+  *  These callbacks are invoked immediately, and
+- *  are effectively sugar for the following.
++ *  are effectively sugar for the following:
+  *
+  *     var env = process.env.NODE_ENV || 'development';
+  *
+@@ -419,7 +408,7 @@ app.configure = function(env, fn){
+ 
+ methods.forEach(function(method){
+   app[method] = function(path){
+-    if ('get' == method && 1 == arguments.length) return this.set(path); 
++    if ('get' == method && 1 == arguments.length) return this.set(path);
+     var args = [method].concat([].slice.call(arguments));
+     if (!this._usedRouter) this.use(this.router);
+     return this._router.route.apply(this._router, args);
+@@ -450,30 +439,36 @@ app.all = function(path){
+ app.del = app.delete;
+ 
+ /**
+- * Render the given view `name` name with `options`
++ * Render the given view `name` name for `req` with `options`
+  * and a callback accepting an error and the
+  * rendered template string.
+  *
+  * Example:
+  *
+- *    app.render('email', { name: 'Tobi' }, function(err, html){
++ *    app.render('email', req, { name: 'Tobi' }, function(err, html){
+  *      // ...
+  *    })
+  *
+  * @param {String} name
+- * @param {String|Function} options or fn
++ * @param {Request|Object|Function} request or options or fn
++ * @param {Object|Function} options or fn
+  * @param {Function} fn
+  * @api public
+  */
+ 
+-app.render = function(name, options, fn){
++app.render = function(name, req, options, fn){
+   var self = this
+     , opts = {}
+     , cache = this.cache
+     , engines = this.engines
+     , view;
+ 
+-  // support callback function as second arg
++  // support options as second arg
++  if (!(req instanceof http.IncomingMessage)) {
++    fn = options, options = req, req = null;
++  }
++
++  // support callback function as third arg
+   if ('function' == typeof options) {
+     fn = options, options = {};
+   }
+@@ -493,7 +488,10 @@ app.render = function(name, options, fn){
+     : opts.cache;
+ 
+   // primed cache
+-  if (opts.cache) view = cache[name];
++  if (opts.cache) {
++    var cacheName = req.path + ':' + name;
++    view = cache[cacheName];
++  }
+ 
+   // view
+   if (!view) {
+@@ -505,7 +503,7 @@ app.render = function(name, options, fn){
+     });
+ 
+     // prime the cache
+-    if (opts.cache) cache[name] = view;
++    if (opts.cache) cache[cacheName] = view;
+   }
+ 
+   // render
+@@ -523,7 +521,7 @@ app.render = function(name, options, fn){
+  * application (which is a `Function`) as its
+  * callback. If you wish to create both an HTTP
+  * and HTTPS server you may do so with the "http"
+- * and "https" modules as shown here.
++ * and "https" modules as shown here:
+  *
+  *    var http = require('http')
+  *      , https = require('https')
+diff --git a/lib/express.js b/lib/express.js
+index 84a3560a0d..64ed2bf645 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+@@ -28,7 +22,7 @@ exports = module.exports = createApplication;
+  * Framework version.
+  */
+ 
+-exports.version = '3.0.0alpha1';
++exports.version = '3.0.0alpha5';
+ 
+ /**
+  * Create an express application.
+diff --git a/lib/middleware.js b/lib/middleware.js
+index 221279f4f9..ecc1775d35 100644
+--- a/lib/middleware.js
++++ b/lib/middleware.js
+@@ -1,10 +1,10 @@
+ 
+-/*!
+- * Express - middleware - init
+- * Copyright(c) 2010-2011 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
++/**
++ * Module dependencies.
+  */
+ 
++var utils = require('./utils');
++
+ /**
+  * Initialization middleware, exposing the
+  * request and response to eachother, as well
+@@ -17,9 +17,8 @@
+ 
+ exports.init = function(app){
+   return function expressInit(req, res, next){
+-    var charset;
+-    res.setHeader('X-Powered-By', 'Express');
+     req.app = res.app = app;
++    res.setHeader('X-Powered-By', 'Express');
+     req.res = res;
+     res.req = req;
+     req.next = next;
+@@ -27,10 +26,7 @@ exports.init = function(app){
+     req.__proto__ = app.request;
+     res.__proto__ = app.response;
+ 
+-    res.locals = function(obj){
+-      for (var key in obj) res.locals[key] = obj[key];
+-      return res;
+-    };
++    res.locals = utils.locals(res);
+ 
+     next();
+   }
+diff --git a/lib/request.js b/lib/request.js
+index c787467787..c90bc4097f 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express - request
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+@@ -12,7 +6,7 @@
+ var http = require('http')
+   , utils = require('./utils')
+   , connect = require('connect')
+-  , parse = require('url').parse
++  , parse = connect.utils.parseUrl
+   , mime = require('mime');
+ 
+ /**
+@@ -267,7 +261,7 @@ req.param = function(name, defaultValue){
+  *      // => false
+  * 
+  *  Now within our route callbacks, we can use to to assert content types
+- *  such as "image/jpeg", "image/png", etc.
++ *  such as "image/jpeg", "image/png" as shown here:
+  * 
+  *      app.post('/image/upload', function(req, res, next){
+  *        if (req.is('image/*')) {
+@@ -310,7 +304,7 @@ req.is = function(type){
+  */
+ 
+ req.__defineGetter__('protocol', function(){
+-  var trustProxy = this.app.settings['trust proxy'];
++  var trustProxy = this.app.get('trust proxy');
+   return this.connection.encrypted
+     ? 'https'
+     : trustProxy
+@@ -331,12 +325,25 @@ req.__defineGetter__('secure', function(){
+   return 'https' == this.protocol;
+ });
+ 
++/**
++ * Return the remote address, or when
++ * "trust proxy" is `true` return
++ * the upstream addr.
++ *
++ * @return {String}
++ * @api public
++ */
++
++req.__defineGetter__('ip', function(){
++  return this.ips[0] || this.connection.remoteAddress;
++});
++
+ /**
+  * When "trust proxy" is `true`, parse
+  * the "X-Forwarded-For" ip address list.
+  *
+  * For example if the value were "client, proxy1, proxy2"
+- * you would receive the array `["proxy2", "proxy1", "client"]`
++ * you would receive the array `["client", "proxy1", "proxy2"]`
+  * where "proxy2" is the furthest down-stream.
+  *
+  * @return {Array}
+@@ -344,9 +351,10 @@ req.__defineGetter__('secure', function(){
+  */
+ 
+ req.__defineGetter__('ips', function(){
++  var trustProxy = this.app.get('trust proxy');
+   var val = this.get('X-Forwarded-For');
+-  return val
+-    ? val.split(/ *, */).reverse()
++  return trustProxy && val
++    ? val.split(/ *, */)
+     : [];
+ });
+ 
+@@ -375,7 +383,7 @@ req.__defineGetter__('subdomains', function(){
+  */
+ 
+ req.__defineGetter__('path', function(){
+-  return parse(this.url).pathname;
++  return parse(this).pathname;
+ });
+ 
+ /**
+diff --git a/lib/response.js b/lib/response.js
+index d4b33c1cff..ca7fe9a9d1 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express - response
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+@@ -18,6 +12,7 @@ var fs = require('fs')
+   , normalizeTypes = require('./utils').normalizeTypes
+   , statusCodes = http.STATUS_CODES
+   , send = connect.static.send
++  , crc = require('crc')
+   , mime = require('mime')
+   , basename = path.basename
+   , extname = path.extname
+@@ -63,7 +58,8 @@ res.status = function(code){
+ 
+ res.send = function(body){
+   var req = this.req
+-    , head = 'HEAD' == req.method;
++    , head = 'HEAD' == req.method
++    , len;
+ 
+   // allow status / body
+   if (2 == arguments.length) {
+@@ -77,7 +73,7 @@ res.send = function(body){
+   switch (typeof body) {
+     // response status
+     case 'number':
+-      this.get('Content-Type') || this.contentType('.txt');
++      this.get('Content-Type') || this.type('txt');
+       this.statusCode = body;
+       body = http.STATUS_CODES[body];
+       break;
+@@ -85,7 +81,7 @@ res.send = function(body){
+     case 'string':
+       if (!this.get('Content-Type')) {
+         this.charset = this.charset || 'utf-8';
+-        this.contentType('.html');
++        this.type('html');
+       }
+       break;
+     case 'boolean':
+@@ -93,7 +89,7 @@ res.send = function(body){
+       if (null == body) {
+         body = '';
+       } else if (Buffer.isBuffer(body)) {
+-        this.get('Content-Type') || this.contentType('.bin');
++        this.get('Content-Type') || this.type('bin');
+       } else {
+         return this.json(body);
+       }
+@@ -102,11 +98,20 @@ res.send = function(body){
+ 
+   // populate Content-Length
+   if (undefined !== body && !this.get('Content-Length')) {
+-    this.set('Content-Length', Buffer.isBuffer(body)
++    this.set('Content-Length', len = Buffer.isBuffer(body)
+       ? body.length
+       : Buffer.byteLength(body));
+   }
+ 
++  // ETag support
++  // TODO: W/ support
++  if (len > 1024) {
++    if (!this.get('ETag')) this.set('ETag', Buffer.isBuffer(body)
++      ? crc.buffer.crc32(body)
++      : crc.crc32(body));
++    if (req.fresh) this.statusCode = 304;
++  }
++
+   // strip irrelevant headers
+   if (204 == this.statusCode || 304 == this.statusCode) {
+     this.removeHeader('Content-Type');
+@@ -142,10 +147,10 @@ res.json = function(obj){
+     obj = arguments[1];
+   }
+ 
+-  var settings = this.app.settings
+-    , jsonp = settings['jsonp callback']
+-    , replacer = settings['json replacer']
+-    , spaces = settings['json spaces']
++  var app = this.app
++    , jsonp = app.get('jsonp callback')
++    , replacer = app.get('json replacer')
++    , spaces = app.get('json spaces')
+     , body = JSON.stringify(obj, replacer, spaces)
+     , callback = this.req.query.callback;
+ 
+@@ -154,7 +159,7 @@ res.json = function(obj){
+ 
+   if (callback && jsonp) {
+     this.set('Content-Type', 'text/javascript');
+-    body = callback.replace(/[^\w$.]/g, '') + '(' + body + ');';
++    body = callback.replace(/[^[]\w$.]/g, '') + '(' + body + ');';
+   }
+ 
+   return this.send(body);
+@@ -216,12 +221,7 @@ res.sendfile = function(path, options, fn){
+   options.callback = function(err){
+     if (err) {
+       // cast ENOENT
+-      if ('ENOENT' == err.code) err = 404;
+-
+-      // coerce numeric error to an Error
+-      // TODO: remove
+-      // TODO: remove docs for headerSent?
+-      if ('number' == typeof err) err = utils.error(err);
++      if ('ENOENT' == err.code) err = utils.error(404);
+ 
+       // ditch content-disposition to prevent funky responses
+       if (!self.headerSent) self.removeHeader('Content-Disposition');
+@@ -251,7 +251,7 @@ res.sendfile = function(path, options, fn){
+  * when the data transfer is complete, or when an error has
+  * ocurred. Be sure to check `res.headerSent` if you plan to respond.
+  *
+- * This method uses `res.attachment()` and `res.sendfile()`.
++ * This method uses `res.sendfile()`.
+  *
+  * @param {String} path
+  * @param {String|Function} filename or fn
+@@ -266,7 +266,9 @@ res.download = function(path, filename, fn){
+     filename = null;
+   }
+ 
+-  return this.attachment(filename || path).sendfile(path, fn);
++  filename = filename || path;
++  this.set('Content-Disposition', 'attachment; filename="' + basename(filename) + '"');
++  return this.sendfile(path, fn);
+ };
+ 
+ /**
+@@ -401,10 +403,10 @@ res.attachment = function(filename){
+ res.set = 
+ res.header = function(field, val){
+   if (2 == arguments.length) {
+-    this.setHeader(field, val);
++    this.setHeader(field, '' + val);
+   } else {
+     for (var key in field) {
+-      this.setHeader(key, field[key]);
++      this.setHeader(key, '' + field[key]);
+     }
+   }
+   return this;
+@@ -438,30 +440,13 @@ res.clearCookie = function(name, options){
+     : opts);
+ };
+ 
+-/**
+- * Set a signed cookie with the given `name` and `val`.
+- * See `res.cookie()` for details.
+- *
+- * @param {String} name
+- * @param {String|Object} val
+- * @param {Object} options
+- * @api public
+- */
+-
+-res.signedCookie = function(name, val, options){
+-  var secret = this.req.secret;
+-  if (!secret) throw new Error('connect.cookieParser("secret") required for signed cookies');
+-  if ('object' == typeof val) val = 'j:' + JSON.stringify(val);
+-  val = utils.sign(val, secret);
+-  return this.cookie(name, val, options);
+-};
+-
+ /**
+  * Set cookie `name` to `val`, with the given `options`.
+  *
+  * Options:
+  *
+  *    - `maxAge`   max-age in milliseconds, converted to `expires`
++ *    - `signed`   sign the cookie
+  *    - `path`     defaults to "/"
+  *
+  * Examples:
+@@ -480,7 +465,11 @@ res.signedCookie = function(name, val, options){
+ 
+ res.cookie = function(name, val, options){
+   options = options || {};
++  var secret = this.req.secret;
++  var signed = options.signed;
++  if (signed && !secret) throw new Error('connect.cookieParser("secret") required for signed cookies');
+   if ('object' == typeof val) val = 'j:' + JSON.stringify(val);
++  if (signed) val = utils.sign(val, secret);
+   if ('maxAge' in options) options.expires = new Date(Date.now() + options.maxAge);
+   if (null == options.path) options.path = '/';
+   var cookie = utils.serializeCookie(name, val, options);
+@@ -617,11 +606,11 @@ res.render = function(view, options, fn){
+     };
+ 
+     // render
+-    app.render(view, options, fn);
++    app.render(view, req, options, fn);
+   }
+ 
+   // invoke view callbacks
+-  var callbacks = app.viewCallbacks
++  var callbacks = app.viewCallbacks.concat(self.viewCallbacks)
+     , pending = callbacks.length
+     , len = pending
+     , done;
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 496cd5649e..f99cdb3e47 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -1,8 +1,3 @@
+-/*!
+- * Express - Router
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+ 
+ /**
+  * Module dependencies.
+@@ -11,7 +6,7 @@
+ var Route = require('./route')
+   , utils = require('../utils')
+   , debug = require('debug')('express:router')
+-  , parse = require('url').parse;
++  , parse = require('connect').utils.parseUrl;
+ 
+ /**
+  * Expose `Router` constructor.
+@@ -40,7 +35,6 @@ function Router(options) {
+   this._params = [];
+   this.caseSensitive = options.caseSensitive;
+   this.strict = options.strict;
+-
+   this.middleware = function router(req, res, next){
+     self._dispatch(req, res, next);
+   };
+@@ -96,7 +90,7 @@ Router.prototype._dispatch = function(req, res, next){
+   var params = this.params
+     , self = this;
+ 
+-  debug('dispatching %s %s', req.method, req.url);
++  debug('dispatching %s %s (%s)', req.method, req.url, req.originalUrl);
+ 
+   // route dispatch
+   (function pass(i, err){
+@@ -194,7 +188,7 @@ Router.prototype._dispatch = function(req, res, next){
+  */
+ 
+ Router.prototype._options = function(req, res){
+-  var path = parse(req.url).pathname
++  var path = parse(req).pathname
+     , body = this._optionsFor(path).join(',');
+   res.set('Allow', body).send(body);
+ };
+@@ -233,21 +227,16 @@ Router.prototype._optionsFor = function(path){
+ 
+ Router.prototype.match = function(req, i, head){
+   var method = req.method.toLowerCase()
+-    , url = parse(req.url)
++    , url = parse(req)
+     , path = url.pathname
+     , routes = this.map
+     , i = i || 0
+     , route;
+ 
+   // HEAD support
+-  // TODO: clean this up
+   if (!head && 'head' == method) {
+-    // attempt lookup
+     route = this.match(req, i, true);
+     if (route) return route;
+-
+-    // default to GET as res.render() / res.send()
+-    // etc support HEAD
+      method = 'get';
+   }
+ 
+diff --git a/lib/router/methods.js b/lib/router/methods.js
+index d4c64a0841..966e90512d 100644
+--- a/lib/router/methods.js
++++ b/lib/router/methods.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express - router - methods
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * HTTP methods supported by node.
+  */
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 5c1335ad30..c1a0b5ea80 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express - router - Route
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+diff --git a/lib/utils.js b/lib/utils.js
+index ec1271a32f..b2de70ac1f 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -1,10 +1,4 @@
+ 
+-/*!
+- * Express - utils
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+@@ -16,6 +10,71 @@ var mime = require('mime')
+   , basename = path.basename
+   , join = path.join;
+ 
++/**
++ * Make `locals()` bound to the given `obj`.
++ *
++ * This is used for `app.locals` and `res.locals`.
++ *
++ * @param {Object} obj
++ * @return {Function}
++ * @api private
++ */
++
++exports.locals = function(obj){
++  obj.viewCallbacks = obj.viewCallbacks || [];
++
++  function locals(obj){
++    for (var key in obj) locals[key] = obj[key];
++    return obj;
++  };
++
++  locals.use = function(fn){
++    if (3 == fn.length) {
++      obj.viewCallbacks.push(fn);
++    } else {
++      obj.viewCallbacks.push(function(req, res, done){
++        fn(req, res);
++        done();
++      });
++    }
++    return obj;
++  };
++
++  return locals;
++};
++
++/**
++ * Make `locals()` bound to the given `obj`.
++ *
++ * This is used for `app.locals` and `res.locals`.
++ *
++ * @param {Object} obj
++ * @return {Function}
++ * @api private
++ */
++
++exports.locals = function(obj){
++  obj.viewCallbacks = obj.viewCallbacks || [];
++
++  function locals(obj){
++    for (var key in obj) locals[key] = obj[key];
++    return obj;
++  };
++
++  locals.use = function(fn){
++    if (3 == fn.length) {
++      obj.viewCallbacks.push(fn);
++    } else {
++      obj.viewCallbacks.push(function(req, res, done){
++        fn(req, res);
++        done();
++      });
++    }
++    return obj;
++  };
++
++  return locals;
++};
+ 
+ /**
+  * Check if `path` looks absolute.
+@@ -239,8 +298,7 @@ exports.escape = function(html) {
+ 
+ exports.pathRegexp = function(path, keys, sensitive, strict) {
+   if (path instanceof RegExp) return path;
+-  if (path instanceof Array) 
+-  	path = '(' + path.join('|') + ')';
++  if (Array.isArray(path)) path = '(' + path.join('|') + ')';
+   path = path
+     .concat(strict ? '' : '/?')
+     .replace(/\/\(/g, '(?:/')
+@@ -275,7 +333,7 @@ exports.lookupView = function(view, fn){
+ 
+   exists(path, function(yes){
+     if (yes) return fn(null, path);
+-    
++
+     // <path>/index.<engine>
+     path = join(dirname(path), basename(path, view.ext), 'index' + view.ext);
+     exists(path, function(yes){
+@@ -283,4 +341,4 @@ exports.lookupView = function(view, fn){
+       fn(new Error('Failed to lookup view "' + view.name + '"'));
+     });
+   });
+-};
+\ No newline at end of file
++};
+diff --git a/lib/view.js b/lib/view.js
+index f680c75fd4..a0642b32d6 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -1,9 +1,3 @@
+-/*!
+- * Express - View
+- * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+- * MIT Licensed
+- */
+-
+ /**
+  * Module dependencies.
+  */
+@@ -23,10 +17,10 @@ module.exports = View;
+  *
+  * Options:
+  *
+- *   - `lookup` the lookup function 
+- *   - `defaultEngine` the default template engine name 
+- *   - `engines` template engine require() cache 
+- *   - `root` root path for view lookup 
++ *   - `lookup` the lookup function
++ *   - `defaultEngine` the default template engine name
++ *   - `engines` template engine require() cache
++ *   - `root` root path for view lookup
+  *
+  * @param {String} name
+  * @param {Object} options
+@@ -57,9 +51,9 @@ function View(name, options) {
+ View.prototype.render = function(options, fn) {
+   var self = this
+     , resolved = this.resolved;
+-  
++
+   if (resolved) return this.engine(resolved, options, fn);
+-  
++
+   this.lookup(this, function(err, path){
+     if (err) return fn(err);
+     self.resolved = path;
+diff --git a/package.json b/package.json
+index 7205b84191..adb5eba2d6 100644
+--- a/package.json
++++ b/package.json
+@@ -1,19 +1,20 @@
+ {
+   "name": "express",
+   "description": "Sinatra inspired web development framework",
+-  "version": "3.0.0alpha1",
++  "version": "3.0.0alpha5",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+-  "contributors": [ 
+-    { "name": "TJ Holowaychuk", "email": "tj@vision-media.ca" }, 
++  "contributors": [
++    { "name": "TJ Holowaychuk", "email": "tj@vision-media.ca" },
+     { "name": "Aaron Heckmann", "email": "aaron.heckmann+github@gmail.com" },
+     { "name": "Ciaran Jessup", "email": "ciaranj@gmail.com" },
+     { "name": "Guillermo Rauch", "email": "rauchg@gmail.com" }
+   ],
+   "dependencies": {
+-    "connect": "2.1.2",
+-    "commander": "0.5.2",
++    "connect": "2.2.2",
++    "commander": "0.6.0",
+     "mime": "1.2.5",
+     "mkdirp": "0.3.1",
++    "crc": "0.2.0",
+     "debug": "*"
+   },
+   "devDependencies": {
+@@ -34,6 +35,6 @@
+     "prepublish" : "npm prune",
+     "test": "make test"
+   },
+-  "engines": { "node":">= 0.5.0 < 0.7.0" }
++  "engines": { "node": "*" }
+ }
+ 
+diff --git a/support/app.js b/support/app.js
+index ef72f1db0d..a8bea23e93 100644
+--- a/support/app.js
++++ b/support/app.js
+@@ -5,7 +5,30 @@
+ 
+ var express = require('../');
+ 
+-var app = express.createServer();
++var app = express()
++  , blog = express()
++  , admin = express();
++
++// app.use(express.logger('dev'))
++blog.use('/admin', admin);
++app.use('/blog', blog);
++app.set('views', __dirname + '/views');
++app.set('view engine', 'jade');
++app.locals.self = true;
++
++var repo = require('../package.json');
++
++app.get('/render', function(req, res){
++  res.render('hello');
++});
++
++admin.get('/', function(req, res){
++  res.send('Hello World\n');
++});
++
++blog.get('/', function(req, res){
++  res.send('Hello World\n');
++});
+ 
+ app.get('/', function(req, res){
+   res.send('Hello World\n');
+@@ -15,6 +38,14 @@ app.get('/json', function(req, res){
+   res.send({ name: 'Tobi', role: 'admin' });
+ });
+ 
++app.get('/json/:n', function(req, res){
++  var n = ~~req.params.n;
++  var arr = [];
++  var obj = { name: 'Tobi', role: 'admin' };
++  while (n--) arr.push(obj);
++  res.send(arr);
++});
++
+ function foo(req, res, next) {
+   next();
+ }
+@@ -23,4 +54,15 @@ app.get('/middleware', foo, foo, foo, foo, function(req, res){
+   res.send('Hello World\n');
+ });
+ 
++var n = 100;
++while (n--) {
++  app.get('/foo', foo, foo, function(req, res){
++    
++  });
++}
++
++app.get('/match', function(req, res){
++  res.send('Hello World\n');
++});
++
+ app.listen(8000);
+\ No newline at end of file
+diff --git a/support/bench b/support/bench
+new file mode 100755
+index 0000000000..207c18199b
+--- /dev/null
++++ b/support/bench
+@@ -0,0 +1,32 @@
++#!/usr/bin/env bash
++
++NODE_ENV=production node ./support/app &
++pid=$!
++
++bench() {
++  ab -n 5000 -c 50 -k -q http://127.0.0.1:8000$1 \
++    | grep "Requests per" \
++    | cut -d ' ' -f 7 \
++    | xargs echo "$2:"
++}
++
++bench_conditional() {
++  ab -n 5000 -c 50 -H "If-None-Match: $3" -k -q http://127.0.0.1:8000$1 \
++    | grep "Requests per" \
++    | cut -d ' ' -f 7 \
++    | xargs echo "$2:"
++}
++
++sleep .5
++bench / "Hello World"
++bench /blog "Mounted Hello World"
++bench /blog/admin "Mounted 2 Hello World"
++bench /middleware "Middleware"
++bench /match "Router"
++bench /render "Render"
++bench /json "JSON tiny"
++bench /json/15 "JSON small"
++bench /json/50 "JSON medium"
++bench /json/150 "JSON large"
++
++kill -9 $pid
+\ No newline at end of file
+diff --git a/support/views/hello.jade b/support/views/hello.jade
+new file mode 100644
+index 0000000000..09a0111cce
+--- /dev/null
++++ b/support/views/hello.jade
+@@ -0,0 +1,1 @@
++p Hello
+\ No newline at end of file

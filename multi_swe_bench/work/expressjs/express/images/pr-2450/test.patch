@@ -1,0 +1,184 @@
+diff --git a/test/Router.js b/test/Router.js
+index 880d34b8d5..21cdff2c6c 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -53,6 +53,21 @@ describe('Router', function(){
+     router.handle({ url: '', method: 'GET' }, {}, done);
+   });
+ 
++  it('should not stack overflow with many registered routes', function(done){
++    var handler = function(req, res){ res.end(new Error('wrong handler')) };
++    var router = new Router();
++
++    for (var i = 0; i < 6000; i++) {
++      router.get('/thing' + i, handler)
++    }
++
++    router.get('/', function (req, res) {
++      res.end();
++    });
++
++    router.handle({ url: '/', method: 'GET' }, { end: done });
++  });
++
+   describe('.handle', function(){
+     it('should dispatch', function(done){
+       var router = new Router();
+diff --git a/test/app.options.js b/test/app.options.js
+index 30890c0551..20234723a5 100644
+--- a/test/app.options.js
++++ b/test/app.options.js
+@@ -12,8 +12,8 @@ describe('OPTIONS', function(){
+ 
+     request(app)
+     .options('/users')
+-    .expect('GET,PUT')
+-    .expect('Allow', 'GET,PUT', done);
++    .expect('Allow', 'GET,HEAD,PUT')
++    .expect(200, 'GET,HEAD,PUT', done);
+   })
+ 
+   it('should only include each method once', function(done){
+@@ -26,8 +26,8 @@ describe('OPTIONS', function(){
+ 
+     request(app)
+     .options('/users')
+-    .expect('GET,PUT')
+-    .expect('Allow', 'GET,PUT', done);
++    .expect('Allow', 'GET,HEAD,PUT')
++    .expect(200, 'GET,HEAD,PUT', done);
+   })
+ 
+   it('should not be affected by app.all', function(done){
+@@ -44,8 +44,8 @@ describe('OPTIONS', function(){
+     request(app)
+     .options('/users')
+     .expect('x-hit', '1')
+-    .expect('allow', 'GET,PUT')
+-    .expect(200, 'GET,PUT', done);
++    .expect('Allow', 'GET,HEAD,PUT')
++    .expect(200, 'GET,HEAD,PUT', done);
+   })
+ 
+   it('should not respond if the path is not defined', function(done){
+@@ -68,8 +68,8 @@ describe('OPTIONS', function(){
+ 
+     request(app)
+     .options('/other')
+-    .expect('GET')
+-    .expect('Allow', 'GET', done);
++    .expect('Allow', 'GET,HEAD')
++    .expect(200, 'GET,HEAD', done);
+   })
+ 
+   describe('when error occurs in respone handler', function () {
+diff --git a/test/res.append.js b/test/res.append.js
+new file mode 100644
+index 0000000000..f7f1d55b3c
+--- /dev/null
++++ b/test/res.append.js
+@@ -0,0 +1,104 @@
++
++var express = require('..')
++var request = require('supertest')
++var should = require('should')
++
++describe('res', function () {
++  // note about these tests: "Link" and "X-*" are chosen because
++  // the common node.js versions white list which _incoming_
++  // headers can appear multiple times; there is no such white list
++  // for outgoing, though
++  describe('.append(field, val)', function () {
++    it('should append multiple headers', function (done) {
++      var app = express()
++
++      app.use(function (req, res, next) {
++        res.append('Link', '<http://localhost/>')
++        next()
++      })
++
++      app.use(function (req, res) {
++        res.append('Link', '<http://localhost:80/>')
++        res.end()
++      })
++
++      request(app)
++      .get('/')
++      .expect('Link', '<http://localhost/>, <http://localhost:80/>', done)
++    })
++
++    it('should accept array of values', function (done) {
++      var app = express()
++
++      app.use(function (req, res, next) {
++        res.append('Set-Cookie', ['foo=bar', 'fizz=buzz'])
++        res.end()
++      })
++
++      request(app)
++      .get('/')
++      .expect(function (res) {
++        should(res.headers['set-cookie']).eql(['foo=bar', 'fizz=buzz'])
++      })
++      .expect(200, done)
++    })
++
++    it('should get reset by res.set(field, val)', function (done) {
++      var app = express()
++
++      app.use(function (req, res, next) {
++        res.append('Link', '<http://localhost/>')
++        res.append('Link', '<http://localhost:80/>')
++        next()
++      })
++
++      app.use(function (req, res) {
++        res.set('Link', '<http://127.0.0.1/>')
++        res.end()
++      });
++
++      request(app)
++      .get('/')
++      .expect('Link', '<http://127.0.0.1/>', done)
++    })
++
++    it('should work with res.set(field, val) first', function (done) {
++      var app = express()
++
++      app.use(function (req, res, next) {
++        res.set('Link', '<http://localhost/>')
++        next()
++      })
++
++      app.use(function(req, res){
++        res.append('Link', '<http://localhost:80/>')
++        res.end()
++      })
++
++      request(app)
++      .get('/')
++      .expect('Link', '<http://localhost/>, <http://localhost:80/>', done)
++    })
++
++    it('should work with cookies', function (done) {
++      var app = express()
++
++      app.use(function (req, res, next) {
++        res.cookie('foo', 'bar')
++        next()
++      })
++
++      app.use(function (req, res) {
++        res.append('Set-Cookie', 'bar=baz')
++        res.end()
++      })
++
++      request(app)
++      .get('/')
++      .expect(function (res) {
++        should(res.headers['set-cookie']).eql(['foo=bar; Path=/', 'bar=baz'])
++      })
++      .expect(200, done)
++    })
++  })
++})

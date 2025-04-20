@@ -1,0 +1,13 @@
+diff --git a/lib/utils.js b/lib/utils.js
+index e8e18b791f..401d766daf 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -258,7 +258,7 @@ exports.escape = function(html) {
+  */
+ 
+ exports.pathRegexp = function(path, keys, sensitive, strict) {
+-  if (path instanceof RegExp) return path;
++  if (Object.prototype.toString.call(path) == '[object RegExp]') return path; // see #1557
+   if (Array.isArray(path)) path = '(' + path.join('|') + ')';
+   path = path
+     .concat(strict ? '' : '/?')

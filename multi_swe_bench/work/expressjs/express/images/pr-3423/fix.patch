@@ -1,0 +1,676 @@
+diff --git a/.gitignore b/.gitignore
+index 9723e60591..5fee6a2dc9 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -15,6 +15,7 @@ Desktop.ini
+ 
+ # npm
+ node_modules
++package-lock.json
+ *.log
+ *.gz
+ 
+diff --git a/.travis.yml b/.travis.yml
+index 3dbeb41fcd..855168ff54 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -9,10 +9,13 @@ node_js:
+   - "5.12"
+   - "6.11"
+   - "7.10"
++  - "8.4"
+ matrix:
+   include:
+     - node_js: "8"
+       env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
++    - node_js: "9"
++      env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+   allow_failures:
+     # Allow the nightly installs to fail
+     - env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+@@ -21,6 +24,9 @@ cache:
+   directories:
+     - node_modules
+ before_install:
++  # Skip updating shrinkwrap / lock
++  - "npm config set shrinkwrap false"
++
+   # Remove all non-test dependencies
+   - "npm rm --save-dev connect-redis"
+ 
+diff --git a/History.md b/History.md
+index 707677eb17..eae41a82b1 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,51 @@
++unreleased
++==========
++
++  * Add `"json escape"` setting for `res.json` and `res.jsonp`
++  * Add `express.json` and `express.urlencoded` to parse bodies
++  * Improve error message when autoloading invalid view engine
++  * Improve error messages when non-function provided as middleware
++  * Skip `Buffer` encoding when not generating ETag for small response
++  * Use `safe-buffer` for improved Buffer API
++  * deps: accepts@~1.3.4
++    - deps: mime-types@~2.1.16
++  * deps: content-type@~1.0.4
++    - perf: remove argument reassignment
++    - perf: skip parameter parsing when no parameters
++  * deps: etag@~1.8.1
++    - perf: replace regular expression with substring
++  * deps: finalhandler@1.1.0
++    - Use `res.headersSent` when available
++  * deps: parseurl@~1.3.2
++    - perf: reduce overhead for full URLs
++    - perf: unroll the "fast-path" `RegExp`
++  * deps: proxy-addr@~2.0.2
++    - Fix trimming leading / trailing OWS in `X-Forwarded-For`
++    - deps: forwarded@~0.1.2
++    - deps: ipaddr.js@1.5.2
++    - perf: reduce overhead when no `X-Forwarded-For` header
++  * deps: qs@6.5.1
++    - Fix parsing & compacting very deep objects
++  * deps: send@0.16.0
++    - Add 70 new types for file extensions
++    - Add `immutable` option
++    - Fix missing `</html>` in default error & redirects
++    - Set charset as "UTF-8" for .js and .json
++    - Use instance methods on steam to check for listeners
++    - deps: mime@1.4.1
++    - perf: improve path validation speed
++  * deps: serve-static@1.13.0
++    - Add 70 new types for file extensions
++    - Add `immutable` option
++    - Set charset as "UTF-8" for .js and .json
++    - deps: send@0.16.0
++  * deps: setprototypeof@1.1.0
++  * deps: utils-merge@1.0.1
++  * deps: vary@~1.1.2
++    - perf: improve header token parsing speed
++  * perf: re-use options object when generating ETags
++  * perf: remove dead `.charset` set in `res.jsonp`
++
+ 4.15.5 / 2017-09-24
+ ===================
+ 
+diff --git a/appveyor.yml b/appveyor.yml
+index 9863c08e27..193660af71 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -9,10 +9,12 @@ environment:
+     - nodejs_version: "5.12"
+     - nodejs_version: "6.11"
+     - nodejs_version: "7.10"
++    - nodejs_version: "8.4"
+ cache:
+   - node_modules
+ install:
+   - ps: Install-Product node $env:nodejs_version
++  - npm config set shrinkwrap false
+   - npm rm --save-dev connect-redis
+   - if exist node_modules npm prune
+   - if exist node_modules npm rebuild
+diff --git a/benchmarks/middleware.js b/benchmarks/middleware.js
+index efbac12983..df4df2c5ac 100644
+--- a/benchmarks/middleware.js
++++ b/benchmarks/middleware.js
+@@ -13,10 +13,8 @@ while (n--) {
+   });
+ }
+ 
+-var body = new Buffer('Hello World');
+-
+ app.use(function(req, res, next){
+-  res.send(body);
++  res.send('Hello World')
+ });
+ 
+ app.listen(3333);
+diff --git a/examples/auth/index.js b/examples/auth/index.js
+index 084fba79a9..8df77815e3 100644
+--- a/examples/auth/index.js
++++ b/examples/auth/index.js
+@@ -3,7 +3,6 @@
+  */
+ 
+ var express = require('../..');
+-var bodyParser = require('body-parser');
+ var hash = require('pbkdf2-password')()
+ var path = require('path');
+ var session = require('express-session');
+@@ -17,7 +16,7 @@ app.set('views', path.join(__dirname, 'views'));
+ 
+ // middleware
+ 
+-app.use(bodyParser.urlencoded({ extended: false }));
++app.use(express.urlencoded({ extended: false }))
+ app.use(session({
+   resave: false, // don't save session if unmodified
+   saveUninitialized: false, // don't create session until something stored
+diff --git a/examples/cookies/index.js b/examples/cookies/index.js
+index 5d1ba3461c..34ead52766 100644
+--- a/examples/cookies/index.js
++++ b/examples/cookies/index.js
+@@ -6,7 +6,6 @@ var express = require('../../');
+ var app = module.exports = express();
+ var logger = require('morgan');
+ var cookieParser = require('cookie-parser');
+-var bodyParser = require('body-parser');
+ 
+ // custom log format
+ if ('test' != process.env.NODE_ENV) app.use(logger(':method :url'));
+@@ -18,7 +17,7 @@ if ('test' != process.env.NODE_ENV) app.use(logger(':method :url'));
+ app.use(cookieParser('my secret here'));
+ 
+ // parses x-www-form-urlencoded
+-app.use(bodyParser.urlencoded({ extended: false }));
++app.use(express.urlencoded({ extended: false }))
+ 
+ app.get('/', function(req, res){
+   if (req.cookies.remember) {
+diff --git a/examples/mvc/index.js b/examples/mvc/index.js
+index 0d5624b63d..77885a60ca 100644
+--- a/examples/mvc/index.js
++++ b/examples/mvc/index.js
+@@ -6,7 +6,6 @@ var express = require('../..');
+ var logger = require('morgan');
+ var path = require('path');
+ var session = require('express-session');
+-var bodyParser = require('body-parser');
+ var methodOverride = require('method-override');
+ 
+ var app = module.exports = express();
+@@ -43,7 +42,7 @@ app.use(session({
+ }));
+ 
+ // parse request bodies (req.body)
+-app.use(bodyParser.urlencoded({ extended: true }));
++app.use(express.urlencoded({ extended: true }))
+ 
+ // allow overriding methods in query (?_method=put)
+ app.use(methodOverride('_method'));
+diff --git a/examples/route-separation/index.js b/examples/route-separation/index.js
+index 79e26497f4..6512109134 100644
+--- a/examples/route-separation/index.js
++++ b/examples/route-separation/index.js
+@@ -7,7 +7,6 @@ var path = require('path');
+ var app = express();
+ var logger = require('morgan');
+ var cookieParser = require('cookie-parser');
+-var bodyParser = require('body-parser');
+ var methodOverride = require('method-override');
+ var site = require('./site');
+ var post = require('./post');
+@@ -27,7 +26,7 @@ if (!module.parent) {
+ 
+ app.use(methodOverride('_method'));
+ app.use(cookieParser());
+-app.use(bodyParser.urlencoded({ extended: true }));
++app.use(express.urlencoded({ extended: true }))
+ app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // General
+diff --git a/lib/application.js b/lib/application.js
+index 1abe8d08f5..91f77d241e 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -207,7 +207,7 @@ app.use = function use(fn) {
+   var fns = flatten(slice.call(arguments, offset));
+ 
+   if (fns.length === 0) {
+-    throw new TypeError('app.use() requires middleware functions');
++    throw new TypeError('app.use() requires a middleware function')
+   }
+ 
+   // setup router
+@@ -338,7 +338,7 @@ app.param = function param(name, fn) {
+  * Assign `setting` to `val`, or return `setting`'s value.
+  *
+  *    app.set('foo', 'bar');
+- *    app.get('foo');
++ *    app.set('foo');
+  *    // => "bar"
+  *
+  * Mounted servers inherit their parent server's settings.
+diff --git a/lib/express.js b/lib/express.js
+index 187e4e2d7c..485a8fc08d 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -12,6 +12,7 @@
+  * Module dependencies.
+  */
+ 
++var bodyParser = require('body-parser')
+ var EventEmitter = require('events').EventEmitter;
+ var mixin = require('merge-descriptors');
+ var proto = require('./application');
+@@ -74,16 +75,16 @@ exports.Router = Router;
+  * Expose middleware
+  */
+ 
++exports.json = bodyParser.json
+ exports.query = require('./middleware/query');
+ exports.static = require('serve-static');
++exports.urlencoded = bodyParser.urlencoded
+ 
+ /**
+  * Replace removed middleware with an appropriate error message.
+  */
+ 
+-[
+-  'json',
+-  'urlencoded',
++;[
+   'bodyParser',
+   'compress',
+   'cookieSession',
+diff --git a/lib/response.js b/lib/response.js
+index b852a60e2f..832044be9a 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -12,6 +12,7 @@
+  * @private
+  */
+ 
++var Buffer = require('safe-buffer').Buffer
+ var contentDisposition = require('content-disposition');
+ var deprecate = require('depd')('express');
+ var encodeUrl = require('encodeurl');
+@@ -95,7 +96,7 @@ res.links = function(links){
+  *
+  * Examples:
+  *
+- *     res.send(new Buffer('wahoo'));
++ *     res.send(Buffer.from('wahoo'));
+  *     res.send({ some: 'json' });
+  *     res.send('<p>some html</p>');
+  *
+@@ -106,7 +107,6 @@ res.links = function(links){
+ res.send = function send(body) {
+   var chunk = body;
+   var encoding;
+-  var len;
+   var req = this.req;
+   var type;
+ 
+@@ -171,23 +171,33 @@ res.send = function send(body) {
+     }
+   }
+ 
++  // determine if ETag should be generated
++  var etagFn = app.get('etag fn')
++  var generateETag = !this.get('ETag') && typeof etagFn === 'function'
++
+   // populate Content-Length
++  var len
+   if (chunk !== undefined) {
+-    if (!Buffer.isBuffer(chunk)) {
+-      // convert chunk to Buffer; saves later double conversions
+-      chunk = new Buffer(chunk, encoding);
++    if (!generateETag && chunk.length < 1000) {
++      // just calculate length when no ETag + small chunk
++      len = Buffer.byteLength(chunk, encoding)
++    } else if (!Buffer.isBuffer(chunk)) {
++      // convert chunk to Buffer and calculate
++      chunk = Buffer.from(chunk, encoding)
+       encoding = undefined;
++      len = chunk.length
++    } else {
++      // get length of Buffer
++      len = chunk.length
+     }
+ 
+-    len = chunk.length;
+     this.set('Content-Length', len);
+   }
+ 
+   // populate ETag
+   var etag;
+-  var generateETag = len !== undefined && app.get('etag fn');
+-  if (typeof generateETag === 'function' && !this.get('ETag')) {
+-    if ((etag = generateETag(chunk, encoding))) {
++  if (generateETag && len !== undefined) {
++    if ((etag = etagFn(chunk, encoding))) {
+       this.set('ETag', etag);
+     }
+   }
+@@ -244,9 +254,10 @@ res.json = function json(obj) {
+ 
+   // settings
+   var app = this.app;
++  var escape = app.get('json escape')
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = stringify(val, replacer, spaces);
++  var body = stringify(val, replacer, spaces, escape)
+ 
+   // content-type
+   if (!this.get('Content-Type')) {
+@@ -286,9 +297,10 @@ res.jsonp = function jsonp(obj) {
+ 
+   // settings
+   var app = this.app;
++  var escape = app.get('json escape')
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = stringify(val, replacer, spaces);
++  var body = stringify(val, replacer, spaces, escape)
+   var callback = this.req.query[app.get('jsonp callback name')];
+ 
+   // content-type
+@@ -304,7 +316,6 @@ res.jsonp = function jsonp(obj) {
+ 
+   // jsonp
+   if (typeof callback === 'string' && callback.length !== 0) {
+-    this.charset = 'utf-8';
+     this.set('X-Content-Type-Options', 'nosniff');
+     this.set('Content-Type', 'text/javascript');
+ 
+@@ -506,19 +517,29 @@ res.sendfile = deprecate.function(res.sendfile,
+  * when the data transfer is complete, or when an error has
+  * ocurred. Be sure to check `res.headersSent` if you plan to respond.
+  *
+- * This method uses `res.sendfile()`.
++ * Optionally providing an `options` object to use with `res.sendFile()`.
++ * This function will set the `Content-Disposition` header, overriding
++ * any `Content-Disposition` header passed as header options in order
++ * to set the attachment and filename.
++ *
++ * This method uses `res.sendFile()`.
+  *
+  * @public
+  */
+ 
+-res.download = function download(path, filename, callback) {
++res.download = function download (path, filename, options, callback) {
+   var done = callback;
+   var name = filename;
++  var opts = options || null
+ 
+-  // support function as second arg
++  // support function as second or third arg
+   if (typeof filename === 'function') {
+     done = filename;
+     name = null;
++    opts = null
++  } else if (typeof options === 'function') {
++    done = options
++    opts = null
+   }
+ 
+   // set Content-Disposition when file is sent
+@@ -526,10 +547,26 @@ res.download = function download(path, filename, callback) {
+     'Content-Disposition': contentDisposition(name || path)
+   };
+ 
++  // merge user-provided headers
++  if (opts && opts.headers) {
++    var keys = Object.keys(opts.headers)
++    for (var i = 0; i < keys.length; i++) {
++      var key = keys[i]
++      if (key.toLowerCase() !== 'content-disposition') {
++        headers[key] = opts.headers[key]
++      }
++    }
++  }
++
++  // merge user-provided options
++  opts = Object.create(opts)
++  opts.headers = headers
++
+   // Resolve the full path for sendFile
+   var fullPath = resolve(path);
+ 
+-  return this.sendFile(fullPath, { headers: headers }, done);
++  // send file
++  return this.sendFile(fullPath, opts, done)
+ };
+ 
+ /**
+@@ -1063,14 +1100,38 @@ function sendfile(res, file, options, callback) {
+ }
+ 
+ /**
+- * Stringify JSON, like JSON.stringify, but v8 optimized.
++ * Stringify JSON, like JSON.stringify, but v8 optimized, with the
++ * ability to escape characters that can trigger HTML sniffing.
++ *
++ * @param {*} value
++ * @param {function} replaces
++ * @param {number} spaces
++ * @param {boolean} escape
++ * @returns {string}
+  * @private
+  */
+ 
+-function stringify(value, replacer, spaces) {
++function stringify (value, replacer, spaces, escape) {
+   // v8 checks arguments.length for optimizing simple call
+   // https://bugs.chromium.org/p/v8/issues/detail?id=4730
+-  return replacer || spaces
++  var json = replacer || spaces
+     ? JSON.stringify(value, replacer, spaces)
+     : JSON.stringify(value);
++
++  if (escape) {
++    json = json.replace(/[<>&]/g, function (c) {
++      switch (c.charCodeAt(0)) {
++        case 0x3c:
++          return '\\u003c'
++        case 0x3e:
++          return '\\u003e'
++        case 0x26:
++          return '\\u0026'
++        default:
++          return c
++      }
++    })
++  }
++
++  return json
+ }
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 51db4c28ff..60727ed6d6 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -448,14 +448,14 @@ proto.use = function use(fn) {
+   var callbacks = flatten(slice.call(arguments, offset));
+ 
+   if (callbacks.length === 0) {
+-    throw new TypeError('Router.use() requires middleware functions');
++    throw new TypeError('Router.use() requires a middleware function')
+   }
+ 
+   for (var i = 0; i < callbacks.length; i++) {
+     var fn = callbacks[i];
+ 
+     if (typeof fn !== 'function') {
+-      throw new TypeError('Router.use() requires middleware function but got a ' + gettype(fn));
++      throw new TypeError('Router.use() requires a middleware function but got a ' + gettype(fn))
+     }
+ 
+     // add the middleware
+diff --git a/lib/router/route.js b/lib/router/route.js
+index ea82ed29df..178df0d516 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -175,7 +175,7 @@ Route.prototype.all = function all() {
+ 
+     if (typeof handle !== 'function') {
+       var type = toString.call(handle);
+-      var msg = 'Route.all() requires callback functions but got a ' + type;
++      var msg = 'Route.all() requires a callback function but got a ' + type
+       throw new TypeError(msg);
+     }
+ 
+@@ -198,7 +198,7 @@ methods.forEach(function(method){
+ 
+       if (typeof handle !== 'function') {
+         var type = toString.call(handle);
+-        var msg = 'Route.' + method + '() requires callback functions but got a ' + type;
++        var msg = 'Route.' + method + '() requires a callback function but got a ' + type
+         throw new Error(msg);
+       }
+ 
+diff --git a/lib/utils.js b/lib/utils.js
+index ae2a7f862d..bd81ac7f6d 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -12,6 +12,7 @@
+  * @api private
+  */
+ 
++var Buffer = require('safe-buffer').Buffer
+ var contentDisposition = require('content-disposition');
+ var contentType = require('content-type');
+ var deprecate = require('depd')('express');
+@@ -31,13 +32,7 @@ var querystring = require('querystring');
+  * @api private
+  */
+ 
+-exports.etag = function (body, encoding) {
+-  var buf = !Buffer.isBuffer(body)
+-    ? new Buffer(body, encoding)
+-    : body;
+-
+-  return etag(buf, {weak: false});
+-};
++exports.etag = createETagGenerator({ weak: false })
+ 
+ /**
+  * Return weak ETag for `body`.
+@@ -48,13 +43,7 @@ exports.etag = function (body, encoding) {
+  * @api private
+  */
+ 
+-exports.wetag = function wetag(body, encoding){
+-  var buf = !Buffer.isBuffer(body)
+-    ? new Buffer(body, encoding)
+-    : body;
+-
+-  return etag(buf, {weak: true});
+-};
++exports.wetag = createETagGenerator({ weak: true })
+ 
+ /**
+  * Check if `path` looks absolute.
+@@ -273,6 +262,25 @@ exports.setCharset = function setCharset(type, charset) {
+   return contentType.format(parsed);
+ };
+ 
++/**
++ * Create an ETag generator function, generating ETags with
++ * the given options.
++ *
++ * @param {object} options
++ * @return {function}
++ * @private
++ */
++
++function createETagGenerator (options) {
++  return function generateETag (body, encoding) {
++    var buf = !Buffer.isBuffer(body)
++      ? Buffer.from(body, encoding)
++      : body
++
++    return etag(buf, options)
++  }
++}
++
+ /**
+  * Parse an extended query string with qs.
+  *
+diff --git a/lib/view.js b/lib/view.js
+index 99d5aed7a0..cf101caeab 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -76,7 +76,15 @@ function View(name, options) {
+     // load engine
+     var mod = this.ext.substr(1)
+     debug('require "%s"', mod)
+-    opts.engines[this.ext] = require(mod).__express
++
++    // default engine export
++    var fn = require(mod).__express
++
++    if (typeof fn !== 'function') {
++      throw new Error('Module "' + mod + '" does not provide a view engine.')
++    }
++
++    opts.engines[this.ext] = fn
+   }
+ 
+   // store loaded engine
+diff --git a/package.json b/package.json
+index 954c20b3c3..f20c3b9dca 100644
+--- a/package.json
++++ b/package.json
+@@ -27,49 +27,50 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.3.3",
++    "accepts": "~1.3.4",
+     "array-flatten": "1.1.1",
++    "body-parser": "1.18.2",
+     "content-disposition": "0.5.2",
+-    "content-type": "~1.0.2",
++    "content-type": "~1.0.4",
+     "cookie": "0.3.1",
+     "cookie-signature": "1.0.6",
+     "debug": "2.6.9",
+     "depd": "~1.1.1",
+     "encodeurl": "~1.0.1",
+     "escape-html": "~1.0.3",
+-    "etag": "~1.8.0",
+-    "finalhandler": "~1.0.6",
++    "etag": "~1.8.1",
++    "finalhandler": "1.1.0",
+     "fresh": "0.5.2",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+     "on-finished": "~2.3.0",
+-    "parseurl": "~1.3.1",
++    "parseurl": "~1.3.2",
+     "path-to-regexp": "0.1.7",
+-    "proxy-addr": "~1.1.5",
+-    "qs": "6.5.0",
++    "proxy-addr": "~2.0.2",
++    "qs": "6.5.1",
+     "range-parser": "~1.2.0",
+-    "send": "0.15.6",
+-    "serve-static": "1.12.6",
+-    "setprototypeof": "1.0.3",
++    "safe-buffer": "5.1.1",
++    "send": "0.16.0",
++    "serve-static": "1.13.0",
++    "setprototypeof": "1.1.0",
+     "statuses": "~1.3.1",
+     "type-is": "~1.6.15",
+-    "utils-merge": "1.0.0",
+-    "vary": "~1.1.1"
++    "utils-merge": "1.0.1",
++    "vary": "~1.1.2"
+   },
+   "devDependencies": {
+     "after": "0.8.2",
+-    "body-parser": "1.18.1",
+     "cookie-parser": "~1.4.3",
+-    "cookie-session": "1.3.1",
++    "cookie-session": "1.3.2",
+     "ejs": "2.5.7",
+     "eslint": "2.13.1",
+-    "express-session": "1.15.5",
++    "express-session": "1.15.6",
+     "hbs": "4.0.1",
+     "istanbul": "0.4.5",
+     "marked": "0.3.6",
+-    "method-override": "2.3.9",
++    "method-override": "2.3.10",
+     "mocha": "3.5.3",
+-    "morgan": "1.8.2",
++    "morgan": "1.9.0",
+     "multiparty": "4.1.3",
+     "pbkdf2-password": "1.2.1",
+     "should": "13.1.0",

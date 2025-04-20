@@ -1,0 +1,38 @@
+diff --git a/test/res.cookie.js b/test/res.cookie.js
+index 3451450cd1..d671def31a 100644
+--- a/test/res.cookie.js
++++ b/test/res.cookie.js
+@@ -1,6 +1,7 @@
+ 
+ var express = require('../')
+   , request = require('./support/http')
++  , utils = require('connect').utils
+   , cookie = require('cookie');
+ 
+ describe('res', function(){
+@@ -108,6 +109,25 @@ describe('res', function(){
+           done();
+         })
+       })
++
++      it('should not mutate the options object', function(done){
++        var app = express();
++
++        var options = { maxAge: 1000 };
++        var optionsCopy = utils.merge({}, options);
++
++        app.use(function(req, res){
++          res.cookie('name', 'tobi', options)
++          res.end();
++        });
++
++        request(app)
++        .get('/')
++        .end(function(err, res){
++          options.should.eql(optionsCopy);
++          done();
++        })
++      })
+     })
+ 
+     describe('signed', function(){

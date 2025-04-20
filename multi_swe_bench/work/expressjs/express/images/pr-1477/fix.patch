@@ -1,0 +1,20 @@
+diff --git a/lib/response.js b/lib/response.js
+index 01daf55164..d595e253ed 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -510,12 +510,12 @@ res.attachment = function(filename){
+  */
+ 
+ res.set =
+-res.header = function(field, val){
++res.header = function header(field, val){
+   if (2 == arguments.length) {
+-    this.setHeader(field, '' + val);
++    this.setHeader(field, Array.isArray(val) ? val.map(String) : String(val));
+   } else {
+     for (var key in field) {
+-      this.setHeader(key, '' + field[key]);
++      header.call(this, key, field[key]);
+     }
+   }
+   return this;

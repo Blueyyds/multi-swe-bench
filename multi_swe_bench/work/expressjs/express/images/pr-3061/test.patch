@@ -1,0 +1,84 @@
+diff --git a/test/acceptance/expose-data-to-client.js b/test/acceptance/expose-data-to-client.js
+new file mode 100644
+index 0000000000..52f11866d3
+--- /dev/null
++++ b/test/acceptance/expose-data-to-client.js
+@@ -0,0 +1,24 @@
++
++var app = require('../../examples/expose-data-to-client')
++  , request = require('supertest');
++
++describe('expose-data-to-client', function(){
++  describe('GET /',function(){
++    it('should redirect to /user', function(done){
++      request(app)
++        .get('/')
++        .expect('Location', '/user')
++        .expect(302, done)
++    })
++  })
++
++  describe('GET /user', function(){
++    it('should display the exposed data', function(done){
++      request(app)
++        .get('/user')
++        .expect('Content-Type', 'text/html; charset=utf-8')
++        .expect(/{"user":{"id":123,"name":"Tobi"}/)
++        .expect(200, done)
++    })
++  })
++})
+diff --git a/test/acceptance/jade.js b/test/acceptance/jade.js
+new file mode 100644
+index 0000000000..58220ca83c
+--- /dev/null
++++ b/test/acceptance/jade.js
+@@ -0,0 +1,17 @@
++
++var app = require('../../examples/jade')
++  , request = require('supertest');
++
++describe('jade', function(){
++  describe('GET /', function(){
++    it('should respond with html', function(done){
++      request(app)
++      .get('/')
++      .expect('Content-Type', 'text/html; charset=utf-8')
++      .expect(/<div class="email">tj@vision-media.ca<\/div>/)
++      .expect(/<div class="email">ciaranj@gmail\.com<\/div>/)
++      .expect(/<div class="email">aaron\.heckmann\+github@gmail\.com<\/div>/)
++      .expect(200, done)
++    })
++  })
++})
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index 705c15a8b7..b02faab355 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -185,6 +185,26 @@ describe('res', function(){
+         .expect(403, done);
+       })
+     })
++
++    describe('with "cacheControl" option', function () {
++      it('should enable cacheControl by default', function (done) {
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'));
++
++        request(app)
++        .get('/')
++        .expect('cache-control', 'public, max-age=0')
++        .expect(200, done);
++      })
++
++      it('should accept cacheControl option', function(done){
++        var app = createApp(path.resolve(__dirname, 'fixtures/name.txt'), { cacheControl: false });
++
++        request(app)
++        .get('/')
++        .expect(utils.shouldNotHaveHeader('cache-control'))
++        .expect(200, done);
++      })
++    })
+   })
+ 
+   describe('.sendFile(path, fn)', function () {

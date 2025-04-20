@@ -1,0 +1,276 @@
+diff --git a/test/res.send.js b/test/res.send.js
+index a3d9d2178c..6148e00207 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -118,13 +118,13 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        var str = Array(1024 * 2).join('-');
++        var str = Array(1000).join('-');
+         res.send(str);
+       });
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"7ff-2796319984"')
++      .expect('ETag', 'W/"3e7-8084ccd1"')
+       .end(done);
+     })
+ 
+@@ -132,7 +132,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        var str = Array(1024 * 2).join('-');
++        var str = Array(1000).join('-');
+         res.send(str);
+       });
+ 
+@@ -207,13 +207,13 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        var str = Array(1024 * 2).join('-');
++        var str = Array(1000).join('-');
+         res.send(new Buffer(str));
+       });
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"7ff-2796319984"')
++      .expect('ETag', 'W/"3e7-8084ccd1"')
+       .end(done);
+     })
+ 
+@@ -321,15 +321,17 @@ describe('res', function(){
+ 
+   it('should respond with 304 Not Modified when fresh', function(done){
+     var app = express();
++    var etag = '"asdf"';
+ 
+     app.use(function(req, res){
+-      var str = Array(1024 * 2).join('-');
++      var str = Array(1000).join('-');
++      res.set('ETag', etag);
+       res.send(str);
+     });
+ 
+     request(app)
+     .get('/')
+-    .set('If-None-Match', 'W/"7ff-2796319984"')
++    .set('If-None-Match', etag)
+     .expect(304, done);
+   })
+ 
+@@ -375,7 +377,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"c-1525560792"', done)
++        .expect('etag', 'W/"c-5aee35d8"', done)
+       })
+ 
+       it('should send ETag for empty string response', function(done){
+@@ -396,7 +398,7 @@ describe('res', function(){
+         var app = express();
+ 
+         app.use(function(req, res){
+-          var str = Array(1024 * 2).join('-');
++          var str = Array(1000).join('-');
+           res.send(str);
+         });
+ 
+@@ -404,7 +406,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"7ff-2796319984"', done)
++        .expect('etag', 'W/"3e7-8084ccd1"', done)
+       });
+ 
+       it('should not override ETag when manually set', function(done){
+@@ -445,7 +447,7 @@ describe('res', function(){
+         var app = express();
+ 
+         app.use(function(req, res){
+-          var str = Array(1024 * 2).join('-');
++          var str = Array(1000).join('-');
+           res.send(str);
+         });
+ 
+@@ -503,7 +505,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"d-1486392595"', done)
++        .expect('etag', 'W/"d-58988d13"', done)
+       })
+     })
+ 
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index 5869503d30..779f6ca79f 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -3,6 +3,7 @@ var after = require('after');
+ var express = require('../')
+   , request = require('supertest')
+   , assert = require('assert');
++var onFinished = require('on-finished');
+ var path = require('path');
+ var should = require('should');
+ var fixtures = path.join(__dirname, 'fixtures');
+@@ -152,6 +153,44 @@ describe('res', function(){
+       .expect(200, cb);
+     })
+ 
++    it('should invoke the callback when client aborts', function (done) {
++      var cb = after(1, done);
++      var app = express();
++
++      app.use(function (req, res) {
++        setImmediate(function () {
++          res.sendFile(path.resolve(fixtures, 'name.txt'), function (err) {
++            should(err).be.ok;
++            err.code.should.equal('ECONNABORT');
++            cb();
++          });
++        });
++        test.abort();
++      });
++
++      var test = request(app).get('/');
++      test.expect(200, cb);
++    })
++
++    it('should invoke the callback when client already aborted', function (done) {
++      var cb = after(1, done);
++      var app = express();
++
++      app.use(function (req, res) {
++        onFinished(res, function () {
++          res.sendFile(path.resolve(fixtures, 'name.txt'), function (err) {
++            should(err).be.ok;
++            err.code.should.equal('ECONNABORT');
++            cb();
++          });
++        });
++        test.abort();
++      });
++
++      var test = request(app).get('/');
++      test.expect(200, cb);
++    })
++
+     it('should invoke the callback on 404', function(done){
+       var app = express();
+ 
+@@ -196,6 +235,44 @@ describe('res', function(){
+       .end(done);
+     })
+ 
++    it('should invoke the callback when client aborts', function (done) {
++      var cb = after(1, done);
++      var app = express();
++
++      app.use(function (req, res) {
++        setImmediate(function () {
++          res.sendfile('test/fixtures/name.txt', function (err) {
++            should(err).be.ok;
++            err.code.should.equal('ECONNABORT');
++            cb();
++          });
++        });
++        test.abort();
++      });
++
++      var test = request(app).get('/');
++      test.expect(200, cb);
++    })
++
++    it('should invoke the callback when client already aborted', function (done) {
++      var cb = after(1, done);
++      var app = express();
++
++      app.use(function (req, res) {
++        onFinished(res, function () {
++          res.sendfile('test/fixtures/name.txt', function (err) {
++            should(err).be.ok;
++            err.code.should.equal('ECONNABORT');
++            cb();
++          });
++        });
++        test.abort();
++      });
++
++      var test = request(app).get('/');
++      test.expect(200, cb);
++    })
++
+     it('should invoke the callback on 404', function(done){
+       var app = express()
+         , calls = 0;
+diff --git a/test/res.sendStatus.js b/test/res.sendStatus.js
+new file mode 100644
+index 0000000000..a97e1bf8d8
+--- /dev/null
++++ b/test/res.sendStatus.js
+@@ -0,0 +1,32 @@
++
++var assert = require('assert')
++var express = require('..')
++var request = require('supertest')
++
++describe('res', function () {
++  describe('.sendStatus(statusCode)', function () {
++    it('should send the status code and message as body', function (done) {
++      var app = express();
++
++      app.use(function(req, res){
++        res.sendStatus(201);
++      });
++
++      request(app)
++      .get('/')
++      .expect(201, 'Created', done);
++    })
++
++    it('should work with unknown code', function (done) {
++      var app = express();
++
++      app.use(function(req, res){
++        res.sendStatus(599);
++      });
++
++      request(app)
++      .get('/')
++      .expect(599, '599', done);
++    })
++  })
++})
+diff --git a/test/utils.js b/test/utils.js
+index 89601a5e84..399b3f5bcd 100644
+--- a/test/utils.js
++++ b/test/utils.js
+@@ -28,18 +28,18 @@ describe('utils.etag(body, encoding)', function(){
+ describe('utils.wetag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.wetag('express!')
+-    .should.eql('W/"8-3098196679"')
++    .should.eql('W/"8-b8aabac7"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.wetag('express❤', 'utf8')
+-    .should.eql('W/"a-1751845617"')
++    .should.eql('W/"a-686b0af1"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.wetag(buf)
+-    .should.eql('W/"8-3098196679"');
++    .should.eql('W/"8-b8aabac7"');
+   })
+ 
+   it('should support empty string', function(){

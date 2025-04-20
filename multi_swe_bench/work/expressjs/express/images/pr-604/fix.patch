@@ -1,0 +1,25 @@
+diff --git a/.gitignore b/.gitignore
+index bb64ec56fb..285d27aa17 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -6,5 +6,7 @@ lib-cov
+ *.dat
+ *.out
+ *.pid
++*.swp
++*.swo
+ benchmarks/graphs
+ testing.js
+diff --git a/lib/response.js b/lib/response.js
+index 538f80cc12..543998125f 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -51,7 +51,7 @@ res.send = function(body, headers, status){
+   status = status || this.statusCode;
+ 
+   // allow 0 args as 204
+-  if (!arguments.length) body = status = 204;
++  if (!arguments.length || undefined === body) body = status = 204;
+ 
+   // determine content type
+   switch (typeof body) {

@@ -1,0 +1,2707 @@
+diff --git a/.travis.yml b/.travis.yml
+index df087b4a0f..1230c7e2f9 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -2,11 +2,30 @@ language: node_js
+ node_js:
+   - "0.10"
+   - "0.12"
+-  - "1.0"
+   - "1.8"
+-  - "2.0"
+-  - "2.3"
++  - "2.5"
++  - "3.3"
++  - "4.8"
++  - "5.12"
++  - "6.10"
++  - "7.6"
++matrix:
++  include:
++    - node_js: "8.0"
++      env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
++  allow_failures:
++    # Allow the nightly installs to fail
++    - env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+ sudo: false
+-before_install: "npm rm --save-dev connect-redis"
++cache:
++  directories:
++    - node_modules
++before_install:
++  # Remove all non-test dependencies
++  - "npm rm --save-dev connect-redis"
++
++  # Update Node.js modules
++  - "test ! -d node_modules || npm prune"
++  - "test ! -d node_modules || npm rebuild"
+ script: "npm run-script test-ci"
+ after_script: "npm install coveralls@2.10.0 && cat ./coverage/lcov.info | coveralls"
+diff --git a/Collaborator-Guide.md b/Collaborator-Guide.md
+new file mode 100644
+index 0000000000..7c0d265dd0
+--- /dev/null
++++ b/Collaborator-Guide.md
+@@ -0,0 +1,48 @@
++
++## Website Issues
++
++Open issues for the expressjs.com website in https://github.com/expressjs/expressjs.com.
++
++## PRs and Code contributions
++
++* Tests must pass.
++* Follow the [JavaScript Standard Style](http://standardjs.com/).
++* If you fix a bug, add a test.
++
++## Branches
++
++Use the `master` branch for bug fixes or minor work that is intended for the
++current release stream.
++
++Use the correspondingly named branch, e.g. `5.0`, for anything intended for
++a future release of Express.
++
++## Steps for contributing
++
++1. [Create an issue](https://github.com/expressjs/express/issues/new) for the
++   bug you want to fix or the feature that you want to add.
++2. Create your own [fork](https://github.com/expressjs/express) on github, then
++   checkout your fork.
++3. Write your code in your local copy. It's good practice to create a branch for
++   each new issue you work on, although not compulsory.
++4. To run the test suite, first install the dependencies by running `npm install`,
++   then run `npm test`.
++5. If the tests pass, you can commit your changes to your fork and then create
++   a pull request from there. Make sure to reference your issue from the pull
++   request comments by including the issue number e.g. `#123`.
++
++## Issues which are questions
++
++We will typically close any vague issues or questions that are specific to some
++app you are writing. Please double check the docs and other references before
++being trigger happy with posting a question issue.
++
++Things that will help get your question issue looked at:
++
++* Full and runnable JS code.
++* Clear description of the problem or unexpected behavior.
++* Clear description of the expected result.
++* Steps you have taken to debug it yourself.
++
++If you post a question and do not outline the above items or make it easy for
++us to understand and reproduce your issue, it will be closed.
+diff --git a/Contributing.md b/Contributing.md
+index 6dab84f125..214e907012 100644
+--- a/Contributing.md
++++ b/Contributing.md
+@@ -1,25 +1,85 @@
++# Express.js Community Contributing Guide 1.0
+ 
+-## Website Issues
++The goal of this document is to create a contribution process that:
+ 
+-Issues for the expressjs.com website go here https://github.com/strongloop/expressjs.com
++* Encourages new contributions.
++* Encourages contributors to remain involved.
++* Avoids unnecessary processes and bureaucracy whenever possible.
++* Creates a transparent decision making process that makes it clear how
++contributors can be involved in decision making.
+ 
+-## PRs and Code contributions
++## Vocabulary
+ 
+-* Tests must pass.
+-* Follow existing coding style.
+-* If you fix a bug, add a test.
++* A **Contributor** is any individual creating or commenting on an issue or pull request.
++* A **Committer** is a subset of contributors who have been given write access to the repository.
++* A **TC (Technical Committee)** is a group of committers representing the required technical 
++expertise to resolve rare disputes.
+ 
++# Logging Issues
+ 
+-## Issues which are questions
++Log an issue for any question or problem you might have. When in doubt, log an issue, and
++any additional policies about what to include will be provided in the responses. The only
++exception is security dislosures which should be sent privately.
+ 
+-We will typically close any vague issues or questions that are specific to some app you are writing. Please double check the docs and other references before being trigger happy with posting a question issue.
++Committers may direct you to another repository, ask for additional clarifications, and
++add appropriate metadata before the issue is addressed.
+ 
+-Things that will help get your question issue looked at:
++Please be courteous and respectful. Every participant is expected to follow the
++project's Code of Conduct.
+ 
+-* Full and runnable JS code.
+-* Clear description of the problem or unexpected behavior.
+-* Clear description of the expected result.
+-* Steps you have taken to debug it yourself.
++# Contributions
++
++Any change to resources in this repository must be through pull requests. This applies to all changes
++to documentation, code, binary files, etc. Even long term committers and TC members must use
++pull requests.
++
++No pull request can be merged without being reviewed.
++
++For non-trivial contributions, pull requests should sit for at least 36 hours to ensure that
++contributors in other timezones have time to review. Consideration should also be given to 
++weekends and other holiday periods to ensure active committers all have reasonable time to 
++become involved in the discussion and review process if they wish.
++
++The default for each contribution is that it is accepted once no committer has an objection.
++During review committers may also request that a specific contributor who is most versed in a 
++particular area gives a "LGTM" before the PR can be merged. There is no additional "sign off" 
++process for contributions to land. Once all issues brought by committers are addressed it can 
++be landed by any committer.
++
++In the case of an objection being raised in a pull request by another committer, all involved 
++committers should seek to arrive at a consensus by way of addressing concerns being expressed 
++by discussion, compromise on the proposed change, or withdrawal of the proposed change.
++
++If a contribution is controversial and committers cannot agree about how to get it to land
++or if it should land then it should be escalated to the TC. TC members should regularly
++discuss pending contributions in order to find a resolution. It is expected that only a 
++small minority of issues be brought to the TC for resolution and that discussion and 
++compromise among committers be the default resolution mechanism.
++
++# Becoming a Committer
++
++All contributors who land a non-trivial contribution should be on-boarded in a timely manner,
++and added as a committer, and be given write access to the repository.
++
++Committers are expected to follow this policy and continue to send pull requests, go through
++proper review, and have other committers merge their pull requests.
++
++# TC Process
++
++The TC uses a "consensus seeking" process for issues that are escalated to the TC. 
++The group tries to find a resolution that has no open objections among TC members.
++If a consensus cannot be reached that has no objections then a majority wins vote
++is called. It is also expected that the majority of decisions made by the TC are via 
++a consensus seeking process and that voting is only used as a last-resort.
++
++Resolution may involve returning the issue to committers with suggestions on how to 
++move forward towards a consensus. It is not expected that a meeting of the TC 
++will resolve all issues on its agenda during that meeting and may prefer to continue
++the discussion happening among the committers.
++
++Members can be added to the TC at any time. Any committer can nominate another committer
++to the TC and the TC uses its standard consensus seeking process to evaluate whether or
++not to add this new member. Members who do not participate consistently at the level of 
++a majority of the other members are expected to resign.
+ 
+-If you post a question and do not outline the above items or make it easy for us to understand and reproduce your issue, it will be closed.
+ 
+diff --git a/History.md b/History.md
+index be89c8e723..aa32ea6b89 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,232 @@
++unreleased
++==========
++
++  * deps: debug@2.6.3
++    - Fix: `DEBUG_MAX_ARRAY_LENGTH`
++
++4.15.2 / 2017-03-06
++===================
++
++  * deps: qs@6.4.0
++    - Fix regression parsing keys starting with `[`
++
++4.15.1 / 2017-03-05
++===================
++
++  * deps: send@0.15.1
++    - Fix issue when `Date.parse` does not return `NaN` on invalid date
++    - Fix strict violation in broken environments
++  * deps: serve-static@1.12.1
++    - Fix issue when `Date.parse` does not return `NaN` on invalid date
++    - deps: send@0.15.1
++
++4.15.0 / 2017-03-01
++===================
++
++  * Add debug message when loading view engine
++  * Add `next("router")` to exit from router
++  * Fix case where `router.use` skipped requests routes did not
++  * Remove usage of `res._headers` private field
++    - Improves compatibility with Node.js 8 nightly
++  * Skip routing when `req.url` is not set
++  * Use `%o` in path debug to tell types apart
++  * Use `Object.create` to setup request & response prototypes
++  * Use `setprototypeof` module to replace `__proto__` setting
++  * Use `statuses` instead of `http` module for status messages
++  * deps: debug@2.6.1
++    - Allow colors in workers
++    - Deprecated `DEBUG_FD` environment variable set to `3` or higher
++    - Fix error when running under React Native
++    - Use same color for same namespace
++    - deps: ms@0.7.2
++  * deps: etag@~1.8.0
++    - Use SHA1 instead of MD5 for ETag hashing
++    - Works with FIPS 140-2 OpenSSL configuration
++  * deps: finalhandler@~1.0.0
++    - Fix exception when `err` cannot be converted to a string
++    - Fully URL-encode the pathname in the 404
++    - Only include the pathname in the 404 message
++    - Send complete HTML document
++    - Set `Content-Security-Policy: default-src 'self'` header
++    - deps: debug@2.6.1
++  * deps: fresh@0.5.0
++    - Fix false detection of `no-cache` request directive
++    - Fix incorrect result when `If-None-Match` has both `*` and ETags
++    - Fix weak `ETag` matching to match spec
++    - perf: delay reading header values until needed
++    - perf: enable strict mode
++    - perf: hoist regular expressions
++    - perf: remove duplicate conditional
++    - perf: remove unnecessary boolean coercions
++    - perf: skip checking modified time if ETag check failed
++    - perf: skip parsing `If-None-Match` when no `ETag` header
++    - perf: use `Date.parse` instead of `new Date`
++  * deps: qs@6.3.1
++    - Fix array parsing from skipping empty values
++    - Fix compacting nested arrays
++  * deps: send@0.15.0
++    - Fix false detection of `no-cache` request directive
++    - Fix incorrect result when `If-None-Match` has both `*` and ETags
++    - Fix weak `ETag` matching to match spec
++    - Remove usage of `res._headers` private field
++    - Support `If-Match` and `If-Unmodified-Since` headers
++    - Use `res.getHeaderNames()` when available
++    - Use `res.headersSent` when available
++    - deps: debug@2.6.1
++    - deps: etag@~1.8.0
++    - deps: fresh@0.5.0
++    - deps: http-errors@~1.6.1
++  * deps: serve-static@1.12.0
++    - Fix false detection of `no-cache` request directive
++    - Fix incorrect result when `If-None-Match` has both `*` and ETags
++    - Fix weak `ETag` matching to match spec
++    - Remove usage of `res._headers` private field
++    - Send complete HTML document in redirect response
++    - Set default CSP header in redirect response
++    - Support `If-Match` and `If-Unmodified-Since` headers
++    - Use `res.getHeaderNames()` when available
++    - Use `res.headersSent` when available
++    - deps: send@0.15.0
++  * perf: add fast match path for `*` route
++  * perf: improve `req.ips` performance
++
++4.14.1 / 2017-01-28
++===================
++
++  * deps: content-disposition@0.5.2
++  * deps: finalhandler@0.5.1
++    - Fix exception when `err.headers` is not an object
++    - deps: statuses@~1.3.1
++    - perf: hoist regular expressions
++    - perf: remove duplicate validation path
++  * deps: proxy-addr@~1.1.3
++    - deps: ipaddr.js@1.2.0
++  * deps: send@0.14.2
++    - deps: http-errors@~1.5.1
++    - deps: ms@0.7.2
++    - deps: statuses@~1.3.1
++  * deps: serve-static@~1.11.2
++    - deps: send@0.14.2
++  * deps: type-is@~1.6.14
++    - deps: mime-types@~2.1.13
++
++4.14.0 / 2016-06-16
++===================
++
++  * Add `acceptRanges` option to `res.sendFile`/`res.sendfile`
++  * Add `cacheControl` option to `res.sendFile`/`res.sendfile`
++  * Add `options` argument to `req.range`
++    - Includes the `combine` option
++  * Encode URL in `res.location`/`res.redirect` if not already encoded
++  * Fix some redirect handling in `res.sendFile`/`res.sendfile`
++  * Fix Windows absolute path check using forward slashes
++  * Improve error with invalid arguments to `req.get()`
++  * Improve performance for `res.json`/`res.jsonp` in most cases
++  * Improve `Range` header handling in `res.sendFile`/`res.sendfile`
++  * deps: accepts@~1.3.3
++    - Fix including type extensions in parameters in `Accept` parsing
++    - Fix parsing `Accept` parameters with quoted equals
++    - Fix parsing `Accept` parameters with quoted semicolons
++    - Many performance improvments
++    - deps: mime-types@~2.1.11
++    - deps: negotiator@0.6.1
++  * deps: content-type@~1.0.2
++    - perf: enable strict mode
++  * deps: cookie@0.3.1
++    - Add `sameSite` option
++    - Fix cookie `Max-Age` to never be a floating point number
++    - Improve error message when `encode` is not a function
++    - Improve error message when `expires` is not a `Date`
++    - Throw better error for invalid argument to parse
++    - Throw on invalid values provided to `serialize`
++    - perf: enable strict mode
++    - perf: hoist regular expression
++    - perf: use for loop in parse
++    - perf: use string concatination for serialization
++  * deps: finalhandler@0.5.0
++    - Change invalid or non-numeric status code to 500
++    - Overwrite status message to match set status code
++    - Prefer `err.statusCode` if `err.status` is invalid
++    - Set response headers from `err.headers` object
++    - Use `statuses` instead of `http` module for status messages
++  * deps: proxy-addr@~1.1.2
++    - Fix accepting various invalid netmasks
++    - Fix IPv6-mapped IPv4 validation edge cases
++    - IPv4 netmasks must be contingous
++    - IPv6 addresses cannot be used as a netmask
++    - deps: ipaddr.js@1.1.1
++  * deps: qs@6.2.0
++    - Add `decoder` option in `parse` function
++  * deps: range-parser@~1.2.0
++    - Add `combine` option to combine overlapping ranges
++    - Fix incorrectly returning -1 when there is at least one valid range
++    - perf: remove internal function
++  * deps: send@0.14.1
++    - Add `acceptRanges` option
++    - Add `cacheControl` option
++    - Attempt to combine multiple ranges into single range
++    - Correctly inherit from `Stream` class
++    - Fix `Content-Range` header in 416 responses when using `start`/`end` options
++    - Fix `Content-Range` header missing from default 416 responses
++    - Fix redirect error when `path` contains raw non-URL characters
++    - Fix redirect when `path` starts with multiple forward slashes
++    - Ignore non-byte `Range` headers
++    - deps: http-errors@~1.5.0
++    - deps: range-parser@~1.2.0
++    - deps: statuses@~1.3.0
++    - perf: remove argument reassignment
++  * deps: serve-static@~1.11.1
++    - Add `acceptRanges` option
++    - Add `cacheControl` option
++    - Attempt to combine multiple ranges into single range
++    - Fix redirect error when `req.url` contains raw non-URL characters
++    - Ignore non-byte `Range` headers
++    - Use status code 301 for redirects
++    - deps: send@0.14.1
++  * deps: type-is@~1.6.13
++    - Fix type error when given invalid type to match against
++    - deps: mime-types@~2.1.11
++  * deps: vary@~1.1.0
++    - Only accept valid field names in the `field` argument
++  * perf: use strict equality when possible
++
++4.13.4 / 2016-01-21
++===================
++
++  * deps: content-disposition@0.5.1
++    - perf: enable strict mode
++  * deps: cookie@0.1.5
++    - Throw on invalid values provided to `serialize`
++  * deps: depd@~1.1.0
++    - Support web browser loading
++    - perf: enable strict mode
++  * deps: escape-html@~1.0.3
++    - perf: enable strict mode
++    - perf: optimize string replacement
++    - perf: use faster string coercion
++  * deps: finalhandler@0.4.1
++    - deps: escape-html@~1.0.3
++  * deps: merge-descriptors@1.0.1
++    - perf: enable strict mode
++  * deps: methods@~1.1.2
++    - perf: enable strict mode
++  * deps: parseurl@~1.3.1
++    - perf: enable strict mode
++  * deps: proxy-addr@~1.0.10
++    - deps: ipaddr.js@1.0.5
++    - perf: enable strict mode
++  * deps: range-parser@~1.0.3
++    - perf: enable strict mode
++  * deps: send@0.13.1
++    - deps: depd@~1.1.0
++    - deps: destroy@~1.0.4
++    - deps: escape-html@~1.0.3
++    - deps: range-parser@~1.0.3
++  * deps: serve-static@~1.10.2
++    - deps: escape-html@~1.0.3
++    - deps: parseurl@~1.3.0
++    - deps: send@0.13.1
++
+ 4.13.3 / 2015-08-02
+ ===================
+ 
+diff --git a/Readme-Guide.md b/Readme-Guide.md
+new file mode 100644
+index 0000000000..34d4648b9c
+--- /dev/null
++++ b/Readme-Guide.md
+@@ -0,0 +1,125 @@
++# README guidelines
++
++Every module in the expressjs, pillarjs, and jshttp organizations should have
++a README file named `README.md`. The purpose of the README is to:
++
++- Explain the purpose of the module and how to use it.
++- Act as a landing page (both on GitHub and npmjs.com) for the module to help
++  people find it via search. Middleware module READMEs are also incorporated
++  into https://expressjs.com/en/resources/middleware.html.
++- Encourage community contributions and participation.
++
++Use the [README template](https://github.com/expressjs/express/wiki/README-template)
++to quickly create a new README file.
++
++## Top-level items
++
++**Badges** (optional): At the very top (with no subheading), include any
++applicable badges, such as npm version/downloads, build status, test coverage,
++and so on. Badges should resolve properly (not display a broken image).
++
++Possible badges include:
++- npm version: `[![NPM Version][npm-image]][npm-url]`
++- npm downloads: `[![NPM Downloads][downloads-image]][downloads-url]`
++- Build status: `[![Build Status][travis-image]][travis-url]`
++- Test coverage: `[![Test Coverage][coveralls-image]][coveralls-url]`
++- Tips: `[![Gratipay][gratipay-image]][gratipay-url]`
++
++**Summary**: Following badges, provide a one- or two-sentence description of
++what the module does. This should be the same as the npmjs.org blurb (which
++comes from the description property of `package.json`). Since npm doesn't
++handle markdown for the blurb, avoid using markdown in the summary sentence.
++
++**TOC** (Optional): For longer READMEs, provide a table of contents that has
++a relative link to each section. A tool such as
++[doctoc](https://www.npmjs.com/package/doctoc) makes it very easy to generate
++a TOC.
++
++## Overview
++
++Optionally, include a section of one or two paragraphs with more high-level
++information on what the module does, what problems it solves, why one would
++use it and how.  Don't just repeat what's in the summary.
++
++## Installation
++
++Required. This section is typically just:
++
++```sh
++$ npm install module-name
++```
++
++But include any other steps or requirements.
++
++NOTE: Use the `sh` code block to make the shell command display properly on
++the website.
++
++## Basic use
++
++- Provide a general description of how to use the module with code sample.
++  Include any important caveats or restrictions.
++- Explain the most common use cases.
++- Optional: a simple "hello world" type example (where applicable). This
++  example is in addition to the more comprehensive [example section](#examples)
++  later.
++
++## API
++
++Provide complete API documentation.
++
++Formatting conventions: Each function is listed in a 3rd-level heading (`###`),
++like this:
++
++```
++### Function_name(arg, options [, optional_arg]  ... )
++```
++
++**Options objects**
++
++For arguments that are objects (for example, options object), describe the
++properties in a table, as follows. This matches the formatting used in the
++[Express API docs](https://expressjs.com/en/4x/api.html).
++
++|Property | Description | Type | Default|
++|----------|-----------|------------|-------------|
++|Name of the property in `monospace`. | Brief description | String, Number, Boolean, etc. | If applicable.|
++
++If all the properties are required (i.e. there are no defaults), then you
++can omit the default column.
++
++Instead of very lengthy descriptions, link out to subsequent paragraphs for
++more detailed explanation of specific cases (e.g. "When this property is set
++to 'foobar', xyz happens; see &lt;link to following section &gt;.)
++
++If there are options properties that are themselves options, use additional
++tables. See [`trust proxy` and `etag` properties](https://expressjs.com/en/4x/api.html#app.settings.table).
++
++## Examples
++
++Every README should have at least one example; ideally more.  For code samples,
++be sure to use the `js` code block, for proper display in the website, e.g.:
++
++```js
++var csurf = require('csurf')
++...
++```
++
++## Tests
++
++What tests are included.
++
++How to run them.
++
++The convention for running tests is `npm test`. All our projects should follow
++this convention.
++
++## Contributors
++
++Names of module "owners" (lead developers) and other developers who have
++contributed.
++
++## License
++
++Link to the license, with a short description of what it is, e.g. "MIT" or
++whatever. Ideally, avoid putting the license text directly in the README; link
++to it instead.
+diff --git a/Readme.md b/Readme.md
+index 8da83a517e..7b261a3d94 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -37,15 +37,18 @@ $ npm install express
+ 
+ ## Docs & Community
+ 
+-  * [Website and Documentation](http://expressjs.com/) - [[website repo](https://github.com/strongloop/expressjs.com)]
++  * [Website and Documentation](http://expressjs.com/) - [[website repo](https://github.com/expressjs/expressjs.com)]
+   * [#express](https://webchat.freenode.net/?channels=express) on freenode IRC
+   * [Github Organization](https://github.com/expressjs) for Official Middleware & Modules
+-  * Visit the [Wiki](https://github.com/strongloop/express/wiki)
++  * Visit the [Wiki](https://github.com/expressjs/express/wiki)
+   * [Google Group](https://groups.google.com/group/express-js) for discussion
+-  * [Русскоязычная документация](http://jsman.ru/express/)
+-  * [한국어 문서](http://expressjs.kr) - [[website repo](https://github.com/Hanul/expressjs.kr)]
++  * [Gitter](https://gitter.im/expressjs/express) for support and discussion
+ 
+-**PROTIP** Be sure to read [Migrating from 3.x to 4.x](https://github.com/strongloop/express/wiki/Migrating-from-3.x-to-4.x) as well as [New features in 4.x](https://github.com/strongloop/express/wiki/New-features-in-4.x).
++**PROTIP** Be sure to read [Migrating from 3.x to 4.x](https://github.com/expressjs/express/wiki/Migrating-from-3.x-to-4.x) as well as [New features in 4.x](https://github.com/expressjs/express/wiki/New-features-in-4.x).
++
++###Security Issues
++
++If you discover a security vulnerability in Express, please see [Security Policies and Procedures](Security.md).
+ 
+ ## Quick Start
+ 
+@@ -90,7 +93,7 @@ $ npm start
+   To view the examples, clone the Express repo and install the dependencies:
+ 
+ ```bash
+-$ git clone git://github.com/strongloop/express.git --depth 1
++$ git clone git://github.com/expressjs/express.git --depth 1
+ $ cd express
+ $ npm install
+ ```
+@@ -116,7 +119,7 @@ The original author of Express is [TJ Holowaychuk](https://github.com/tj) [![TJ'
+ 
+ The current lead maintainer is [Douglas Christopher Wilson](https://github.com/dougwilson) [![Doug's Gratipay][gratipay-image-dougwilson]][gratipay-url-dougwilson]
+ 
+-[List of all contributors](https://github.com/strongloop/express/graphs/contributors)
++[List of all contributors](https://github.com/expressjs/express/graphs/contributors)
+ 
+ ## License
+ 
+@@ -126,12 +129,12 @@ The current lead maintainer is [Douglas Christopher Wilson](https://github.com/d
+ [npm-url]: https://npmjs.org/package/express
+ [downloads-image]: https://img.shields.io/npm/dm/express.svg
+ [downloads-url]: https://npmjs.org/package/express
+-[travis-image]: https://img.shields.io/travis/strongloop/express/master.svg?label=linux
+-[travis-url]: https://travis-ci.org/strongloop/express
++[travis-image]: https://img.shields.io/travis/expressjs/express/master.svg?label=linux
++[travis-url]: https://travis-ci.org/expressjs/express
+ [appveyor-image]: https://img.shields.io/appveyor/ci/dougwilson/express/master.svg?label=windows
+ [appveyor-url]: https://ci.appveyor.com/project/dougwilson/express
+-[coveralls-image]: https://img.shields.io/coveralls/strongloop/express/master.svg
+-[coveralls-url]: https://coveralls.io/r/strongloop/express?branch=master
++[coveralls-image]: https://img.shields.io/coveralls/expressjs/express/master.svg
++[coveralls-url]: https://coveralls.io/r/expressjs/express?branch=master
+ [gratipay-image-visionmedia]: https://img.shields.io/gratipay/visionmedia.svg
+ [gratipay-url-visionmedia]: https://gratipay.com/visionmedia/
+ [gratipay-image-dougwilson]: https://img.shields.io/gratipay/dougwilson.svg
+diff --git a/Release-Process.md b/Release-Process.md
+new file mode 100644
+index 0000000000..ae740972f7
+--- /dev/null
++++ b/Release-Process.md
+@@ -0,0 +1,186 @@
++# Express Release Process
++
++This document contains the technical aspects of the Express release process. The
++intended audience is those who have been authorized by the Express Technical
++Committee (TC) to create, promote and sign official release builds for Express,
++as npm packages hosted on https://npmjs.com/package/express.
++
++## Who can make releases?
++
++Release authorization is given by the Express TC. Once authorized, an individual
++must have the following access permissions:
++
++### 1. Github release access
++
++The individual making the release will need to be a member of the
++expressjs/express team with Write permission level so they are able to tag the
++release commit and push changes to the expressjs/express repository
++(see Steps 4 and 5).
++
++### 2. npmjs.com release access
++
++The individual making the release will need to be made an owner on the
++`express` package on npmjs.com so they are able to publish the release
++(see Step 6).
++
++## How to publish a release
++
++Before publishing, the following preconditions should be met:
++
++- A release proposal issue or tracking pull request (see "Proposal branch"
++  below) will exist documenting:
++  - the proposed changes
++  - the type of release: patch, minor or major
++  - the version number (according to semantic versioning - http://semver.org)
++- The proposed changes should be complete.
++
++There are two main release flows: patch and non-patch.
++
++The patch flow is for making **patch releases**. As per semantic versioning,
++patch releases are for simple changes, eg: typo fixes, patch dependency updates,
++and simple/low-risk bug fixes. Every other type of change is made via the
++non-patch flow.
++
++### Branch terminology
++
++"Master branch"
++
++- There is a branch in git used for the current major version of Express, named
++  `master`.
++- This branch contains the completed commits for the next patch release of the
++  current major version.
++- Releases for the current major version are published from this branch.
++
++"Version branch"
++
++- For any given major version of Express (current, previous or next) there is
++  a branch in git for that release named `<major-version>.x` (eg: `4.x`).
++- This branch points to the commit of the latest tag for the given major version.
++
++"Release branch"
++
++- For any given major version of Express, there is a branch used for publishing
++  releases.
++- For the current major version of Express, the release branch is the
++  "Master branch" named `master`.
++- For all other major versions of Express, the release branch is the
++  "Version branch" named `<major-version>.x`.
++
++"Proposal branch"
++
++- A branch in git representing a proposed new release of Express. This can be a
++  minor or major release, named `<major-version>.0` for a major release,
++  `<major-version>.<minor-version>` for a minor release.
++- A tracking pull request should exist to document the proposed release,
++  targeted at the appropriate release branch. Prior to opening the tracking
++  pull request the content of the release may have be discussed in an issue.
++- This branch contains the commits accepted so far that implement the proposal
++  in the tracking pull request.
++
++### Patch flow
++
++In the patch flow, simple changes are committed to the release branch which
++acts as an ever-present branch for the next patch release of the associated
++major version of Express.
++
++The release branch is usually kept in a state where it is ready to release.
++Releases are made when sufficient time or change has been made to warrant it.
++This is usually proposed and decided using a github issue.
++
++### Non-patch flow
++
++In the non-patch flow, changes are committed to a temporary proposal branch
++created specifically for that release proposal. The branch is based on the
++most recent release of the major version of Express that the release targets.
++
++Releases are made when all the changes on a proposal branch are complete and
++approved. This is done by merging the proposal branch into the release branch
++(using a fast-forward merge), tagging it with the new version number and
++publishing the release package to npmjs.com.
++
++### Flow
++
++Below is a detailed description of the steps to publish a release.
++
++#### Step 1. Check the release is ready to publish
++
++Check any relevant information to ensure the release is ready, eg: any
++milestone, label, issue or tracking pull request for the release. The release
++is ready when all proposed code, tests and documentation updates are complete
++(either merged, closed or re-targeted to another release).
++
++#### Step 2. (Non-patch flow only) Merge the proposal branch into the release branch
++
++In the patch flow: skip this step.
++
++In the non-patch flow:
++```sh
++$ git checkout <release-branch>
++$ git merge --ff-only <proposal-branch>
++```
++
++<release-branch> - see "Release branch" of "Branches" above.
++<proposal-branch> - see "Proposal branch" of "Non-patch flow" above.
++
++**NOTE:** You may need to rebase the proposal branch to allow a fast-forward
++          merge. Using a fast-forward merge keeps the history clean as it does
++          not introduce merge commits.
++
++### Step 3. Update the History.md and package.json to the new version number
++
++The changes so far for the release should already be documented under the
++"unreleased" section at the top of the History.md file, as per the usual
++development practice. Change "unreleased" to the new release version / date.
++Example diff fragment:
++
++```diff
++-unreleased
++-==========
+++4.13.3 / 2015-08-02
+++===================
++```
++
++The version property in the package.json should already contain the version of
++the previous release. Change it to the new release version.
++
++Commit these changes together under a single commit with the message set to
++the new release version (eg: `4.13.3`):
++
++```sh
++$ git checkout <release-branch>
++<..edit files..>
++$ git add History.md package.json
++$ git commit -m '<version-number>'
++```
++
++### Step 4. Identify and tag the release commit with the new release version
++
++Create a lightweight tag (rather than an annotated tag) named after the new
++release version (eg: `4.13.3`).
++
++```sh
++$ git tag <version-number>
++```
++
++### Step 5. Push the release branch changes and tag to github
++
++The branch and tag should be pushed directly to the main repository
++(https://github.com/expressjs/express).
++
++```sh
++$ git push origin <release-branch>
++$ git push origin <version-number>
++```
++
++### Step 6. Publish to npmjs.com
++
++Ensure your local working copy is completely clean (no extra or changed files).
++You can use `git status` for this purpose.
++
++```sh
++$ npm login <npm-username>
++$ npm publish
++```
++
++**NOTE:** The version number to publish will be picked up automatically from
++          package.json.
+diff --git a/Security.md b/Security.md
+new file mode 100644
+index 0000000000..cbc5f16cde
+--- /dev/null
++++ b/Security.md
+@@ -0,0 +1,43 @@
++# Security Policies and Procedures
++
++This document outlines security procedures and general policies for the Express
++project.
++
++  * [Reporting a Bug](#reporting-a-bug)
++  * [Disclosure Policy](#disclosure-policy)
++  * [Comments on this Policy](#comments-on-this-policy)
++
++## Reporting a Bug
++
++The Express team and community take all security bugs in Express seriously.
++Thank you for improving the security of Express. We appreciate your efforts and
++responsible disclosure and will make every effort to acknowledge your
++contributions.
++
++Report security bugs by emailing the lead maintainer in the Readme.md file.
++
++The lead maintainer will acknowledge your email within 48 hours, and will send a
++more detailed response within 48 hours indicating the next steps in handling
++your report. After the initial reply to your report, the security team will
++endeavor to keep you informed of the progress towards a fix and full
++announcement, and may ask for additional information or guidance.
++
++Report security bugs in third-party modules to the person or team maintaining
++the module. You can also report a vulnerability through the
++[Node Security Project](https://nodesecurity.io/report).
++
++## Disclosure Policy
++
++When the security team receives a security bug report, they will assign it to a
++primary handler. This person will coordinate the fix and release process,
++involving the following steps:
++
++  * Confirm the problem and determine the affected versions.
++  * Audit code to find any potential similar problems.
++  * Prepare fixes for all releases still under maintenance. These fixes will be
++    released as fast as possible to npm.
++
++## Comments on this Policy
++
++If you have suggestions on how this process could be improved please submit a
++pull request.
+diff --git a/appveyor.yml b/appveyor.yml
+index b1f13d167b..b4bb184dd8 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -2,13 +2,20 @@ environment:
+   matrix:
+     - nodejs_version: "0.10"
+     - nodejs_version: "0.12"
+-    - nodejs_version: "1.0"
+     - nodejs_version: "1.8"
+-    - nodejs_version: "2.0"
+-    - nodejs_version: "2.3"
++    - nodejs_version: "2.5"
++    - nodejs_version: "3.3"
++    - nodejs_version: "4.8"
++    - nodejs_version: "5.12"
++    - nodejs_version: "6.10"
++    - nodejs_version: "7.6"
++cache:
++  - node_modules
+ install:
+   - ps: Install-Product node $env:nodejs_version
+   - npm rm --save-dev connect-redis
++  - if exist node_modules npm prune
++  - if exist node_modules npm rebuild
+   - npm install
+ build: off
+ test_script:
+diff --git a/examples/auth/index.js b/examples/auth/index.js
+index d110fe28d4..084fba79a9 100644
+--- a/examples/auth/index.js
++++ b/examples/auth/index.js
+@@ -3,8 +3,9 @@
+  */
+ 
+ var express = require('../..');
+-var hash = require('./pass').hash;
+ var bodyParser = require('body-parser');
++var hash = require('pbkdf2-password')()
++var path = require('path');
+ var session = require('express-session');
+ 
+ var app = module.exports = express();
+@@ -12,7 +13,7 @@ var app = module.exports = express();
+ // config
+ 
+ app.set('view engine', 'ejs');
+-app.set('views', __dirname + '/views');
++app.set('views', path.join(__dirname, 'views'));
+ 
+ // middleware
+ 
+@@ -45,7 +46,7 @@ var users = {
+ // when you create a user, generate a salt
+ // and hash the password ('foobar' is the pass here)
+ 
+-hash('foobar', function(err, salt, hash){
++hash({ password: 'foobar' }, function (err, pass, salt, hash) {
+   if (err) throw err;
+   // store the salt & hash in the "db"
+   users.tj.salt = salt;
+@@ -63,7 +64,7 @@ function authenticate(name, pass, fn) {
+   // apply the same algorithm to the POSTed password, applying
+   // the hash against the pass / salt, if there is a match we
+   // found the user
+-  hash(pass, user.salt, function(err, hash){
++  hash({ password: pass, salt: user.salt }, function (err, pass, salt, hash) {
+     if (err) return fn(err);
+     if (hash == user.hash) return fn(null, user);
+     fn(new Error('invalid password'));
+diff --git a/examples/auth/pass.js b/examples/auth/pass.js
+deleted file mode 100644
+index fefb25b66a..0000000000
+--- a/examples/auth/pass.js
++++ /dev/null
+@@ -1,48 +0,0 @@
+-
+-// check out https://github.com/tj/node-pwd
+-
+-/**
+- * Module dependencies.
+- */
+-
+-var crypto = require('crypto');
+-
+-/**
+- * Bytesize.
+- */
+-
+-var len = 128;
+-
+-/**
+- * Iterations. ~300ms
+- */
+-
+-var iterations = 12000;
+-
+-/**
+- * Hashes a password with optional `salt`, otherwise
+- * generate a salt for `pass` and invoke `fn(err, salt, hash)`.
+- *
+- * @param {String} password to hash
+- * @param {String} optional salt
+- * @param {Function} callback
+- * @api public
+- */
+-
+-exports.hash = function (pwd, salt, fn) {
+-  if (3 == arguments.length) {
+-    crypto.pbkdf2(pwd, salt, iterations, len, function(err, hash){
+-      fn(err, hash.toString('base64'));
+-    });
+-  } else {
+-    fn = salt;
+-    crypto.randomBytes(len, function(err, salt){
+-      if (err) return fn(err);
+-      salt = salt.toString('base64');
+-      crypto.pbkdf2(pwd, salt, iterations, len, function(err, hash){
+-        if (err) return fn(err);
+-        fn(null, salt, hash.toString('base64'));
+-      });
+-    });
+-  }
+-};
+diff --git a/examples/big-view/index.js b/examples/big-view/index.js
+deleted file mode 100644
+index 0814cbb6e0..0000000000
+--- a/examples/big-view/index.js
++++ /dev/null
+@@ -1,31 +0,0 @@
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../..');
+-var logger = require('morgan');
+-var app = express();
+-
+-app.set('views', __dirname);
+-app.set('view engine', 'jade');
+-
+-var pets = [];
+-
+-var n = 1000;
+-while (n--) {
+-  pets.push({ name: 'Tobi', age: 2, species: 'ferret' });
+-  pets.push({ name: 'Loki', age: 1, species: 'ferret' });
+-  pets.push({ name: 'Jane', age: 6, species: 'ferret' });
+-}
+-
+-app.use(logger('dev'));
+-
+-app.get('/', function(req, res){
+-  res.render('pets', { pets: pets });
+-});
+-
+-/* istanbul ignore next */
+-if (!module.parent) {
+-  app.listen(3000);
+-  console.log('Express started on port 3000');
+-}
+diff --git a/examples/big-view/pets.jade b/examples/big-view/pets.jade
+deleted file mode 100644
+index afb086819c..0000000000
+--- a/examples/big-view/pets.jade
++++ /dev/null
+@@ -1,12 +0,0 @@
+-style.
+-  body {
+-    padding: 50px;
+-    font: 16px "Helvetica Neue", Helvetica;
+-  }
+-
+-table
+-  for pet in pets
+-    tr
+-      td= pet.name
+-      td= pet.age
+-      td= pet.species
+\ No newline at end of file
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index 6ab6ba0213..e6f3fa9db6 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -3,6 +3,7 @@
+  */
+ 
+ var express = require('../../');
++var path = require('path');
+ var app = module.exports = express();
+ 
+ app.get('/', function(req, res){
+@@ -16,10 +17,9 @@ app.get('/', function(req, res){
+ // /files/* is accessed via req.params[0]
+ // but here we name it :file
+ app.get('/files/:file(*)', function(req, res, next){
+-  var file = req.params.file;
+-  var path = __dirname + '/files/' + file;
++  var filePath = path.join(__dirname, 'files', req.params.file);
+ 
+-  res.download(path, function(err){
++  res.download(filePath, function (err) {
+     if (!err) return; // file sent
+     if (err && err.status !== 404) return next(err); // non-404 error
+     // file for download not found
+diff --git a/examples/ejs/index.js b/examples/ejs/index.js
+index bf78a9cc80..b868bdd7cb 100644
+--- a/examples/ejs/index.js
++++ b/examples/ejs/index.js
+@@ -3,6 +3,7 @@
+  */
+ 
+ var express = require('../../');
++var path = require('path');
+ 
+ var app = module.exports = express();
+ 
+@@ -21,7 +22,11 @@ app.engine('.html', require('ejs').__express);
+ 
+ // Optional since express defaults to CWD/views
+ 
+-app.set('views', __dirname + '/views');
++app.set('views', path.join(__dirname, 'views'));
++
++// Path to our public directory
++
++app.use(express.static(path.join(__dirname + 'public')));
+ 
+ // Without this you would need to
+ // supply the extension to res.render()
+diff --git a/examples/jade/public/stylesheets/style.css b/examples/ejs/public/stylesheets/style.css
+similarity index 100%
+rename from examples/jade/public/stylesheets/style.css
+rename to examples/ejs/public/stylesheets/style.css
+diff --git a/examples/ejs/views/header.html b/examples/ejs/views/header.html
+index 8dbeb8d3c0..4396bc444f 100644
+--- a/examples/ejs/views/header.html
++++ b/examples/ejs/views/header.html
+@@ -2,12 +2,7 @@
+ <html lang="en">
+ <head>
+   <meta charset="utf-8">
+-  <title> <%= title %> </title>
+-  <style type="text/css">
+-    body {
+-      padding: 50px;
+-      font: 13px Helvetica, Arial, sans-serif;
+-    }
+-  </style>
++  <title><%= title %></title>
++  <link rel="stylesheet" href="/stylesheets/style.css">
+ </head>
+ <body>
+diff --git a/examples/error-pages/index.js b/examples/error-pages/index.js
+index aff985bd67..790f6e30df 100644
+--- a/examples/error-pages/index.js
++++ b/examples/error-pages/index.js
+@@ -3,12 +3,13 @@
+  */
+ 
+ var express = require('../../');
++var path = require('path');
+ var app = module.exports = express();
+ var logger = require('morgan');
+ var silent = 'test' == process.env.NODE_ENV;
+ 
+ // general config
+-app.set('views', __dirname + '/views');
++app.set('views', path.join(__dirname, 'views'));
+ app.set('view engine', 'ejs');
+ 
+ // our custom "verbose errors" setting
+@@ -60,20 +61,17 @@ app.get('/500', function(req, res, next){
+ app.use(function(req, res, next){
+   res.status(404);
+ 
+-  // respond with html page
+-  if (req.accepts('html')) {
+-    res.render('404', { url: req.url });
+-    return;
+-  }
+-
+-  // respond with json
+-  if (req.accepts('json')) {
+-    res.send({ error: 'Not found' });
+-    return;
+-  }
+-
+-  // default to plain-text. send()
+-  res.type('txt').send('Not found');
++  res.format({
++    html: function () {
++      res.render('404', { url: req.url })
++    },
++    json: function () {
++      res.json({ error: 'Not found' })
++    },
++    default: function () {
++      res.type('txt').send('Not found')
++    }
++  })
+ });
+ 
+ // error-handling middleware, take the same form
+diff --git a/examples/error/index.js b/examples/error/index.js
+index d7db5015a1..94b3b4a4da 100644
+--- a/examples/error/index.js
++++ b/examples/error/index.js
+@@ -31,6 +31,9 @@ app.get('/', function(req, res){
+ 
+ app.get('/next', function(req, res, next){
+   // We can also pass exceptions to next()
++  // The reason for process.nextTick() is to show that
++  // next() can be called inside an async operation,
++  // in real life it can be a DB read or HTTP request.
+   process.nextTick(function(){
+     next(new Error('oh no!'));
+   });
+diff --git a/examples/expose-data-to-client/index.js b/examples/expose-data-to-client/index.js
+deleted file mode 100644
+index 5dd99df682..0000000000
+--- a/examples/expose-data-to-client/index.js
++++ /dev/null
+@@ -1,64 +0,0 @@
+-
+-var express = require('../..');
+-var logger = require('morgan');
+-var app = express();
+-
+-app.set('view engine', 'jade');
+-app.set('views', __dirname + '/views');
+-
+-function User(name) {
+-  this.private = 'heyyyy';
+-  this.secret = 'something';
+-  this.name = name;
+-  this.id = 123;
+-}
+-
+-// You'll probably want to do
+-// something like this so you
+-// dont expose "secret" data.
+-
+-User.prototype.toJSON = function(){
+-  return {
+-    id: this.id,
+-    name: this.name
+-  };
+-};
+-
+-app.use(logger('dev'));
+-
+-// earlier on expose an object
+-// that we can tack properties on.
+-// all res.locals props are exposed
+-// to the templates, so "expose" will
+-// be present.
+-
+-app.use(function(req, res, next){
+-  res.locals.expose = {};
+-  // you could alias this as req or res.expose
+-  // to make it shorter and less annoying
+-  next();
+-});
+-
+-// pretend we loaded a user
+-
+-app.use(function(req, res, next){
+-  req.user = new User('Tobi');
+-  next();
+-});
+-
+-app.get('/', function(req, res){
+-  res.redirect('/user');
+-});
+-
+-app.get('/user', function(req, res){
+-  // we only want to expose the user
+-  // to the client for this route:
+-  res.locals.expose.user = req.user;
+-  res.render('page');
+-});
+-
+-/* istanbul ignore next */
+-if (!module.parent) {
+-  app.listen(3000);
+-  console.log('Express started on port 3000');
+-}
+diff --git a/examples/expose-data-to-client/views/page.jade b/examples/expose-data-to-client/views/page.jade
+deleted file mode 100644
+index 6e58a18afb..0000000000
+--- a/examples/expose-data-to-client/views/page.jade
++++ /dev/null
+@@ -1,14 +0,0 @@
+-html
+-  head
+-    title Express
+-    script.
+-      // call this whatever you like,
+-      // or dump them into individual
+-      // props like "var user ="
+-      var data = !{JSON.stringify(expose)}
+-  body
+-    h1 Expose client data
+-    p The following was exposed to the client:
+-    pre
+-      script.
+-        document.write(JSON.stringify(data, null, 2))
+\ No newline at end of file
+diff --git a/examples/jade/index.js b/examples/jade/index.js
+deleted file mode 100644
+index 738b382d26..0000000000
+--- a/examples/jade/index.js
++++ /dev/null
+@@ -1,51 +0,0 @@
+-/**
+- * Module dependencies.
+- */
+-
+-var express = require('../../lib/express');
+-
+-// Path to our public directory
+-
+-var pub = __dirname + '/public';
+-
+-// setup middleware
+-
+-var app = express();
+-app.use(express.static(pub));
+-
+-// Optional since express defaults to CWD/views
+-
+-app.set('views', __dirname + '/views');
+-
+-// Set our default template engine to "jade"
+-// which prevents the need for extensions
+-// (although you can still mix and match)
+-app.set('view engine', 'jade');
+-
+-function User(name, email) {
+-  this.name = name;
+-  this.email = email;
+-}
+-
+-// Dummy users
+-var users = [
+-    new User('tj', 'tj@vision-media.ca')
+-  , new User('ciaran', 'ciaranj@gmail.com')
+-  , new User('aaron', 'aaron.heckmann+github@gmail.com')
+-];
+-
+-app.get('/', function(req, res){
+-  res.render('users', { users: users });
+-});
+-
+-// change this to a better error handler in your code
+-// sending stacktrace to users in production is not good
+-app.use(function(err, req, res, next) {
+-  res.send(err.stack);
+-});
+-
+-/* istanbul ignore next */
+-if (!module.parent) {
+-  app.listen(3000);
+-  console.log('Express started on port 3000');
+-}
+diff --git a/examples/jade/views/header.jade b/examples/jade/views/header.jade
+deleted file mode 100644
+index 6c42929d83..0000000000
+--- a/examples/jade/views/header.jade
++++ /dev/null
+@@ -1,3 +0,0 @@
+-head
+-  title Jade Example
+-  link(rel="stylesheet", href="/stylesheets/style.css")
+\ No newline at end of file
+diff --git a/examples/jade/views/layout.jade b/examples/jade/views/layout.jade
+deleted file mode 100644
+index 300cdc7847..0000000000
+--- a/examples/jade/views/layout.jade
++++ /dev/null
+@@ -1,5 +0,0 @@
+-doctype html
+-html
+-  include header
+-  body
+-    block content
+diff --git a/examples/jade/views/users/index.jade b/examples/jade/views/users/index.jade
+deleted file mode 100644
+index feb7623fa3..0000000000
+--- a/examples/jade/views/users/index.jade
++++ /dev/null
+@@ -1,8 +0,0 @@
+-
+-extends ../layout
+-
+-block content
+-  h1 Users
+-  #users
+-    for user in users
+-      include user
+\ No newline at end of file
+diff --git a/examples/jade/views/users/user.jade b/examples/jade/views/users/user.jade
+deleted file mode 100644
+index 9e603298cb..0000000000
+--- a/examples/jade/views/users/user.jade
++++ /dev/null
+@@ -1,3 +0,0 @@
+-.user
+-  h2= user.name
+-  .email= user.email
+\ No newline at end of file
+diff --git a/examples/markdown/index.js b/examples/markdown/index.js
+index db2f16fb48..df8c195fb4 100644
+--- a/examples/markdown/index.js
++++ b/examples/markdown/index.js
+@@ -2,9 +2,11 @@
+  * Module dependencies.
+  */
+ 
++var escapeHtml = require('escape-html');
+ var express = require('../..');
+ var fs = require('fs');
+-var md = require('marked').parse;
++var marked = require('marked');
++var path = require('path');
+ 
+ var app = module.exports = express();
+ 
+@@ -13,19 +15,14 @@ var app = module.exports = express();
+ app.engine('md', function(path, options, fn){
+   fs.readFile(path, 'utf8', function(err, str){
+     if (err) return fn(err);
+-    try {
+-      var html = md(str);
+-      html = html.replace(/\{([^}]+)\}/g, function(_, name){
+-        return options[name] || '';
+-      });
+-      fn(null, html);
+-    } catch(err) {
+-      fn(err);
+-    }
++    var html = marked.parse(str).replace(/\{([^}]+)\}/g, function(_, name){
++      return escapeHtml(options[name] || '');
++    });
++    fn(null, html);
+   });
+ });
+ 
+-app.set('views', __dirname + '/views');
++app.set('views', path.join(__dirname, 'views'));
+ 
+ // make it the default so we dont need .md
+ app.set('view engine', 'md');
+diff --git a/examples/mvc/index.js b/examples/mvc/index.js
+index bf7f726e30..c5e2678697 100644
+--- a/examples/mvc/index.js
++++ b/examples/mvc/index.js
+@@ -4,6 +4,7 @@
+ 
+ var express = require('../..');
+ var logger = require('morgan');
++var path = require('path');
+ var session = require('express-session');
+ var bodyParser = require('body-parser');
+ var methodOverride = require('method-override');
+@@ -17,7 +18,7 @@ var app = module.exports = express();
+ app.set('view engine', 'jade');
+ 
+ // set views for error and 404 pages
+-app.set('views', __dirname + '/views');
++app.set('views', path.join(__dirname, 'views'));
+ 
+ // define a custom res.message() method
+ // which stores messages in the session
+@@ -34,7 +35,7 @@ app.response.message = function(msg){
+ if (!module.parent) app.use(logger('dev'));
+ 
+ // serve static files
+-app.use(express.static(__dirname + '/public'));
++app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // session support
+ app.use(session({
+diff --git a/examples/mvc/lib/boot.js b/examples/mvc/lib/boot.js
+index 78e82db1bf..422330dc06 100644
+--- a/examples/mvc/lib/boot.js
++++ b/examples/mvc/lib/boot.js
+@@ -4,22 +4,26 @@
+ 
+ var express = require('../../..');
+ var fs = require('fs');
++var path = require('path');
+ 
+ module.exports = function(parent, options){
++  var dir = path.join(__dirname, '..', 'controllers');
+   var verbose = options.verbose;
+-  fs.readdirSync(__dirname + '/../controllers').forEach(function(name){
++  fs.readdirSync(dir).forEach(function(name){
++    var file = path.join(dir, name)
++    if (!fs.statSync(file).isDirectory()) return;
+     verbose && console.log('\n   %s:', name);
+-    var obj = require('./../controllers/' + name);
++    var obj = require(file);
+     var name = obj.name || name;
+     var prefix = obj.prefix || '';
+     var app = express();
+     var handler;
+     var method;
+-    var path;
++    var url;
+ 
+     // allow specifying the view engine
+     if (obj.engine) app.set('view engine', obj.engine);
+-    app.set('views', __dirname + '/../controllers/' + name + '/views');
++    app.set('views', path.join(__dirname, '..', 'controllers', name, 'views'));
+ 
+     // generate routes based
+     // on the exported methods
+@@ -30,27 +34,27 @@ module.exports = function(parent, options){
+       switch (key) {
+         case 'show':
+           method = 'get';
+-          path = '/' + name + '/:' + name + '_id';
++          url = '/' + name + '/:' + name + '_id';
+           break;
+         case 'list':
+           method = 'get';
+-          path = '/' + name + 's';
++          url = '/' + name + 's';
+           break;
+         case 'edit':
+           method = 'get';
+-          path = '/' + name + '/:' + name + '_id/edit';
++          url = '/' + name + '/:' + name + '_id/edit';
+           break;
+         case 'update':
+           method = 'put';
+-          path = '/' + name + '/:' + name + '_id';
++          url = '/' + name + '/:' + name + '_id';
+           break;
+         case 'create':
+           method = 'post';
+-          path = '/' + name;
++          url = '/' + name;
+           break;
+         case 'index':
+           method = 'get';
+-          path = '/';
++          url = '/';
+           break;
+         default:
+           /* istanbul ignore next */
+@@ -59,15 +63,15 @@ module.exports = function(parent, options){
+ 
+       // setup
+       handler = obj[key];
+-      path = prefix + path;
++      url = prefix + url;
+ 
+       // before middleware support
+       if (obj.before) {
+-        app[method](path, obj.before, handler);
+-        verbose && console.log('     %s %s -> before -> %s', method.toUpperCase(), path, key);
++        app[method](url, obj.before, handler);
++        verbose && console.log('     %s %s -> before -> %s', method.toUpperCase(), url, key);
+       } else {
+-        app[method](path, handler);
+-        verbose && console.log('     %s %s -> %s', method.toUpperCase(), path, key);
++        app[method](url, handler);
++        verbose && console.log('     %s %s -> %s', method.toUpperCase(), url, key);
+       }
+     }
+ 
+diff --git a/examples/route-separation/index.js b/examples/route-separation/index.js
+index 3d93d5cfd9..c6605ada6c 100644
+--- a/examples/route-separation/index.js
++++ b/examples/route-separation/index.js
+@@ -3,6 +3,7 @@
+  */
+ 
+ var express = require('../..');
++var path = require('path');
+ var app = express();
+ var logger = require('morgan');
+ var cookieParser = require('cookie-parser');
+@@ -17,7 +18,7 @@ module.exports = app;
+ // Config
+ 
+ app.set('view engine', 'jade');
+-app.set('views', __dirname + '/views');
++app.set('views', path.join(__dirname, 'views'));
+ 
+ /* istanbul ignore next */
+ if (!module.parent) {
+@@ -27,7 +28,7 @@ if (!module.parent) {
+ app.use(methodOverride('_method'));
+ app.use(cookieParser());
+ app.use(bodyParser.urlencoded({ extended: true }));
+-app.use(express.static(__dirname + '/public'));
++app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // General
+ 
+diff --git a/examples/search/index.js b/examples/search/index.js
+index d614ac2407..79f5d9f4d3 100644
+--- a/examples/search/index.js
++++ b/examples/search/index.js
+@@ -7,6 +7,7 @@
+  */
+ 
+ var express = require('../..');
++var path = require('path');
+ var redis = require('redis');
+ 
+ var db = redis.createClient();
+@@ -15,8 +16,7 @@ var db = redis.createClient();
+ 
+ var app = express();
+ 
+-app.set('view engine', 'jade');
+-app.set('views', __dirname);
++app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // populate search
+ 
+@@ -26,14 +26,6 @@ db.sadd('ferret', 'jane');
+ db.sadd('cat', 'manny');
+ db.sadd('cat', 'luna');
+ 
+-/**
+- * GET the search page.
+- */
+-
+-app.get('/', function(req, res){
+-  res.render('search');
+-});
+-
+ /**
+  * GET search for :query.
+  */
+@@ -54,7 +46,7 @@ app.get('/search/:query?', function(req, res){
+  */
+ 
+ app.get('/client.js', function(req, res){
+-  res.sendFile(__dirname + '/client.js');
++  res.sendFile(path.join(__dirname, 'client.js'));
+ });
+ 
+ /* istanbul ignore next */
+diff --git a/examples/search/client.js b/examples/search/public/client.js
+similarity index 100%
+rename from examples/search/client.js
+rename to examples/search/public/client.js
+diff --git a/examples/search/public/index.html b/examples/search/public/index.html
+new file mode 100644
+index 0000000000..4a5540fdf3
+--- /dev/null
++++ b/examples/search/public/index.html
+@@ -0,0 +1,20 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="utf-8">
++  <title>Search example</title>
++  <style type="text/css">
++    body {
++      font: 14px "Helvetica Neue", Helvetica;
++      padding: 50px;
++    }
++  </style>
++</head>
++<body>
++  <h2>Search</h2>
++  <p>Try searching for "ferret" or "cat".</p>
++  <input type="search" name="search" value="" />
++  <pre />
++  <script src="/client.js" charset="utf-8"></script>
++</body>
++</html>
+diff --git a/examples/search/search.jade b/examples/search/search.jade
+deleted file mode 100644
+index 37d77e434c..0000000000
+--- a/examples/search/search.jade
++++ /dev/null
+@@ -1,15 +0,0 @@
+-doctype
+-html
+-  head
+-    title Search example
+-    style.
+-      body {
+-        font: 14px "Helvetica Neue", Helvetica;
+-        padding: 50px;
+-      }
+-  body
+-    h2 Search
+-    p Try searching for "ferret" or "cat".
+-    input(type='search')
+-    pre
+-    script(src='client.js')
+diff --git a/examples/static-files/index.js b/examples/static-files/index.js
+index c3b1659d86..0e44313d15 100644
+--- a/examples/static-files/index.js
++++ b/examples/static-files/index.js
+@@ -4,6 +4,7 @@
+ 
+ var express = require('../..');
+ var logger = require('morgan');
++var path = require('path');
+ var app = express();
+ 
+ // log requests
+@@ -16,7 +17,7 @@ app.use(logger('dev'));
+ // that you pass it. In this case "GET /js/app.js"
+ // will look for "./public/js/app.js".
+ 
+-app.use(express.static(__dirname + '/public'));
++app.use(express.static(path.join(__dirname, 'public')));
+ 
+ // if you wanted to "prefix" you may use
+ // the mounting feature of Connect, for example
+@@ -24,13 +25,13 @@ app.use(express.static(__dirname + '/public'));
+ // The mount-path "/static" is simply removed before
+ // passing control to the express.static() middleware,
+ // thus it serves the file correctly by ignoring "/static"
+-app.use('/static', express.static(__dirname + '/public'));
++app.use('/static', express.static(path.join(__dirname, 'public')));
+ 
+ // if for some reason you want to serve files from
+ // several directories, you can use express.static()
+ // multiple times! Here we're passing "./public/css",
+ // this will allow "GET /style.css" instead of "GET /css/style.css":
+-app.use(express.static(__dirname + '/public/css'));
++app.use(express.static(path.join(__dirname, 'public', 'css')));
+ 
+ app.listen(3000);
+ console.log('listening on port 3000');
+diff --git a/examples/view-constructor/index.js b/examples/view-constructor/index.js
+index 173663f809..195d32db0e 100644
+--- a/examples/view-constructor/index.js
++++ b/examples/view-constructor/index.js
+@@ -23,7 +23,7 @@ app.engine('md', function(str, options, fn){
+ });
+ 
+ // pointing to a particular github repo to load files from it
+-app.set('views', 'strongloop/express');
++app.set('views', 'expressjs/express');
+ 
+ // register a new view constructor
+ app.set('view', GithubView);
+@@ -36,7 +36,7 @@ app.get('/', function(req, res){
+ });
+ 
+ app.get('/Readme.md', function(req, res){
+-  // rendering a view from https://github.com/strongloop/express/blob/master/Readme.md
++  // rendering a view from https://github.com/expressjs/express/blob/master/Readme.md
+   res.render('Readme.md');
+ });
+ 
+diff --git a/examples/view-locals/index.js b/examples/view-locals/index.js
+index cf347ed38d..3814e6e496 100644
+--- a/examples/view-locals/index.js
++++ b/examples/view-locals/index.js
+@@ -3,11 +3,12 @@
+  */
+ 
+ var express = require('../..');
++var path = require('path');
+ var User = require('./user');
+ var app = express();
+ 
+-app.set('views', __dirname);
+-app.set('view engine', 'jade');
++app.set('views', path.join(__dirname, 'views'));
++app.set('view engine', 'ejs');
+ 
+ // filter ferrets only
+ 
+@@ -25,7 +26,7 @@ app.get('/', function(req, res, next){
+     if (err) return next(err);
+     User.all(function(err, users){
+       if (err) return next(err);
+-      res.render('user', {
++      res.render('index', {
+         title: 'Users',
+         count: count,
+         users: users.filter(ferrets)
+@@ -59,7 +60,7 @@ function users(req, res, next) {
+ }
+ 
+ app.get('/middleware', count, users, function(req, res, next){
+-  res.render('user', {
++  res.render('index', {
+     title: 'Users',
+     count: req.count,
+     users: req.users.filter(ferrets)
+@@ -101,7 +102,7 @@ app.get('/middleware-locals', count2, users2, function(req, res, next){
+   // to pass to res.render(). If we have
+   // several routes related to users this
+   // can be a great productivity booster
+-  res.render('user', { title: 'Users' });
++  res.render('index', { title: 'Users' });
+ });
+ 
+ // keep in mind that middleware may be placed anywhere
+diff --git a/examples/view-locals/layout.jade b/examples/view-locals/layout.jade
+deleted file mode 100644
+index 5616cfaf7c..0000000000
+--- a/examples/view-locals/layout.jade
++++ /dev/null
+@@ -1,12 +0,0 @@
+-doctype html
+-html
+-  head
+-    title= title
+-    style.
+-      body {
+-        padding: 50px;
+-        font: 16px Helvetica, Arial;
+-      }
+-  body
+-    h2= title
+-    block content
+\ No newline at end of file
+diff --git a/examples/view-locals/user.jade b/examples/view-locals/user.jade
+deleted file mode 100644
+index b07d2b1756..0000000000
+--- a/examples/view-locals/user.jade
++++ /dev/null
+@@ -1,8 +0,0 @@
+-
+-extends layout
+-
+-block content
+-  for user in users
+-    .user
+-      h3= user.name
+-      p #{user.name} is a #{user.age} year old #{user.species}.
+\ No newline at end of file
+diff --git a/examples/view-locals/user.js b/examples/view-locals/user.js
+index 0e3373d548..90ab1f389d 100644
+--- a/examples/view-locals/user.js
++++ b/examples/view-locals/user.js
+@@ -9,6 +9,9 @@ function User(name, age, species) {
+ }
+ 
+ User.all = function(fn){
++  // process.nextTick makes sure this function API
++  // behaves in an asynchronous manner, like if it
++  // was a real DB query to read all users.
+   process.nextTick(function(){
+     fn(null, users);
+   });
+diff --git a/examples/view-locals/views/index.ejs b/examples/view-locals/views/index.ejs
+new file mode 100644
+index 0000000000..1cbfc40bc0
+--- /dev/null
++++ b/examples/view-locals/views/index.ejs
+@@ -0,0 +1,19 @@
++<!DOCTYPE html>
++<html>
++  <head>
++    <meta charset="utf-8">
++    <title><%= title %></title>
++    <style media="screen">
++      body {
++        padding: 50px;
++        font: 16px Helvetica, Arial;
++      }
++    </style>
++  </head>
++  <body>
++    <h2><%= title %></h2>
++    <% users.forEach(function(user) { %>
++      <li><strong><%= user.name %></strong> is a <% user.age %> year old <%= user.species %></li>
++    <% }); %>
++  </body>
++</html>
+diff --git a/examples/web-service/index.js b/examples/web-service/index.js
+index 4958c22450..694e121d91 100644
+--- a/examples/web-service/index.js
++++ b/examples/web-service/index.js
+@@ -49,7 +49,7 @@ var apiKeys = ['foo', 'bar', 'baz'];
+ // these two objects will serve as our faux database
+ 
+ var repos = [
+-    { name: 'express', url: 'http://github.com/strongloop/express' }
++    { name: 'express', url: 'http://github.com/expressjs/express' }
+   , { name: 'stylus', url: 'http://github.com/learnboost/stylus' }
+   , { name: 'cluster', url: 'http://github.com/learnboost/cluster' }
+ ];
+diff --git a/lib/application.js b/lib/application.js
+index a9df910354..21a81ee9ef 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -28,6 +28,7 @@ var deprecate = require('depd')('express');
+ var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
++var setPrototyeOf = require('setprototypeof')
+ var slice = Array.prototype.slice;
+ 
+ /**
+@@ -94,10 +95,10 @@ app.defaultConfiguration = function defaultConfiguration() {
+     }
+ 
+     // inherit protos
+-    this.request.__proto__ = parent.request;
+-    this.response.__proto__ = parent.response;
+-    this.engines.__proto__ = parent.engines;
+-    this.settings.__proto__ = parent.settings;
++    setPrototyeOf(this.request, parent.request)
++    setPrototyeOf(this.response, parent.response)
++    setPrototyeOf(this.engines, parent.engines)
++    setPrototyeOf(this.settings, parent.settings)
+   });
+ 
+   // setup locals
+@@ -227,8 +228,8 @@ app.use = function use(fn) {
+     router.use(path, function mounted_app(req, res, next) {
+       var orig = req.app;
+       fn.handle(req, res, function (err) {
+-        req.__proto__ = orig.request;
+-        res.__proto__ = orig.response;
++        setPrototyeOf(req, orig.request)
++        setPrototyeOf(res, orig.response)
+         next(err);
+       });
+     });
+@@ -261,9 +262,9 @@ app.route = function route(path) {
+  *
+  * By default will `require()` the engine based on the
+  * file extension. For example if you try to render
+- * a "foo.jade" file Express will invoke the following internally:
++ * a "foo.ejs" file Express will invoke the following internally:
+  *
+- *     app.engine('jade', require('jade').__express);
++ *     app.engine('ejs', require('ejs').__express);
+  *
+  * For engines that do not provide `.__express` out of the box,
+  * or if you wish to "map" a different extension to the template engine
+@@ -522,7 +523,7 @@ app.del = deprecate.function(app.delete, 'app.del: Use app.delete instead');
+  *    })
+  *
+  * @param {String} name
+- * @param {String|Function} options or fn
++ * @param {Object|Function} options or fn
+  * @param {Function} callback
+  * @public
+  */
+diff --git a/lib/express.js b/lib/express.js
+index 540c8be6f4..187e4e2d7c 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -41,8 +41,16 @@ function createApplication() {
+   mixin(app, EventEmitter.prototype, false);
+   mixin(app, proto, false);
+ 
+-  app.request = { __proto__: req, app: app };
+-  app.response = { __proto__: res, app: app };
++  // expose the prototype that will get set on requests
++  app.request = Object.create(req, {
++    app: { configurable: true, enumerable: true, writable: true, value: app }
++  })
++
++  // expose the prototype that will get set on responses
++  app.response = Object.create(res, {
++    app: { configurable: true, enumerable: true, writable: true, value: app }
++  })
++
+   app.init();
+   return app;
+ }
+diff --git a/lib/middleware/init.js b/lib/middleware/init.js
+index f3119ed3a1..328c4a863d 100644
+--- a/lib/middleware/init.js
++++ b/lib/middleware/init.js
+@@ -8,6 +8,13 @@
+ 
+ 'use strict';
+ 
++/**
++ * Module dependencies.
++ * @private
++ */
++
++var setPrototyeOf = require('setprototypeof')
++
+ /**
+  * Initialization middleware, exposing the
+  * request and response to each other, as well
+@@ -25,8 +32,8 @@ exports.init = function(app){
+     res.req = req;
+     req.next = next;
+ 
+-    req.__proto__ = app.request;
+-    res.__proto__ = app.response;
++    setPrototyeOf(req, app.request)
++    setPrototyeOf(res, app.response)
+ 
+     res.locals = res.locals || Object.create(null);
+ 
+diff --git a/lib/middleware/query.js b/lib/middleware/query.js
+index a665f3f143..5f76f8458f 100644
+--- a/lib/middleware/query.js
++++ b/lib/middleware/query.js
+@@ -30,14 +30,9 @@ module.exports = function query(options) {
+     opts = undefined;
+   }
+ 
+-  if (opts !== undefined) {
+-    if (opts.allowDots === undefined) {
+-      opts.allowDots = false;
+-    }
+-
+-    if (opts.allowPrototypes === undefined) {
+-      opts.allowPrototypes = true;
+-    }
++  if (opts !== undefined && opts.allowPrototypes === undefined) {
++    // back-compat for qs module
++    opts.allowPrototypes = true;
+   }
+ 
+   return function query(req, res, next){
+diff --git a/lib/request.js b/lib/request.js
+index 33cac180ed..3432e6776f 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -25,11 +25,17 @@ var proxyaddr = require('proxy-addr');
+ 
+ /**
+  * Request prototype.
++ * @public
+  */
+ 
+-var req = exports = module.exports = {
+-  __proto__: http.IncomingMessage.prototype
+-};
++var req = Object.create(http.IncomingMessage.prototype)
++
++/**
++ * Module exports.
++ * @public
++ */
++
++module.exports = req
+ 
+ /**
+  * Return request header.
+@@ -57,6 +63,14 @@ var req = exports = module.exports = {
+ 
+ req.get =
+ req.header = function header(name) {
++  if (!name) {
++    throw new TypeError('name argument is required to req.get');
++  }
++
++  if (typeof name !== 'string') {
++    throw new TypeError('name must be a string to req.get');
++  }
++
+   var lc = name.toLowerCase();
+ 
+   switch (lc) {
+@@ -171,29 +185,34 @@ req.acceptsLanguage = deprecate.function(req.acceptsLanguages,
+   'req.acceptsLanguage: Use acceptsLanguages instead');
+ 
+ /**
+- * Parse Range header field,
+- * capping to the given `size`.
++ * Parse Range header field, capping to the given `size`.
+  *
+- * Unspecified ranges such as "0-" require
+- * knowledge of your resource length. In
+- * the case of a byte range this is of course
+- * the total number of bytes. If the Range
+- * header field is not given `null` is returned,
+- * `-1` when unsatisfiable, `-2` when syntactically invalid.
++ * Unspecified ranges such as "0-" require knowledge of your resource length. In
++ * the case of a byte range this is of course the total number of bytes. If the
++ * Range header field is not given `undefined` is returned, `-1` when unsatisfiable,
++ * and `-2` when syntactically invalid.
+  *
+- * NOTE: remember that ranges are inclusive, so
+- * for example "Range: users=0-3" should respond
+- * with 4 users when available, not 3.
++ * When ranges are returned, the array has a "type" property which is the type of
++ * range that is required (most commonly, "bytes"). Each array element is an object
++ * with a "start" and "end" property for the portion of the range.
+  *
+- * @param {Number} size
+- * @return {Array}
++ * The "combine" option can be set to `true` and overlapping & adjacent ranges
++ * will be combined into a single range.
++ *
++ * NOTE: remember that ranges are inclusive, so for example "Range: users=0-3"
++ * should respond with 4 users when available, not 3.
++ *
++ * @param {number} size
++ * @param {object} [options]
++ * @param {boolean} [options.combine=false]
++ * @return {number|array}
+  * @public
+  */
+ 
+-req.range = function(size){
++req.range = function range(size, options) {
+   var range = this.get('Range');
+   if (!range) return;
+-  return parseRange(size, range);
++  return parseRange(size, range, options);
+ };
+ 
+ /**
+@@ -303,7 +322,7 @@ defineGetter(req, 'protocol', function protocol(){
+ /**
+  * Short-hand for:
+  *
+- *    req.protocol == 'https'
++ *    req.protocol === 'https'
+  *
+  * @return {Boolean}
+  * @public
+@@ -343,7 +362,12 @@ defineGetter(req, 'ip', function ip(){
+ defineGetter(req, 'ips', function ips() {
+   var trust = this.app.get('trust proxy fn');
+   var addrs = proxyaddr.all(this, trust);
+-  return addrs.slice(1).reverse();
++
++  // reverse the order (to farthest -> closest)
++  // and remove socket address
++  addrs.reverse().pop()
++
++  return addrs
+ });
+ 
+ /**
+@@ -434,14 +458,18 @@ defineGetter(req, 'host', deprecate.function(function host(){
+ 
+ defineGetter(req, 'fresh', function(){
+   var method = this.method;
+-  var s = this.res.statusCode;
++  var res = this.res
++  var status = res.statusCode
+ 
+   // GET or HEAD for weak freshness validation only
+-  if ('GET' != method && 'HEAD' != method) return false;
++  if ('GET' !== method && 'HEAD' !== method) return false;
+ 
+   // 2xx or 304 as per rfc2616 14.26
+-  if ((s >= 200 && s < 300) || 304 == s) {
+-    return fresh(this.headers, (this.res._headers || {}));
++  if ((status >= 200 && status < 300) || 304 === status) {
++    return fresh(this.headers, {
++      'etag': res.get('ETag'),
++      'last-modified': res.get('Last-Modified')
++    })
+   }
+ 
+   return false;
+@@ -486,4 +514,4 @@ function defineGetter(obj, name, getter) {
+     enumerable: true,
+     get: getter
+   });
+-};
++}
+diff --git a/lib/response.js b/lib/response.js
+index 641704b04a..6aefe1b178 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -14,17 +14,18 @@
+ 
+ var contentDisposition = require('content-disposition');
+ var deprecate = require('depd')('express');
++var encodeUrl = require('encodeurl');
+ var escapeHtml = require('escape-html');
+ var http = require('http');
+ var isAbsolute = require('./utils').isAbsolute;
+ var onFinished = require('on-finished');
+ var path = require('path');
++var statuses = require('statuses')
+ var merge = require('utils-merge');
+ var sign = require('cookie-signature').sign;
+ var normalizeType = require('./utils').normalizeType;
+ var normalizeTypes = require('./utils').normalizeTypes;
+ var setCharset = require('./utils').setCharset;
+-var statusCodes = http.STATUS_CODES;
+ var cookie = require('cookie');
+ var send = require('send');
+ var extname = path.extname;
+@@ -34,11 +35,17 @@ var vary = require('vary');
+ 
+ /**
+  * Response prototype.
++ * @public
+  */
+ 
+-var res = module.exports = {
+-  __proto__: http.ServerResponse.prototype
+-};
++var res = Object.create(http.ServerResponse.prototype)
++
++/**
++ * Module exports.
++ * @public
++ */
++
++module.exports = res
+ 
+ /**
+  * Module variables.
+@@ -128,7 +135,7 @@ res.send = function send(body) {
+ 
+     deprecate('res.send(status): Use res.sendStatus(status) instead');
+     this.statusCode = chunk;
+-    chunk = statusCodes[chunk];
++    chunk = statuses[chunk]
+   }
+ 
+   switch (typeof chunk) {
+@@ -189,7 +196,7 @@ res.send = function send(body) {
+   if (req.fresh) this.statusCode = 304;
+ 
+   // strip irrelevant headers
+-  if (204 == this.statusCode || 304 == this.statusCode) {
++  if (204 === this.statusCode || 304 === this.statusCode) {
+     this.removeHeader('Content-Type');
+     this.removeHeader('Content-Length');
+     this.removeHeader('Transfer-Encoding');
+@@ -239,7 +246,7 @@ res.json = function json(obj) {
+   var app = this.app;
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = JSON.stringify(val, replacer, spaces);
++  var body = stringify(val, replacer, spaces);
+ 
+   // content-type
+   if (!this.get('Content-Type')) {
+@@ -281,7 +288,7 @@ res.jsonp = function jsonp(obj) {
+   var app = this.app;
+   var replacer = app.get('json replacer');
+   var spaces = app.get('json spaces');
+-  var body = JSON.stringify(val, replacer, spaces);
++  var body = stringify(val, replacer, spaces);
+   var callback = this.req.query[app.get('jsonp callback name')];
+ 
+   // content-type
+@@ -333,7 +340,7 @@ res.jsonp = function jsonp(obj) {
+  */
+ 
+ res.sendStatus = function sendStatus(statusCode) {
+-  var body = statusCodes[statusCode] || String(statusCode);
++  var body = statuses[statusCode] || String(statusCode)
+ 
+   this.statusCode = statusCode;
+   this.type('txt');
+@@ -740,7 +747,7 @@ res.get = function(field){
+  * Clear cookie `name`.
+  *
+  * @param {String} name
+- * @param {Object} options
++ * @param {Object} [options]
+  * @return {ServerResponse} for chaining
+  * @public
+  */
+@@ -832,8 +839,7 @@ res.location = function location(url) {
+   }
+ 
+   // set location
+-  this.set('Location', loc);
+-  return this;
++  return this.set('Location', encodeUrl(loc));
+ };
+ 
+ /**
+@@ -871,18 +877,17 @@ res.redirect = function redirect(url) {
+   }
+ 
+   // Set location header
+-  this.location(address);
+-  address = this.get('Location');
++  address = this.location(address).get('Location');
+ 
+   // Support text/{plain,html} by default
+   this.format({
+     text: function(){
+-      body = statusCodes[status] + '. Redirecting to ' + encodeURI(address);
++      body = statuses[status] + '. Redirecting to ' + address
+     },
+ 
+     html: function(){
+       var u = escapeHtml(address);
+-      body = '<p>' + statusCodes[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>';
++      body = '<p>' + statuses[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
+     },
+ 
+     default: function(){
+@@ -1051,3 +1056,16 @@ function sendfile(res, file, options, callback) {
+   // pipe
+   file.pipe(res);
+ }
++
++/**
++ * Stringify JSON, like JSON.stringify, but v8 optimized.
++ * @private
++ */
++
++function stringify(value, replacer, spaces) {
++  // v8 checks arguments.length for optimizing simple call
++  // https://bugs.chromium.org/p/v8/issues/detail?id=4730
++  return replacer || spaces
++    ? JSON.stringify(value, replacer, spaces)
++    : JSON.stringify(value);
++}
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 504ed9ce0e..51db4c28ff 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -21,6 +21,7 @@ var debug = require('debug')('express:router');
+ var deprecate = require('depd')('express');
+ var flatten = require('array-flatten');
+ var parseUrl = require('parseurl');
++var setPrototypeOf = require('setprototypeof')
+ 
+ /**
+  * Module variables.
+@@ -47,7 +48,7 @@ var proto = module.exports = function(options) {
+   }
+ 
+   // mixin Router class functions
+-  router.__proto__ = proto;
++  setPrototypeOf(router, proto)
+ 
+   router.params = {};
+   router._params = [];
+@@ -119,7 +120,7 @@ proto.param = function param(name, fn) {
+ 
+   // ensure we end up with a
+   // middleware function
+-  if ('function' != typeof fn) {
++  if ('function' !== typeof fn) {
+     throw new Error('invalid param() call for ' + name + ', got ' + fn);
+   }
+ 
+@@ -137,11 +138,8 @@ proto.handle = function handle(req, res, out) {
+ 
+   debug('dispatching %s %s', req.method, req.url);
+ 
+-  var search = 1 + req.url.indexOf('?');
+-  var pathlength = search ? search - 1 : req.url.length;
+-  var fqdn = req.url[0] !== '/' && 1 + req.url.substr(0, pathlength).indexOf('://');
+-  var protohost = fqdn ? req.url.substr(0, req.url.indexOf('/', 2 + fqdn)) : '';
+   var idx = 0;
++  var protohost = getProtohost(req.url) || ''
+   var removed = '';
+   var slashAdded = false;
+   var paramcalled = {};
+@@ -193,6 +191,12 @@ proto.handle = function handle(req, res, out) {
+       removed = '';
+     }
+ 
++    // signal to exit router
++    if (layerError === 'router') {
++      setImmediate(done, null)
++      return
++    }
++
+     // no more matching layers
+     if (idx >= stack.length) {
+       setImmediate(done, layerError);
+@@ -282,18 +286,19 @@ proto.handle = function handle(req, res, out) {
+   }
+ 
+   function trim_prefix(layer, layerError, layerPath, path) {
+-    var c = path[layerPath.length];
+-    if (c && '/' !== c && '.' !== c) return next(layerError);
+-
+-     // Trim off the part of the url that matches the route
+-     // middleware (.use stuff) needs to have the path stripped
+     if (layerPath.length !== 0) {
++      // Validate path breaks on a path separator
++      var c = path[layerPath.length]
++      if (c && c !== '/' && c !== '.') return next(layerError)
++
++      // Trim off the part of the url that matches the route
++      // middleware (.use stuff) needs to have the path stripped
+       debug('trim prefix (%s) from url %s', layerPath, req.url);
+       removed = layerPath;
+       req.url = protohost + req.url.substr(protohost.length + removed.length);
+ 
+       // Ensure leading slash
+-      if (!fqdn && req.url[0] !== '/') {
++      if (!protohost && req.url[0] !== '/') {
+         req.url = '/' + req.url;
+         slashAdded = true;
+       }
+@@ -351,11 +356,6 @@ proto.process_params = function process_params(layer, called, req, res, done) {
+ 
+     paramIndex = 0;
+     key = keys[i++];
+-
+-    if (!key) {
+-      return done();
+-    }
+-
+     name = key.name;
+     paramVal = req.params[name];
+     paramCallbacks = params[name];
+@@ -459,7 +459,7 @@ proto.use = function use(fn) {
+     }
+ 
+     // add the middleware
+-    debug('use %s %s', path, fn.name || '<anonymous>');
++    debug('use %o %s', path, fn.name || '<anonymous>')
+ 
+     var layer = new Layer(path, {
+       sensitive: this.caseSensitive,
+@@ -531,6 +531,23 @@ function getPathname(req) {
+   }
+ }
+ 
++// Get get protocol + host for a URL
++function getProtohost(url) {
++  if (typeof url !== 'string' || url.length === 0 || url[0] === '/') {
++    return undefined
++  }
++
++  var searchIndex = url.indexOf('?')
++  var pathLength = searchIndex !== -1
++    ? searchIndex
++    : url.length
++  var fqdnIndex = url.substr(0, pathLength).indexOf('://')
++
++  return fqdnIndex !== -1
++    ? url.substr(0, url.indexOf('/', 3 + fqdnIndex))
++    : undefined
++}
++
+ // get type for error message
+ function gettype(obj) {
+   var type = typeof obj;
+@@ -609,7 +626,7 @@ function restore(fn, obj) {
+     vals[i] = obj[props[i]];
+   }
+ 
+-  return function(err){
++  return function () {
+     // restore vals
+     for (var i = 0; i < props.length; i++) {
+       obj[props[i]] = vals[i];
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+index fe9210cb9d..4dc8e86d4f 100644
+--- a/lib/router/layer.js
++++ b/lib/router/layer.js
+@@ -35,7 +35,7 @@ function Layer(path, options, fn) {
+     return new Layer(path, options, fn);
+   }
+ 
+-  debug('new %s', path);
++  debug('new %o', path)
+   var opts = options || {};
+ 
+   this.handle = fn;
+@@ -44,9 +44,9 @@ function Layer(path, options, fn) {
+   this.path = undefined;
+   this.regexp = pathRegexp(path, this.keys = [], opts);
+ 
+-  if (path === '/' && opts.end === false) {
+-    this.regexp.fast_slash = true;
+-  }
++  // set fast path flags
++  this.regexp.fast_star = path === '*'
++  this.regexp.fast_slash = path === '/' && opts.end === false
+ }
+ 
+ /**
+@@ -108,23 +108,28 @@ Layer.prototype.handle_request = function handle(req, res, next) {
+  */
+ 
+ Layer.prototype.match = function match(path) {
+-  if (path == null) {
+-    // no path, nothing matches
+-    this.params = undefined;
+-    this.path = undefined;
+-    return false;
+-  }
++  var match
++
++  if (path != null) {
++    // fast path non-ending match for / (any path matches)
++    if (this.regexp.fast_slash) {
++      this.params = {}
++      this.path = ''
++      return true
++    }
+ 
+-  if (this.regexp.fast_slash) {
+-    // fast path non-ending match for / (everything matches)
+-    this.params = {};
+-    this.path = '';
+-    return true;
+-  }
++    // fast path for * (everything matched in a param)
++    if (this.regexp.fast_star) {
++      this.params = {'0': decode_param(path)}
++      this.path = path
++      return true
++    }
+ 
+-  var m = this.regexp.exec(path);
++    // match the path
++    match = this.regexp.exec(path)
++  }
+ 
+-  if (!m) {
++  if (!match) {
+     this.params = undefined;
+     this.path = undefined;
+     return false;
+@@ -132,15 +137,15 @@ Layer.prototype.match = function match(path) {
+ 
+   // store values
+   this.params = {};
+-  this.path = m[0];
++  this.path = match[0]
+ 
+   var keys = this.keys;
+   var params = this.params;
+ 
+-  for (var i = 1; i < m.length; i++) {
++  for (var i = 1; i < match.length; i++) {
+     var key = keys[i - 1];
+     var prop = key.name;
+-    var val = decode_param(m[i]);
++    var val = decode_param(match[i])
+ 
+     if (val !== undefined || !(hasOwnProperty.call(params, prop))) {
+       params[prop] = val;
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 2788d7b735..ea82ed29df 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -44,7 +44,7 @@ function Route(path) {
+   this.path = path;
+   this.stack = [];
+ 
+-  debug('new %s', path);
++  debug('new %o', path)
+ 
+   // route handlers for various http methods
+   this.methods = {};
+@@ -112,10 +112,16 @@ Route.prototype.dispatch = function dispatch(req, res, done) {
+   next();
+ 
+   function next(err) {
++    // signal to exit route
+     if (err && err === 'route') {
+       return done();
+     }
+ 
++    // signal to exit router
++    if (err && err === 'router') {
++      return done(err)
++    }
++
+     var layer = stack[idx++];
+     if (!layer) {
+       return done(err);
+@@ -196,7 +202,7 @@ methods.forEach(function(method){
+         throw new Error(msg);
+       }
+ 
+-      debug('%s %s', method, this.path);
++      debug('%s %o', method, this.path)
+ 
+       var layer = Layer('/', {}, handle);
+       layer.method = method;
+diff --git a/lib/utils.js b/lib/utils.js
+index 3d54247ad2..f418c5807c 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -66,9 +66,9 @@ exports.wetag = function wetag(body, encoding){
+  */
+ 
+ exports.isAbsolute = function(path){
+-  if ('/' == path[0]) return true;
+-  if (':' == path[1] && '\\' == path[2]) return true;
+-  if ('\\\\' == path.substring(0, 2)) return true; // Microsoft Azure absolute path
++  if ('/' === path[0]) return true;
++  if (':' === path[1] && ('\\' === path[2] || '/' === path[2])) return true; // Windows device path
++  if ('\\\\' === path.substring(0, 2)) return true; // Microsoft Azure absolute path
+ };
+ 
+ /**
+@@ -142,7 +142,7 @@ function acceptParams(str, index) {
+ 
+   for (var i = 1; i < parts.length; ++i) {
+     var pms = parts[i].split(/ *= */);
+-    if ('q' == pms[0]) {
++    if ('q' === pms[0]) {
+       ret.quality = parseFloat(pms[1]);
+     } else {
+       ret.params[pms[0]] = pms[1];
+@@ -283,7 +283,6 @@ exports.setCharset = function setCharset(type, charset) {
+ 
+ function parseExtendedQueryString(str) {
+   return qs.parse(str, {
+-    allowDots: false,
+     allowPrototypes: true
+   });
+ }
+diff --git a/lib/view.js b/lib/view.js
+index 52415d4c28..1728725d29 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -75,7 +75,9 @@ function View(name, options) {
+ 
+   if (!opts.engines[this.ext]) {
+     // load engine
+-    opts.engines[this.ext] = require(this.ext.substr(1)).__express;
++    var mod = this.ext.substr(1)
++    debug('require "%s"', mod)
++    opts.engines[this.ext] = require(mod).__express
+   }
+ 
+   // store loaded engine
+diff --git a/package.json b/package.json
+index 3f299bada8..dd03d7e9bc 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Fast, unopinionated, minimalist web framework",
+-  "version": "4.13.3",
++  "version": "4.15.2",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [
+     "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+@@ -13,7 +13,7 @@
+     "Young Jae Sim <hanul@hanul.me>"
+   ],
+   "license": "MIT",
+-  "repository": "strongloop/express",
++  "repository": "expressjs/express",
+   "homepage": "http://expressjs.com/",
+   "keywords": [
+     "express",
+@@ -27,50 +27,54 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.2.12",
++    "accepts": "~1.3.3",
+     "array-flatten": "1.1.1",
+-    "content-disposition": "0.5.0",
+-    "content-type": "~1.0.1",
+-    "cookie": "0.1.3",
++    "content-disposition": "0.5.2",
++    "content-type": "~1.0.2",
++    "cookie": "0.3.1",
+     "cookie-signature": "1.0.6",
+-    "debug": "~2.2.0",
+-    "depd": "~1.0.1",
+-    "escape-html": "1.0.2",
+-    "etag": "~1.7.0",
+-    "finalhandler": "0.4.0",
+-    "fresh": "0.3.0",
+-    "merge-descriptors": "1.0.0",
+-    "methods": "~1.1.1",
++    "debug": "2.6.3",
++    "depd": "~1.1.0",
++    "encodeurl": "~1.0.1",
++    "escape-html": "~1.0.3",
++    "etag": "~1.8.0",
++    "finalhandler": "~1.0.0",
++    "fresh": "0.5.0",
++    "merge-descriptors": "1.0.1",
++    "methods": "~1.1.2",
+     "on-finished": "~2.3.0",
+-    "parseurl": "~1.3.0",
++    "parseurl": "~1.3.1",
+     "path-to-regexp": "0.1.7",
+-    "proxy-addr": "~1.0.8",
+-    "qs": "4.0.0",
+-    "range-parser": "~1.0.2",
+-    "send": "0.13.0",
+-    "serve-static": "~1.10.0",
+-    "type-is": "~1.6.6",
++    "proxy-addr": "~1.1.3",
++    "qs": "6.4.0",
++    "range-parser": "~1.2.0",
++    "send": "0.15.1",
++    "serve-static": "1.12.1",
++    "setprototypeof": "1.0.3",
++    "statuses": "~1.3.1",
++    "type-is": "~1.6.14",
+     "utils-merge": "1.0.0",
+-    "vary": "~1.0.1"
++    "vary": "~1.1.0"
+   },
+   "devDependencies": {
+-    "after": "0.8.1",
+-    "ejs": "2.3.3",
+-    "istanbul": "0.3.17",
+-    "marked": "0.3.5",
+-    "mocha": "2.2.5",
+-    "should": "7.0.2",
+-    "supertest": "1.0.1",
+-    "body-parser": "~1.13.3",
++    "after": "0.8.2",
++    "body-parser": "1.17.1",
++    "cookie-parser": "~1.4.3",
++    "ejs": "2.5.6",
++    "express-session": "1.15.1",
++    "istanbul": "0.4.5",
++    "marked": "0.3.6",
++    "method-override": "2.3.7",
++    "mocha": "3.2.0",
++    "morgan": "1.8.1",
++    "multiparty": "4.1.3",
++    "pbkdf2-password": "1.2.1",
++    "should": "11.2.1",
++    "supertest": "1.2.0",
+     "connect-redis": "~2.4.1",
+-    "cookie-parser": "~1.3.5",
+     "cookie-session": "~1.2.0",
+-    "express-session": "~1.11.3",
+     "jade": "~1.11.0",
+-    "method-override": "~2.3.5",
+-    "morgan": "~1.6.1",
+-    "multiparty": "~4.1.2",
+-    "vhost": "~3.0.1"
++    "vhost": "~3.0.2"
+   },
+   "engines": {
+     "node": ">= 0.10.0"

@@ -1,0 +1,51 @@
+diff --git a/History.md b/History.md
+index 021315c5ab..98cfb14c25 100644
+--- a/History.md
++++ b/History.md
+@@ -11,6 +11,7 @@ unreleased
+ * Remove unused `depd` dependency
+ * Add support for `Uint8Array` in `res.send`
+ * Add support for ETag option in res.sendFile
++* Extend res.links() to allow adding multiple links with the same rel
+ * deps: debug@^4.4.0
+ * deps: body-parser@^2.1.0
+ * deps: router@^2.1.0
+diff --git a/lib/response.js b/lib/response.js
+index b1dfcb2335..9362d0ed5d 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -80,7 +80,11 @@ res.status = function status(code) {
+  *
+  *    res.links({
+  *      next: 'http://api.example.com/users?page=2',
+- *      last: 'http://api.example.com/users?page=5'
++ *      last: 'http://api.example.com/users?page=5',
++ *      pages: [
++ *        'http://api.example.com/users?page=1',
++ *        'http://api.example.com/users?page=2'
++ *      ]
+  *    });
+  *
+  * @param {Object} links
+@@ -88,11 +92,18 @@ res.status = function status(code) {
+  * @public
+  */
+ 
+-res.links = function(links){
++res.links = function(links) {
+   var link = this.get('Link') || '';
+   if (link) link += ', ';
+-  return this.set('Link', link + Object.keys(links).map(function(rel){
+-    return '<' + links[rel] + '>; rel="' + rel + '"';
++  return this.set('Link', link + Object.keys(links).map(function(rel) {
++    // Allow multiple links if links[rel] is an array
++    if (Array.isArray(links[rel])) {
++      return links[rel].map(function (singleLink) {
++        return `<${singleLink}>; rel="${rel}"`;
++      }).join(', ');
++    } else {
++      return `<${links[rel]}>; rel="${rel}"`;
++    }
+   }).join(', '));
+ };
+ 

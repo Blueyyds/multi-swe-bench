@@ -1,0 +1,15 @@
+diff --git a/lib/response.js b/lib/response.js
+index 0d0f6956c0..a10ab9b15b 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -55,7 +55,9 @@ res.status = function(code){
+  */
+ 
+ res.links = function(links){
+-  return this.set('Link', Object.keys(links).map(function(rel){
++  var linkField = typeof this.get('Link') === 'undefined' ?
++    '' :  this.get('Link') + ', ';
++  return this.set('Link', linkField + Object.keys(links).map(function(rel){
+     return '<' + links[rel] + '>; rel="' + rel + '"';
+   }).join(', '));
+ };

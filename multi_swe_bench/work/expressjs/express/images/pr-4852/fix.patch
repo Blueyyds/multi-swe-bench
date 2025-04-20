@@ -1,0 +1,12 @@
+diff --git a/lib/response.js b/lib/response.js
+index ccf8d91b2c..ea4aec77ef 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -805,6 +805,7 @@ res.get = function(field){
+ 
+ res.clearCookie = function clearCookie(name, options) {
+   var opts = merge({ expires: new Date(1), path: '/' }, options);
++  delete opts.maxAge;
+ 
+   return this.cookie(name, '', opts);
+ };

@@ -1,0 +1,1349 @@
+diff --git a/test/acceptance/blog.js b/test/acceptance/blog.js
+deleted file mode 100644
+index 1e8565bc81..0000000000
+--- a/test/acceptance/blog.js
++++ /dev/null
+@@ -1,79 +0,0 @@
+-
+-var app = require('../../examples/blog')
+-  , request = require('../support/http');
+-
+-var authorization = 'Basic ' + Buffer('admin:express').toString('base64');
+-
+-function redirects(to,fn){
+-  return function(res){
+-    res.statusCode.should.equal(302)
+-    res.headers.should.have.property('location').match(to);
+-    fn()
+-  }
+-}
+-
+-describe('blog', function(){
+-  describe('GET /', function(){
+-    it('should have no posts', function(done){
+-      request(app)
+-        .get('/')
+-        .expect(/you have no posts/, done)
+-    })
+-  })
+-
+-  describe('GET /post/add', function(){
+-    it('should require auth', function(done){
+-      request(app)
+-        .get('/post/add')
+-        .expect(401, done)
+-    })
+-
+-    it('should login', function(done){
+-      request(app)
+-        .get('/post/add')
+-        .set('Authorization', authorization)
+-        .expect(/<h1>New Post<\/h1>/, done)
+-    })
+-  })
+-
+-  describe('POST /post', function(){
+-    it('should require auth', function(done){
+-      request(app)
+-        .post('/post')
+-        .expect(401, done)
+-    })
+-
+-    it('should redirect to / with no title or body', function(done){
+-      request(app)
+-        .post('/post')
+-        .set('Authorization', authorization)
+-        .end(redirects(/\/$/, done))
+-    })
+-
+-    it('should redirect to / with no body', function(done){
+-      request(app)
+-        .post('/post')
+-        .set('Authorization', authorization)
+-        .set('Content-Type', 'application/x-www-form-urlencoded')
+-        .write('post[title]=Kittens')
+-        .end(redirects(/\/$/, done))
+-    })
+-
+-    it('should redirect to /post/:post when successful', function(done){
+-      request(app)
+-        .post('/post')
+-        .set('Authorization', authorization)
+-        .set('Content-Type', 'application/x-www-form-urlencoded')
+-        .write('post[title]=Kittens&post[body]=In+very+large+baskets')
+-        .end(redirects(/\/post\/\d+$/, done))
+-    })
+-  })
+-
+-  describe('GET /', function(){
+-    it('should now list 1 post',function(done){
+-      request(app)
+-        .get('/')
+-        .expect(/Display all 1 post/, done)
+-    })
+-  })
+-})
+\ No newline at end of file
+diff --git a/test/acceptance/error-pages.js b/test/acceptance/error-pages.js
+index 9729649e5f..13ac4f843b 100644
+--- a/test/acceptance/error-pages.js
++++ b/test/acceptance/error-pages.js
+@@ -1,12 +1,13 @@
+-var app = require('../../examples/error-pages/app')
++
++var app = require('../../examples/error-pages')
+   , request = require('../support/http');
+ 
+ describe('error-pages', function(){
+   describe('GET /', function(){
+     it('should respond with page list', function(done){
+       request(app)
+-        .get('/')
+-        .expect(/Pages Example/,done)
++      .get('/')
++      .expect(/Pages Example/, done)
+     })
+   })
+ 
+@@ -14,22 +15,24 @@ describe('error-pages', function(){
+     describe('GET /403', function(){
+       it('should respond with 403', function(done){
+         request(app)
+-          .get('/403')
+-          .expect(403,done)
++        .get('/403')
++        .expect(403, done)
+       })
+     })
++
+     describe('GET /404', function(){
+       it('should respond with 404', function(done){
+         request(app)
+-          .get('/404')
+-          .expect(404,done)
++        .get('/404')
++        .expect(404, done)
+       })
+     })
++
+     describe('GET /500', function(){
+       it('should respond with 500', function(done){
+         request(app)
+-          .get('/500')
+-          .expect(500,done)
++        .get('/500')
++        .expect(500, done)
+       })
+     })
+   })
+@@ -39,29 +42,31 @@ describe('error-pages', function(){
+     describe('GET /403', function(){
+       it('should respond with 403', function(done){
+         request(app)
+-          .get('/403')
+-          .set('Accept','application/json')
+-          .expect(403,done)
++        .get('/403')
++        .set('Accept','application/json')
++        .expect(403, done)
+       })
+     })
++
+     describe('GET /404', function(){
+       it('should respond with 404', function(done){
+         request(app)
+-          .get('/404')
+-          .set('Accept','application/json')
+-          .end(function(res){
+-            res.should.have.property('statusCode',200)
+-            res.should.have.property('body',JSON.stringify({error:'Not found'}))
+-            done()
+-          })
++        .get('/404')
++        .set('Accept','application/json')
++        .end(function(res){
++          res.should.have.property('statusCode',200)
++          res.should.have.property('body',JSON.stringify({error:'Not found'}))
++          done()
++        })
+       })
+     })
++
+     describe('GET /500', function(){
+       it('should respond with 500', function(done){
+         request(app)
+-          .get('/500')
+-          .set('Accept','application/json')
+-          .expect(500,done)
++        .get('/500')
++        .set('Accept','application/json')
++        .expect(500, done)
+       })
+     })
+   })
+@@ -73,9 +78,10 @@ describe('error-pages', function(){
+         request(app)
+           .get('/403')
+           .set('Accept','text/plain')
+-          .expect(403,done)
++          .expect(403, done)
+       })
+     })
++
+     describe('GET /404', function(){
+       it('should respond with 404', function(done){
+         request(app)
+@@ -88,14 +94,14 @@ describe('error-pages', function(){
+           })
+       })
+     })
++
+     describe('GET /500', function(){
+       it('should respond with 500', function(done){
+         request(app)
+-          .get('/500')
+-          .set('Accept','text/plain')
+-          .expect(500,done)
++        .get('/500')
++        .set('Accept','text/plain')
++        .expect(500, done)
+       })
+     })
+   })
+-
+ })
+\ No newline at end of file
+diff --git a/test/acceptance/error.js b/test/acceptance/error.js
+index ee131a0039..b5dc97bf90 100644
+--- a/test/acceptance/error.js
++++ b/test/acceptance/error.js
+@@ -1,4 +1,5 @@
+-var app = require('../../examples/error/app')
++
++var app = require('../../examples/error')
+   , request = require('../support/http');
+ 
+ describe('error', function(){
+diff --git a/test/acceptance/mvc.js b/test/acceptance/mvc.js
+new file mode 100644
+index 0000000000..db36b17156
+--- /dev/null
++++ b/test/acceptance/mvc.js
+@@ -0,0 +1,92 @@
++
++var request = require('../support/http')
++  , app = require('../../examples/mvc');
++
++describe('mvc', function(){
++  describe('GET /', function(){
++    it('should redirect to /users', function(done){
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.should.have.status(302);
++        res.headers.location.should.include('/users');
++        done();
++      })
++    })
++  })
++
++  describe('GET /users', function(){
++    it('should display a list of users', function(done){
++      request(app)
++      .get('/users')
++      .end(function(res){
++        res.body.should.include('<h1>Users</h1>');
++        res.body.should.include('>TJ<');
++        res.body.should.include('>Guillermo<');
++        res.body.should.include('>Nathan<');
++        done();
++      })
++    })
++  })
++
++  describe('GET /user/:id', function(){
++    describe('when present', function(){
++      it('should display the user', function(done){
++        request(app)
++        .get('/user/0')
++        .end(function(res){
++          res.body.should.include('<h1>TJ <a href="/user/0/edit">edit');
++          done();
++        })
++      })
++
++      it('should display the users pets', function(done){
++        request(app)
++        .get('/user/0')
++        .end(function(res){
++          res.body.should.include('/pet/0">Tobi');
++          res.body.should.include('/pet/1">Loki');
++          res.body.should.include('/pet/2">Jane');
++          done();
++        })
++      })
++    })
++
++    describe('when not present', function(){
++      it('should 404', function(done){
++        request(app)
++        .get('/user/123')
++        .expect(404, done);
++      })
++    })
++  })
++
++  describe('GET /user/:id/edit', function(){
++    it('should display the edit form', function(done){
++      request(app)
++      .get('/user/1/edit')
++      .end(function(res){
++        res.body.should.include('<h1>Guillermo</h1>');
++        res.body.should.include('value="put"');
++        done();
++      })
++    })
++  })
++
++  describe('PUT /user/:id', function(){
++    it('should update the user', function(done){
++      request(app)
++      .put('/user/1')
++      .set('Content-Type', 'application/json')
++      .write('{"user":{"name":"Tobo"}}')
++      .end(function(res){
++        request(app)
++        .get('/user/1/edit')
++        .end(function(res){
++          res.body.should.include('<h1>Tobo</h1>');
++          done();
++        })
++      })
++    })
++  })
++})
+\ No newline at end of file
+diff --git a/test/app.render.js b/test/app.render.js
+index 3467946f96..6b244145a4 100644
+--- a/test/app.render.js
++++ b/test/app.render.js
+@@ -1,5 +1,6 @@
+ 
+-var express = require('../');
++var express = require('../')
++  , request = require('./support/http');
+ 
+ describe('app', function(){
+   describe('.render(name, fn)', function(){
+@@ -153,4 +154,26 @@ describe('app', function(){
+       })
+     })
+   })
++  
++  describe('.render(name, req, options, fn)', function(){
++    it('should render the template', function(done){
++      var app = express();
++      
++      app.set('views', __dirname + '/fixtures');
++      
++      var user = { name: 'tobi' };
++
++      app.use(function(req, res){
++        app.render('user.jade', req, { user: user }, function(err, str){
++          if (err) return done(err);
++          str.should.equal('<p>tobi</p>');
++          res.end();
++        });
++      });
++
++      request(app)
++      .get('/')
++      .expect(200, done);
++    })
++  })
+ })
+diff --git a/test/app.router.js b/test/app.router.js
+index d445250b55..fe2321ffac 100644
+--- a/test/app.router.js
++++ b/test/app.router.js
+@@ -45,7 +45,7 @@ describe('app.router', function(){
+       calls.push('before');
+       next();
+     });
+-    
++
+     app.use(app.router);
+ 
+     app.use(function(req, res, next){
+@@ -65,7 +65,7 @@ describe('app.router', function(){
+       done();
+     })
+   })
+-  
++
+   it('should be auto .use()d on the first app.VERB() call', function(done){
+     var app = express();
+ 
+@@ -75,7 +75,7 @@ describe('app.router', function(){
+       calls.push('before');
+       next();
+     });
+-    
++
+     app.get('/', function(req, res, next){
+       calls.push('GET /')
+       next();
+@@ -106,7 +106,7 @@ describe('app.router', function(){
+       .get('/user/12?foo=bar')
+       .expect('user', done);
+     })
+-    
++
+     it('should populate req.params with the captures', function(done){
+       var app = express();
+ 
+@@ -121,15 +121,15 @@ describe('app.router', function(){
+       .expect('editing user 10', done);
+     })
+   })
+-  
++
+   describe('when given an array', function(){
+     it('should match all paths in the array', function(done){
+       var app = express();
+-      
++
+       app.get(['/one', '/two'], function(req, res){
+         res.end('works');
+       });
+-      
++
+       request(app)
+       .get('/one')
+       .expect('works', function() {
+@@ -152,7 +152,7 @@ describe('app.router', function(){
+       .get('/USER')
+       .expect('tj', done);
+     })
+-    
++
+     describe('when "case sensitive routing" is enabled', function(){
+       it('should match identical casing', function(done){
+         var app = express();
+@@ -167,7 +167,7 @@ describe('app.router', function(){
+         .get('/uSer')
+         .expect('tj', done);
+       })
+-      
++
+       it('should not match otherwise', function(done){
+         var app = express();
+ 
+@@ -196,7 +196,7 @@ describe('app.router', function(){
+       .get('/user/')
+       .expect('tj', done);
+     })
+-    
++
+     describe('when "strict routing" is enabled', function(){
+       it('should match trailing slashes', function(done){
+         var app = express();
+@@ -211,7 +211,7 @@ describe('app.router', function(){
+         .get('/user/')
+         .expect('tj', done);
+       })
+-      
++
+       it('should match no slashes', function(done){
+         var app = express();
+ 
+@@ -225,7 +225,7 @@ describe('app.router', function(){
+         .get('/user')
+         .expect('tj', done);
+       })
+-      
++
+       it('should fail when omitting the trailing slash', function(done){
+         var app = express();
+ 
+@@ -239,7 +239,7 @@ describe('app.router', function(){
+         .get('/user')
+         .expect(404, done);
+       })
+-      
++
+       it('should fail when adding the trailing slash', function(done){
+         var app = express();
+ 
+@@ -272,7 +272,7 @@ describe('app.router', function(){
+       .expect(404, done);
+     });
+   })
+-  
++
+   it('should allow literal "."', function(done){
+     var app = express();
+ 
+@@ -300,7 +300,7 @@ describe('app.router', function(){
+       .get('/user/tj.json')
+       .expect('tj', done);
+     })
+-    
++
+     it('should work with several', function(done){
+       var app = express();
+ 
+@@ -311,10 +311,26 @@ describe('app.router', function(){
+       });
+ 
+       request(app)
+-      .get('/api/users/0.json')
+-      .expect('users/0 as json', done);
++      .get('/api/users/foo.bar.json')
++      .expect('users/foo.bar as json', done);
++    })
++
++    it('should work cross-segment', function(done){
++      var app = express();
++
++      app.get('/api*', function(req, res){
++        res.send(req.params[0]);
++      });
++
++      request(app)
++      .get('/api')
++      .expect('', function(){
++        request(app)
++        .get('/api/hey')
++        .expect('/hey', done);
++      });
+     })
+-    
++
+     it('should allow naming', function(done){
+       var app = express();
+ 
+@@ -327,7 +343,7 @@ describe('app.router', function(){
+       .get('/api/users/0.json')
+       .expect('users/0.json', done);
+     })
+-    
++
+     it('should span multiple segments', function(done){
+       var app = express();
+ 
+@@ -339,7 +355,7 @@ describe('app.router', function(){
+       .get('/file/javascripts/jquery.js')
+       .expect('javascripts/jquery.js', done);
+     })
+-    
++
+     it('should be optional', function(done){
+       var app = express();
+ 
+@@ -351,7 +367,7 @@ describe('app.router', function(){
+       .get('/file/')
+       .expect('', done);
+     })
+-    
++
+     it('should require a preceeding /', function(done){
+       var app = express();
+ 
+@@ -377,7 +393,7 @@ describe('app.router', function(){
+       .get('/user/tj')
+       .expect('tj', done);
+     })
+-    
++
+     it('should match a single segment only', function(done){
+       var app = express();
+ 
+@@ -389,7 +405,7 @@ describe('app.router', function(){
+       .get('/user/tj/edit')
+       .expect(404, done);
+     })
+-    
++
+     it('should allow several capture groups', function(done){
+       var app = express();
+ 
+@@ -416,7 +432,7 @@ describe('app.router', function(){
+       .get('/user/tj')
+       .expect('viewing tj', done);
+     })
+-    
++
+     it('should populate the capture group', function(done){
+       var app = express();
+ 
+@@ -430,7 +446,7 @@ describe('app.router', function(){
+       .expect('editing tj', done);
+     })
+   })
+-  
++
+   describe('.:name', function(){
+     it('should denote a format', function(done){
+       var app = express();
+@@ -448,7 +464,7 @@ describe('app.router', function(){
+       });
+     })
+   })
+-  
++
+   describe('.:name?', function(){
+     it('should denote an optional format', function(done){
+       var app = express();
+@@ -466,7 +482,7 @@ describe('app.router', function(){
+       });
+     })
+   })
+-  
++
+   describe('when next() is called', function(){
+     it('should continue lookup', function(done){
+       var app = express()
+@@ -485,7 +501,7 @@ describe('app.router', function(){
+         calls.push('/foo');
+         next();
+       });
+-      
++
+       app.get('/foo', function(req, res, next){
+         calls.push('/foo 2');
+         res.end('done');
+@@ -499,7 +515,7 @@ describe('app.router', function(){
+       })
+     })
+   })
+-  
++
+   describe('when next(err) is called', function(){
+     it('should break out of app.router', function(done){
+       var app = express()
+@@ -518,7 +534,7 @@ describe('app.router', function(){
+         calls.push('/foo');
+         next(new Error('fail'));
+       });
+-      
++
+       app.get('/foo', function(req, res, next){
+         assert(0);
+       });
+@@ -564,4 +580,22 @@ describe('app.router', function(){
+       });
+     })
+   })
++
++  it('should allow rewriting of the url', function(done){
++    var app = express();
++
++    app.get('/account/edit', function(req, res, next){
++      req.user = { id: 12 }; // faux authenticated user
++      req.url = '/user/' + req.user.id + '/edit';
++      next();
++    });
++
++    app.get('/user/:id/edit', function(req, res){
++      res.send('editing user ' + req.params.id);
++    });
++
++    request(app)
++    .get('/account/edit')
++    .expect('editing user 12', done);
++  })
+ })
+diff --git a/test/app.routes.js b/test/app.routes.js
+new file mode 100644
+index 0000000000..a559ce8db3
+--- /dev/null
++++ b/test/app.routes.js
+@@ -0,0 +1,48 @@
++
++var express = require('../')
++  , assert = require('assert')
++  , request = require('./support/http');
++
++describe('app.routes', function(){
++  it('should be initialized', function(){
++    var app = express();
++    app.routes.should.eql({});
++  })
++
++  it('should be populated with routes', function(){
++    var app = express();
++
++    app.get('/', function(req, res){});
++    app.get('/user/:id', function(req, res){});
++
++    var get = app.routes.get;
++    get.should.have.length(2);
++
++    get[0].path.should.equal('/');
++    get[0].method.should.equal('get');
++    get[0].regexp.toString().should.equal('/^\\/\\/?$/i');
++
++    get[1].path.should.equal('/user/:id');
++    get[1].method.should.equal('get');
++  })
++
++  it('should be mutable', function(done){
++    var app = express();
++
++    app.get('/', function(req, res){});
++    app.get('/user/:id', function(req, res){});
++
++    var get = app.routes.get;
++    get.should.have.length(2);
++
++    get[0].path.should.equal('/');
++    get[0].method.should.equal('get');
++    get[0].regexp.toString().should.equal('/^\\/\\/?$/i');
++
++    get.splice(1);
++
++    request(app)
++    .get('/user/12')
++    .expect(404, done);
++  })
++})
+\ No newline at end of file
+diff --git a/test/req.get.js b/test/req.get.js
+index 4d52471704..8846f0a0f2 100644
+--- a/test/req.get.js
++++ b/test/req.get.js
+@@ -1,6 +1,7 @@
+ 
+ var express = require('../')
+-  , request = require('./support/http');
++  , request = require('./support/http')
++  , assert = require('assert');
+ 
+ describe('req', function(){
+   describe('.get(field)', function(){
+@@ -8,6 +9,7 @@ describe('req', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
++        assert(req.get('Something-Else') === undefined);
+         res.end(req.get('Content-Type'));
+       });
+ 
+diff --git a/test/req.ip.js b/test/req.ip.js
+new file mode 100644
+index 0000000000..473844a9ba
+--- /dev/null
++++ b/test/req.ip.js
+@@ -0,0 +1,57 @@
++
++var express = require('../')
++  , request = require('./support/http');
++
++describe('req', function(){
++  describe('.ip', function(){
++    describe('when X-Forwarded-For is present', function(){
++      describe('when "trust proxy" is enabled', function(){
++        it('should return the client addr', function(done){
++          var app = express();
++
++          app.enable('trust proxy');
++
++          app.use(function(req, res, next){
++            res.send(req.ip);
++          });
++
++          request(app)
++          .get('/')
++          .set('X-Forwarded-For', 'client, p1, p2')
++          .expect('client', done);
++        })
++      })
++
++      describe('when "trust proxy" is disabled', function(){
++        it('should return the remote address', function(done){
++          var app = express();
++
++          app.use(function(req, res, next){
++            res.send(req.ip);
++          });
++
++          request(app)
++          .get('/')
++          .set('X-Forwarded-For', 'client, p1, p2')
++          .expect('127.0.0.1', done);
++        })
++      })
++    })
++
++    describe('when X-Forwarded-For is not present', function(){
++      it('should return the remote address', function(done){
++        var app = express();
++
++        app.enable('trust proxy');
++
++        app.use(function(req, res, next){
++          res.send(req.ip);
++        });
++
++        request(app)
++        .get('/')
++        .expect('127.0.0.1', done);
++      })
++    })
++  })
++})
+diff --git a/test/req.ips.js b/test/req.ips.js
+index 1548910f16..b34ca90934 100644
+--- a/test/req.ips.js
++++ b/test/req.ips.js
+@@ -5,17 +5,36 @@ var express = require('../')
+ describe('req', function(){
+   describe('.ips', function(){
+     describe('when X-Forwarded-For is present', function(){
+-      it('should return an array of the specified addresses', function(done){
+-        var app = express();
++      describe('when "trust proxy" is enabled', function(){
++        it('should return an array of the specified addresses', function(done){
++          var app = express();
+ 
+-        app.use(function(req, res, next){
+-          res.send(req.ips);
+-        });
++          app.enable('trust proxy');
+ 
+-        request(app)
+-        .get('/')
+-        .set('X-Forwarded-For', 'client, p1, p2')
+-        .expect('["p2","p1","client"]', done);
++          app.use(function(req, res, next){
++            res.send(req.ips);
++          });
++
++          request(app)
++          .get('/')
++          .set('X-Forwarded-For', 'client, p1, p2')
++          .expect('["client","p1","p2"]', done);
++        })
++      })
++
++      describe('when "trust proxy" is disabled', function(){
++        it('should return an empty array', function(done){
++          var app = express();
++
++          app.use(function(req, res, next){
++            res.send(req.ips);
++          });
++
++          request(app)
++          .get('/')
++          .set('X-Forwarded-For', 'client, p1, p2')
++          .expect('[]', done);
++        })
+       })
+     })
+ 
+diff --git a/test/res.cookie.js b/test/res.cookie.js
+index ce0df4798c..93106edcda 100644
+--- a/test/res.cookie.js
++++ b/test/res.cookie.js
+@@ -92,5 +92,46 @@ describe('res', function(){
+         })
+       })
+     })
++
++    describe('signed', function(){
++      it('should generate a signed JSON cookie', function(done){
++        var app = express();
++
++        app.use(express.cookieParser('foo bar baz'));
++
++        app.use(function(req, res){
++          res.cookie('user', { name: 'tobi' }, { signed: true }).end();
++        });
++
++        request(app)
++        .get('/')
++        .end(function(res){
++          var val = res.headers['set-cookie'][0];
++          val = decodeURIComponent(val.split('.')[0]);
++          val.should.equal('user=j:{"name":"tobi"}');
++          done();
++        })
++      })
++    })
++
++    describe('.signedCookie(name, string)', function(){
++      it('should set a signed cookie', function(done){
++        var app = express();
++
++        app.use(express.cookieParser('foo bar baz'));
++
++        app.use(function(req, res){
++          res.cookie('name', 'tobi', { signed: true }).end();
++        });
++
++        request(app)
++        .get('/')
++        .end(function(res){
++          var val = ['name=tobi.xJjV2iZ6EI7C8E5kzwbfA9PVLl1ZR07UTnuTgQQ4EnQ; path=/'];
++          res.headers['set-cookie'].should.eql(val);
++          done();
++        })
++      })
++    })
+   })
+ })
+diff --git a/test/res.download.js b/test/res.download.js
+new file mode 100644
+index 0000000000..b1c7746125
+--- /dev/null
++++ b/test/res.download.js
+@@ -0,0 +1,79 @@
++
++var express = require('../')
++  , request = require('./support/http')
++  , assert = require('assert');
++
++describe('res', function(){
++  describe('.download(path)', function(){
++    it('should transfer as an attachment', function(done){
++      var app = express();
++
++      app.use(function(req, res){
++        res.download('test/fixtures/user.html');
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.should.have.header('Content-Type', 'text/html; charset=UTF-8');
++        res.should.have.header('Content-Disposition', 'attachment; filename="user.html"');
++        res.body.should.equal('<p>{{user.name}}</p>');
++        done();
++      });
++    })
++  })
++
++  describe('.download(path, filename)', function(){
++    it('should provide an alternate filename', function(done){
++      var app = express();
++
++      app.use(function(req, res){
++        res.download('test/fixtures/user.html', 'document');
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.should.have.header('Content-Type', 'text/html; charset=UTF-8');
++        res.should.have.header('Content-Disposition', 'attachment; filename="document"');
++        done();
++      });
++    })
++  })
++
++  describe('.download(path, fn)', function(){
++    it('should invoke the callback', function(done){
++      var app = express()
++        , calls = 0;
++
++      app.use(function(req, res){
++        res.download('test/fixtures/user.html', done);
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.should.have.header('Content-Type', 'text/html; charset=UTF-8');
++        res.should.have.header('Content-Disposition', 'attachment; filename="user.html"');
++      });
++    })
++  })
++
++  describe('.download(path, filename, fn)', function(){
++    it('should invoke the callback', function(done){
++      var app = express()
++        , calls = 0;
++
++      app.use(function(req, res){
++        res.download('test/fixtures/user.html', 'document', done);
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.should.have.header('Content-Type', 'text/html; charset=UTF-8');
++        res.should.have.header('Content-Disposition', 'attachment; filename="document"');
++      });
++    })
++  })
++})
+diff --git a/test/res.get.js b/test/res.get.js
+index 12259f85fd..f6da5b5003 100644
+--- a/test/res.get.js
++++ b/test/res.get.js
+@@ -1,23 +1,14 @@
+ 
+ var express = require('../')
+-  , request = require('./support/http');
++  , res = express.response;
+ 
+ describe('res', function(){
+   describe('.get(field)', function(){
+-    it('should get the response header field', function(done){
+-      var app = express();
+-
+-      app.use(function(req, res){
+-        res.setHeader('Content-Type', 'text/x-foo');
+-        res.end(res.get('Content-Type'));
+-      });
+-
+-      request(app)
+-      .get('/')
+-      .end(function(res){
+-        res.body.should.equal('text/x-foo');
+-        done();
+-      })
++    it('should get the response header field', function(){
++      res.setHeader('Content-Type', 'text/x-foo');
++      res.get('Content-Type').should.equal('text/x-foo');
++      res.get('Content-type').should.equal('text/x-foo');
++      res.get('content-type').should.equal('text/x-foo');
+     })
+   })
+ })
+diff --git a/test/res.json.js b/test/res.json.js
+index aa3dd49c43..04c599894b 100644
+--- a/test/res.json.js
++++ b/test/res.json.js
+@@ -9,7 +9,6 @@ describe('res', function(){
+       it('should respond with jsonp', function(done){
+         var app = express();
+ 
+-        // app.enable('jsonp callback');
+         app.use(function(req, res){
+           res.json({ count: 1 });
+         });
+@@ -22,6 +21,22 @@ describe('res', function(){
+           done();
+         })
+       })
++
++      it('should allow []', function(done){
++        var app = express();
++
++        app.use(function(req, res){
++          res.json({ count: 1 });
++        });
++
++        request(app)
++        .get('/?callback=callbacks[123]')
++        .end(function(res){
++          res.headers.should.have.property('content-type', 'text/javascript; charset=utf-8');
++          res.body.should.equal('callbacks[123]({"count":1});');
++          done();
++        })
++      })
+     })
+ 
+     describe('when given primitives', function(){
+diff --git a/test/res.locals.use.js b/test/res.locals.use.js
+new file mode 100644
+index 0000000000..60cf5f0e67
+--- /dev/null
++++ b/test/res.locals.use.js
+@@ -0,0 +1,104 @@
++
++var express = require('../')
++  , request = require('./support/http');
++
++describe('res', function(){
++  describe('.locals.use(fn)', function(){
++    it('should run in parallel on res.render()', function(done){
++      var app = express();
++      var calls = [];
++      app.set('views', __dirname + '/fixtures');
++
++      app.locals.first = 'tobi';
++
++      app.use(function(req, res, next){
++        res.locals.use(function(req, res, done){
++          process.nextTick(function(){
++            calls.push('one');
++            res.locals.last = 'holowaychuk';
++            done();
++          });
++        });
++        next();
++      });
++
++      app.use(function(req, res, next){
++        res.locals.use(function(req, res, done){
++          process.nextTick(function(){
++            calls.push('two');
++            res.locals.species = 'ferret';
++            done();
++          });
++        });
++        next();
++      });
++
++      app.use(function(req, res){
++        calls.push('render');
++        res.render('pet.jade');
++      });
++      
++      request(app)
++      .get('/')
++      .end(function(res){
++        calls.should.eql(['render', 'one', 'two']);
++        res.body.should.equal('<p>tobi holowaychuk is a ferret</p>');
++        done();
++      })
++    })
++    
++    describe('with arity < 3', function(){
++      it('should done() for you', function(done){
++        var app = express();
++
++        app.set('views', __dirname + '/fixtures');
++        app.locals.first = 'tobi';
++
++        app.use(function(req, res, next){
++          res.locals.use(function(req, res){
++            res.locals.last = 'holowaychuk';
++            res.locals.species = 'ferret';
++          });
++          next();
++        });
++
++        app.use(function(req, res){
++          res.render('pet.jade');
++        });
++
++        request(app)
++        .get('/')
++        .end(function(res){
++          res.body.should.equal('<p>tobi holowaychuk is a ferret</p>');
++          done();
++        })
++      })
++    })
++
++    it('should not override res.render() locals', function(done){
++      var app = express();
++
++      app.set('views', __dirname + '/fixtures');
++      app.locals.first = 'tobi';
++
++      app.use(function(req, res, next){
++        res.locals.use(function(req, res){
++          res.locals.last = 'holowaychuk';
++          res.locals.species = 'ferret';
++        });
++        next();
++      });
++
++      app.use(function(req, res){
++        res.render('pet.jade', { last: 'ibot' });
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.body.should.equal('<p>tobi ibot is a ferret</p>');
++        done();
++      })
++    })
++  })
++})
+diff --git a/test/res.send.js b/test/res.send.js
+index 259533a6c2..18a897201b 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -90,6 +90,22 @@ describe('res', function(){
+         done();
+       })
+     })
++
++    it('should set ETag', function(done){
++      var app = express();
++
++      app.use(function(req, res){
++        var str = Array(1024 * 2).join('-');
++        res.send(str);
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.headers.should.have.property('etag', '-1498647312');
++        done();
++      })
++    })
+     
+     it('should not override Content-Type', function(done){
+       var app = express();
+@@ -162,7 +178,23 @@ describe('res', function(){
+         done();
+       })
+     })
+-    
++
++    it('should set ETag', function(done){
++      var app = express();
++
++      app.use(function(req, res){
++        var str = Array(1024 * 2).join('-');
++        res.send(new Buffer(str));
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.headers.should.have.property('etag', '-1498647312');
++        done();
++      })
++    })
++
+     it('should not override Content-Type', function(done){
+       var app = express();
+ 
+@@ -253,4 +285,18 @@ describe('res', function(){
+       })
+     })
+   })
++
++  it('should respond with 304 Not Modified when fresh', function(done){
++    var app = express();
++
++    app.use(function(req, res){
++      var str = Array(1024 * 2).join('-');
++      res.send(str);
++    });
++
++    request(app)
++    .get('/')
++    .set('If-None-Match', '-1498647312')
++    .expect(304, done);
++  })
+ })
+diff --git a/test/res.sendfile.js b/test/res.sendfile.js
+index 54ed6f4635..0601cdeef8 100644
+--- a/test/res.sendfile.js
++++ b/test/res.sendfile.js
+@@ -24,7 +24,22 @@ describe('res', function(){
+         done();
+       });
+     })
+-    
++
++    it('should utilize the same options as express.static()', function(done){
++      var app = express();
++
++      app.use(function(req, res){
++        res.sendfile('test/fixtures/user.html', { maxAge: 60000 });
++      });
++
++      request(app)
++      .get('/')
++      .end(function(res){
++        res.should.have.header('Cache-Control', 'public, max-age=60');
++        done();
++      });
++    })
++
+     it('should invoke the callback on 404', function(done){
+       var app = express()
+         , calls = 0;
+diff --git a/test/res.set.js b/test/res.set.js
+index be701b0b7f..f40dbe0881 100644
+--- a/test/res.set.js
++++ b/test/res.set.js
+@@ -1,6 +1,7 @@
+ 
+ var express = require('../')
+-  , request = require('./support/http');
++  , request = require('./support/http')
++  , res = express.response;
+ 
+ describe('res', function(){
+   describe('.set(field, value)', function(){
+@@ -18,6 +19,12 @@ describe('res', function(){
+         done();
+       })
+     })
++
++    it('should coerce to a string', function(){
++      res.headers = {};
++      res.set('ETag', 123);
++      res.get('ETag').should.equal('123');
++    })
+   })
+   
+   describe('.set(object)', function(){
+@@ -39,5 +46,11 @@ describe('res', function(){
+         done();
+       })
+     })
++
++    it('should coerce to a string', function(){
++      res.headers = {};
++      res.set({ ETag: 123 });
++      res.get('ETag').should.equal('123');
++    })
+   })
+ })
+diff --git a/test/res.signedCookie.js b/test/res.signedCookie.js
+deleted file mode 100644
+index 4a33adaee8..0000000000
+--- a/test/res.signedCookie.js
++++ /dev/null
+@@ -1,46 +0,0 @@
+-
+-var express = require('../')
+-  , request = require('./support/http');
+-
+-describe('res', function(){
+-  describe('.signedCookie(name, object)', function(){
+-    it('should generate a signed JSON cookie', function(done){
+-      var app = express();
+-
+-      app.use(express.cookieParser('foo bar baz'));
+-
+-      app.use(function(req, res){
+-        res.signedCookie('user', { name: 'tobi' }).end();
+-      });
+-  
+-      request(app)
+-      .get('/')
+-      .end(function(res){
+-        var val = res.headers['set-cookie'][0];
+-        val = decodeURIComponent(val.split('.')[0]);
+-        val.should.equal('user=j:{"name":"tobi"}');
+-        done();
+-      })
+-    })
+-  })
+-  
+-  describe('.signedCookie(name, string)', function(){
+-    it('should set a signed cookie', function(done){
+-      var app = express();
+-
+-      app.use(express.cookieParser('foo bar baz'));
+-
+-      app.use(function(req, res){
+-        res.signedCookie('name', 'tobi').end();
+-      });
+-  
+-      request(app)
+-      .get('/')
+-      .end(function(res){
+-        var val = ['name=tobi.xJjV2iZ6EI7C8E5kzwbfA9PVLl1ZR07UTnuTgQQ4EnQ; path=/'];
+-        res.headers['set-cookie'].should.eql(val);
+-        done();
+-      })
+-    })
+-  })
+-})

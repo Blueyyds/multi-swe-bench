@@ -1,0 +1,1769 @@
+diff --git a/.gitignore b/.gitignore
+index 7a1aeb2497..34cc05c97b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -11,3 +11,4 @@ lib-cov
+ benchmarks/graphs
+ testing.js
+ node_modules/
++testing
+diff --git a/History.md b/History.md
+index 7005550935..404f648e1d 100644
+--- a/History.md
++++ b/History.md
+@@ -1,4 +1,80 @@
+ 
++2.5.6 / 2012-01-13 
++==================
++
++  * Updated hamljs dev dep. Closes #953
++
++2.5.5 / 2012-01-08 
++==================
++
++  * Fixed: set `filename` on cached templates [matthewleon]
++
++2.5.4 / 2012-01-02 
++==================
++
++  * Fixed `express(1)` eol on 0.4.x. Closes #947
++
++2.5.3 / 2011-12-30 
++==================
++
++  * Fixed `req.is()` when a charset is present
++
++2.5.2 / 2011-12-10 
++==================
++
++  * Fixed: express(1) LF -> CRLF for windows
++
++2.5.1 / 2011-11-17 
++==================
++
++  * Changed: updated connect to 1.8.x
++  * Removed sass.js support from express(1)
++
++2.5.0 / 2011-10-24 
++==================
++
++  * Added ./routes dir for generated app by default
++  * Added npm install reminder to express(1) app gen
++  * Added 0.5.x support
++  * Removed `make test-cov` since it wont work with node 0.5.x
++  * Fixed express(1) public dir for windows. Closes #866
++
++2.4.7 / 2011-10-05 
++==================
++
++  * Added mkdirp to express(1). Closes #795
++  * Added simple _json-config_ example
++  * Added  shorthand for the parsed request's pathname via `req.path`
++  * Changed connect dep to 1.7.x to fix npm issue...
++  * Fixed `res.redirect()` __HEAD__ support. [reported by xerox]
++  * Fixed `req.flash()`, only escape args
++  * Fixed absolute path checking on windows. Closes #829 [reported by andrewpmckenzie]
++
++2.4.6 / 2011-08-22 
++==================
++
++  * Fixed multiple param callback regression. Closes #824 [reported by TroyGoode]
++
++2.4.5 / 2011-08-19 
++==================
++
++  * Added support for routes to handle errors. Closes #809
++  * Added `app.routes.all()`. Closes #803
++  * Added "basepath" setting to work in conjunction with reverse proxies etc.   
++  * Refactored `Route` to use a single array of callbacks
++  * Added support for multiple callbacks for `app.param()`. Closes #801
++Closes #805
++  * Changed: removed .call(self) for route callbacks
++  * Dependency: `qs >= 0.3.1`
++  * Fixed `res.redirect()` on windows due to `join()` usage. Closes #808
++
++2.4.4 / 2011-08-05 
++==================
++
++  * Fixed `res.header()` intention of a set, even when `undefined`
++  * Fixed `*`, value no longer required
++  * Fixed `res.send(204)` support. Closes #771
++
+ 2.4.3 / 2011-07-14 
+ ==================
+ 
+diff --git a/Makefile b/Makefile
+index e4f9d75090..dfbfd67c46 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,16 +1,10 @@
+ 
+ DOCS = $(shell find docs/*.md)
+-HTMLDOCS =$(DOCS:.md=.html)
++HTMLDOCS = $(DOCS:.md=.html)
+ TESTS = $(shell find test/*.test.js)
+ 
+ test:
+-	@NODE_ENV=test ./node_modules/.bin/expresso \
+-		-I lib \
+-		$(TESTFLAGS) \
+-		$(TESTS)
+-
+-test-cov:
+-	@TESTFLAGS=--cov $(MAKE) test
++	@NODE_ENV=test ./node_modules/.bin/expresso $(TESTS)
+ 
+ docs: $(HTMLDOCS)
+ 	@ echo "... generating TOC"
+@@ -32,4 +26,4 @@ site:
+ docclean:
+ 	rm -f docs/*.{1,html}
+ 
+-.PHONY: site test test-cov docs docclean
+\ No newline at end of file
++.PHONY: site test docs docclean
+\ No newline at end of file
+diff --git a/Readme.md b/Readme.md
+index 23b5690b95..d2c64c7b89 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -95,7 +95,9 @@ The following are the major contributors of Express (in no specific order).
+ 
+ Express 1.x is compatible with node 0.2.x and connect < 1.0.
+ 
+-Express 2.x is compatible with node 0.4.x and connect 1.x
++Express 2.x is compatible with node 0.4.x or 0.6.x, and connect 1.x
++
++Express 3.x (master) will be compatible with node 0.6.x and connect 2.x
+ 
+ ## Viewing Examples
+ 
+diff --git a/bin/express b/bin/express
+index 6e8dbb7a2b..543f6d011f 100755
+--- a/bin/express
++++ b/bin/express
+@@ -5,13 +5,15 @@
+  */
+ 
+ var fs = require('fs')
+-  , exec = require('child_process').exec;
++  , os = require('os')
++  , exec = require('child_process').exec
++  , mkdirp = require('mkdirp');
+ 
+ /**
+  * Framework version.
+  */
+ 
+-var version = '2.4.3';
++var version = '2.5.5';
+ 
+ /**
+  * Add session support.
+@@ -25,6 +27,14 @@ var sessions = false;
+ 
+ var cssEngine;
+ 
++/**
++ * End-of-line code.
++ */
++
++var eol = os.platform
++  ? ('win32' == os.platform() ? '\r\n' : '\n')
++  : '\n';
++
+ /**
+  * Template engine to utilize.
+  */
+@@ -42,11 +52,26 @@ var usage = ''
+   + '  Options:\n'
+   + '    -s, --sessions           add session support\n'
+   + '    -t, --template <engine>  add template <engine> support (jade|ejs). default=jade\n'
+-  + '    -c, --css <engine>       add stylesheet <engine> support (less|sass|stylus). default=plain css\n'
++  + '    -c, --css <engine>       add stylesheet <engine> support (stylus). default=plain css\n'
+   + '    -v, --version            output framework version\n'
+   + '    -h, --help               output help information\n'
+   ;
+ 
++/**
++ * Routes index template.
++ */
++
++var index = [
++    ''
++  , '/*'
++  , ' * GET home page.'
++  , ' */'
++  , ''
++  , 'exports.index = function(req, res){'
++  , '  res.render(\'index\', { title: \'Express\' })'
++  , '};'
++].join(eol);
++
+ /**
+  * Jade layout template.
+  */
+@@ -58,7 +83,7 @@ var jadeLayout = [
+   , '    title= title'
+   , '    link(rel=\'stylesheet\', href=\'/stylesheets/style.css\')'
+   , '  body!= body'
+-].join('\n');
++].join(eol);
+ 
+ /**
+  * Jade index template.
+@@ -67,7 +92,7 @@ var jadeLayout = [
+ var jadeIndex = [
+     'h1= title'
+   , 'p Welcome to #{title}'
+-].join('\n');
++].join(eol);
+ 
+ /**
+  * EJS layout template.
+@@ -84,7 +109,7 @@ var ejsLayout = [
+   , '    <%- body %>'
+   , '  </body>'
+   , '</html>'
+-].join('\n');
++].join(eol);
+ 
+ /**
+  * EJS index template.
+@@ -93,7 +118,7 @@ var ejsLayout = [
+ var ejsIndex = [
+     '<h1><%= title %></h1>'
+   , '<p>Welcome to <%= title %></p>'
+-  ].join('\n');
++  ].join(eol);
+ 
+ /**
+  * Default css template.
+@@ -108,34 +133,7 @@ var css = [
+   , 'a {'
+   , '  color: #00B7FF;'
+   , '}'
+-].join('\n');
+-
+-/**
+- * Default less template.
+- */
+-
+-var less = [
+-    'body {'
+-  , '  padding: 50px;'
+-  , '  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;'
+-  , '}'
+-  , ''
+-  , 'a {'
+-  , '  color: #00B7FF;'
+-  , '}'
+-].join('\n');
+-
+-/**
+- * Default sass template.
+- */
+-
+-var sass = [
+-    'body'
+-  , '  :padding 50px'
+-  , '  :font 14px "Lucida Grande", Helvetica, Arial, sans-serif'
+-  , 'a'
+-  , '  :color #00B7FF'
+-].join('\n');
++].join(eol);
+ 
+ /**
+  * Default stylus template.
+@@ -143,11 +141,11 @@ var sass = [
+ 
+ var stylus = [
+     'body'
+-  , '  padding 50px'
+-  , '  font 14px "Lucida Grande", Helvetica, Arial, sans-serif'
++  , '  padding: 50px'
++  , '  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif'
+   , 'a'
+-  , '  color #00B7FF'
+-].join('\n');
++  , '  color: #00B7FF'
++].join(eol);
+ 
+ /**
+  * App template.
+@@ -159,7 +157,8 @@ var app = [
+   , ' * Module dependencies.'
+   , ' */'
+   , ''
+-  , 'var express = require(\'express\');'
++  , 'var express = require(\'express\')'
++  , '  , routes = require(\'./routes\');'
+   , ''
+   , 'var app = module.exports = express.createServer();'
+   , ''
+@@ -175,25 +174,21 @@ var app = [
+   , '});'
+   , ''
+   , 'app.configure(\'development\', function(){'
+-  , '  app.use(express.errorHandler({ dumpExceptions: true, showStack: true })); '
++  , '  app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));'
+   , '});'
+   , ''
+   , 'app.configure(\'production\', function(){'
+-  , '  app.use(express.errorHandler()); '
++  , '  app.use(express.errorHandler());'
+   , '});'
+   , ''
+   , '// Routes'
+   , ''
+-  , 'app.get(\'/\', function(req, res){'
+-  , '  res.render(\'index\', {'
+-  , '    title: \'Express\''
+-  , '  });'
+-  , '});'
++  , 'app.get(\'/\', routes.index);'
+   , ''
+   , 'app.listen(3000);'
+   , 'console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);'
+   , ''
+-].join('\n');
++].join(eol);
+ 
+ // Parse arguments
+ 
+@@ -259,7 +254,16 @@ while (args.length) {
+  */
+ 
+ function createApplicationAt(path) {
++  console.log();
++  process.on('exit', function(){
++    console.log();
++    console.log('   dont forget to install dependencies:');
++    console.log('   $ cd %s && npm install', path);
++    console.log();
++  });
++
+   mkdir(path, function(){
++    mkdir(path + '/public');
+     mkdir(path + '/public/javascripts');
+     mkdir(path + '/public/images');
+     mkdir(path + '/public/stylesheets', function(){
+@@ -267,16 +271,15 @@ function createApplicationAt(path) {
+         case 'stylus':
+           write(path + '/public/stylesheets/style.styl', stylus);
+           break;
+-        case 'less':
+-          write(path + '/public/stylesheets/style.less', less);
+-          break;
+-        case 'sass':
+-          write(path + '/public/stylesheets/style.sass', sass);
+-          break;
+         default:
+           write(path + '/public/stylesheets/style.css', css);
+       }
+     });
++
++    mkdir(path + '/routes', function(){
++      write(path + '/routes/index.js', index);
++    });
++
+     mkdir(path + '/views', function(){
+       switch (templateEngine) {
+         case 'ejs':
+@@ -292,12 +295,8 @@ function createApplicationAt(path) {
+ 
+     // CSS Engine support
+     switch (cssEngine) {
+-      case 'sass':
+-      case 'less':
+-        app = app.replace('{css}', '\n  app.use(express.compiler({ src: __dirname + \'/public\', enable: [\'' + cssEngine + '\'] }));');
+-        break;
+       case 'stylus':
+-        app = app.replace('{css}', '\n  app.use(require(\'stylus\').middleware({ src: __dirname + \'/public\' }));');
++        app = app.replace('{css}', eol + '  app.use(require(\'stylus\').middleware({ src: __dirname + \'/public\' }));');
+         break;
+       default:
+         app = app.replace('{css}', '');
+@@ -305,22 +304,22 @@ function createApplicationAt(path) {
+ 
+     // Session support
+     app = app.replace('{sess}', sessions
+-      ? '\n  app.use(express.cookieParser());\n  app.use(express.session({ secret: \'your secret here\' }));'
++      ? eol + '  app.use(express.cookieParser());' + eol + '  app.use(express.session({ secret: \'your secret here\' }));'
+       : '');
+ 
+     // Template support
+     app = app.replace(':TEMPLATE', templateEngine);
+ 
+     // package.json
+-    var json = '{\n';
+-    json += '    "name": "application-name"\n';
+-    json += '  , "version": "0.0.1"\n';
+-    json += '  , "private": true\n';
+-    json += '  , "dependencies": {\n';
+-    json += '      "express": "' + version + '"\n';
+-    if (cssEngine) json += '    , "' + cssEngine + '": ">= 0.0.1"\n';
+-    if (templateEngine) json += '    , "' + templateEngine + '": ">= 0.0.1"\n';
+-    json += '  }\n';
++    var json = '{' + eol;
++    json += '    "name": "application-name"' + eol;
++    json += '  , "version": "0.0.1"' + eol;
++    json += '  , "private": true' + eol;
++    json += '  , "dependencies": {' + eol;
++    json += '      "express": "' + version + '"' + eol;
++    if (cssEngine) json += '    , "' + cssEngine + '": ">= 0.0.1"' + eol;
++    if (templateEngine) json += '    , "' + templateEngine + '": ">= 0.0.1"' + eol;
++    json += '  }' + eol;
+     json += '}';
+ 
+ 
+@@ -398,9 +397,9 @@ function prompt(msg, fn) {
+  */
+ 
+ function mkdir(path, fn) {
+-  exec('mkdir -p ' + path, function(err){
++  mkdirp(path, 0755, function(err){
+     if (err) throw err;
+-    console.log('   \x1b[36mcreate\x1b[0m : ' + path);
++    console.log('   \033[36mcreate\033[0m : ' + path);
+     fn && fn();
+   });
+ }
+diff --git a/docs/applications.html b/docs/applications.html
+index ad07b6a838..122137e35a 100644
+--- a/docs/applications.html
++++ b/docs/applications.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+diff --git a/docs/contrib.html b/docs/contrib.html
+index 7f3288ed95..a6c1426462 100644
+--- a/docs/contrib.html
++++ b/docs/contrib.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+diff --git a/docs/executable.html b/docs/executable.html
+index ce4753f8e7..39317d5d3c 100644
+--- a/docs/executable.html
++++ b/docs/executable.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+diff --git a/docs/guide.html b/docs/guide.html
+index 669336fe81..7a128d94c0 100644
+--- a/docs/guide.html
++++ b/docs/guide.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+@@ -180,8 +193,6 @@
+ 		</a>
+ 		<div id="wrapper">
+ 			<div id="container"><ul id="toc">
+-
+-</ul><ul id="toc">
+ <li><a href="#installation">Installation</a></li>
+ <li><a href="#creating-a server">Creating A Server</a></li>
+ <li><a href="#creating-an https server">Creating An HTTPS Server</a></li>
+@@ -217,6 +228,7 @@
+ <li><a href="#res.sendfile()">sendfile()</a></li>
+ <li><a href="#res.download()">download()</a></li>
+ <li><a href="#res.send()">send()</a></li>
++<li><a href="#res.json()">json()</a></li>
+ <li><a href="#res.redirect()">redirect()</a></li>
+ <li><a href="#res.cookie()">cookie()</a></li>
+ <li><a href="#res.clearcookie()">clearCookie()</a></li>
+@@ -335,6 +347,13 @@ <h3 id="configuration">Configuration</h3>
+ });
+ </code></pre>
+ 
++<p>For similar environments you may also pass several env strings:</p>
++
++<pre><code>app.configure('stage', 'prod', function(){
++  // config
++});
++</code></pre>
++
+ <p>For internal and arbitrary settings Express provides the <em>set(key[, val])</em>, <em>enable(key)</em>, <em>disable(key)</em> methods:</p>
+ 
+ <pre><code> app.configure(function(){
+@@ -365,12 +384,14 @@ <h3 id="settings">Settings</h3>
+ <p>Express supports the following settings out of the box:</p>
+ 
+ <ul>
+-<li><em>home</em> Application base path used for <em>res.redirect()</em> and transparently handling mounted apps.</li>
++<li><em>basepath</em> Application base path used for <em>res.redirect()</em> and transparently handling mounted apps.</li>
+ <li><em>views</em> Root views directory defaulting to <strong>CWD/views</strong></li>
+ <li><em>view engine</em> Default view engine name for views rendered without extensions</li>
+ <li><em>view options</em> An object specifying global view options</li>
+ <li><em>view cache</em> Enable view caching (enabled in production)</li>
+ <li><em>case sensitive routes</em> Enable case-sensitive routing</li>
++<li><em>strict routing</em> When enabled trailing slashes are no longer ignored</li>
++<li><em>jsonp callback</em> Enable <em>res.send()</em> / <em>res.json()</em> transparent jsonp support</li>
+ </ul>
+ 
+ 
+@@ -1268,6 +1289,19 @@ <h3 id="res.send()">res.send(body|status[, headers|status[, status]])</h3>
+ 
+ <p>Note that this method <em>end()</em>s the response, so you will want to use node&rsquo;s <em>res.write()</em> for multiple writes or streaming.</p>
+ 
++<h3 id="res.json()">res.json(obj[, headers|status[, status]])</h3>
++
++<p> Send a JSON response with optional <em>headers</em> and <em>status</em>. This method
++ is ideal for JSON-only APIs, however <em>res.send(obj)</em> will send JSON as
++ well, though not ideal for cases when you want to send for example a string
++ as JSON, since the default for <em>res.send(string)</em> is text/html.</p>
++
++<pre><code>res.json(null);
++res.json({ user: 'tj' });
++res.json('oh noes!', 500);
++res.json('I dont have that', 404);
++</code></pre>
++
+ <h3 id="res.redirect()">res.redirect(url[, status])</h3>
+ 
+ <p>Redirect to the given <em>url</em> with a default response <em>status</em> of 302.</p>
+@@ -1281,11 +1315,12 @@ <h3 id="res.redirect()">res.redirect(url[, status])</h3>
+ 
+ <p>Express supports &ldquo;redirect mapping&rdquo;, which by default provides <em>home</em>, and <em>back</em>.
+ The <em>back</em> map checks the <em>Referrer</em> and <em>Referer</em> headers, while <em>home</em> utilizes
+-the &ldquo;home&rdquo; setting and defaults to &ldquo;/&rdquo;.</p>
++the &ldquo;basepath&rdquo; setting and defaults to &ldquo;/&rdquo;.</p>
+ 
+ <h3 id="res.cookie()">res.cookie(name, val[, options])</h3>
+ 
+-<p>Sets the given cookie <em>name</em> to <em>val</em>, with options <em>httpOnly</em>, <em>secure</em>, <em>expires</em> etc.</p>
++<p>Sets the given cookie <em>name</em> to <em>val</em>, with options <em>httpOnly</em>, <em>secure</em>, <em>expires</em> etc. The <em>path</em> option defaults to the app&rsquo;s &ldquo;basepath&rdquo; setting, which
++is typically &ldquo;/&rdquo;.</p>
+ 
+ <pre><code>// "Remember me" for 15 minutes 
+ res.cookie('rememberme', 'yes', { expires: new Date(Date.now() + 900000), httpOnly: true });
+@@ -1307,7 +1342,8 @@ <h3 id="res.cookie()">res.cookie(name, val[, options])</h3>
+ 
+ <h3 id="res.clearcookie()">res.clearCookie(name[, options])</h3>
+ 
+-<p>Clear cookie <em>name</em> by setting &ldquo;expires&rdquo; far in the past.</p>
++<p>Clear cookie <em>name</em> by setting &ldquo;expires&rdquo; far in the past. Much like
++<em>res.cookie()</em> the <em>path</em> option also defaults to the &ldquo;basepath&rdquo; setting.</p>
+ 
+ <pre><code>res.clearCookie('rememberme');
+ </code></pre>
+@@ -1324,6 +1360,16 @@ <h3 id="res.render()">res.render(view[, options[, fn]])</h3>
+ res.render('index', { layout: false, user: user });
+ </code></pre>
+ 
++<p>This <em>options</em> object is also considered an &ldquo;options&rdquo; object. For example
++when you pass the <em>status</em> local, it&rsquo;s not only available to the view, it
++sets the response status to this number. This is also useful if a template
++engine accepts specific options, such as <em>debug</em>, or <em>compress</em>. Below
++is an example of how one might render an error page, passing the <em>status</em> for
++display, as well as it setting <em>res.statusCode</em>.</p>
++
++<pre><code> res.render('error', { status: 500, message: 'Internal Server Error' });
++</code></pre>
++
+ <h3 id="res.partial()">res.partial(view[, options])</h3>
+ 
+ <p>Render <em>view</em> partial with the given <em>options</em>. This method is always available
+@@ -1596,7 +1642,6 @@ <h3 id="app.helpers()">app.helpers(obj)</h3>
+ <p>Express also provides a few locals by default:</p>
+ 
+ <pre><code>- `settings`  the app's settings object
+-- `filename`  the view's filename
+ - `layout(path)`  specify the layout from within a view
+ </code></pre>
+ 
+diff --git a/docs/guide.md b/docs/guide.md
+index 8ab17e1663..7cf2906293 100644
+--- a/docs/guide.md
++++ b/docs/guide.md
+@@ -104,7 +104,7 @@ This is _very_ important, as many caching mechanisms are _only enabled_ when in
+ 
+ Express supports the following settings out of the box:
+ 
+-  * _home_ Application base path used for _res.redirect()_ and transparently handling mounted apps.
++  * _basepath_ Application base path used for _res.redirect()_ and transparently handling mounted apps.
+   * _views_ Root views directory defaulting to **CWD/views**
+   * _view engine_ Default view engine name for views rendered without extensions
+   * _view options_ An object specifying global view options
+@@ -947,11 +947,11 @@ Redirect to the given _url_ with a default response _status_ of 302.
+ 
+ Express supports "redirect mapping", which by default provides _home_, and _back_.
+ The _back_ map checks the _Referrer_ and _Referer_ headers, while _home_ utilizes
+-the "home" setting and defaults to "/".
++the "basepath" setting and defaults to "/".
+ 
+ ### res.cookie(name, val[, options])
+ 
+-Sets the given cookie _name_ to _val_, with options _httpOnly_, _secure_, _expires_ etc. The _path_ option defaults to the app's "home" setting, which
++Sets the given cookie _name_ to _val_, with options _httpOnly_, _secure_, _expires_ etc. The _path_ option defaults to the app's "basepath" setting, which
+ is typically "/".
+ 
+     // "Remember me" for 15 minutes 
+@@ -972,7 +972,7 @@ To parse incoming _Cookie_ headers, use the _cookieParser_ middleware, which pro
+ ### res.clearCookie(name[, options])
+ 
+ Clear cookie _name_ by setting "expires" far in the past. Much like
+-_res.cookie()_ the _path_ option also defaults to the "home" setting.
++_res.cookie()_ the _path_ option also defaults to the "basepath" setting.
+ 
+     res.clearCookie('rememberme');
+ 
+diff --git a/docs/index.html b/docs/index.html
+index 638af0472e..a02ed66751 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+@@ -233,7 +246,7 @@ <h2>Contributors</h2>
+ 
+ <h2>Third-Party Modules</h2>
+ 
+-<p>The following modules compliment or extend Express directly:</p>
++<p>The following modules complement or extend Express directly:</p>
+ 
+ <ul>
+ <li><a href="http://github.com/visionmedia/express-resource">express-resource</a> provides resourceful routing</li>
+@@ -254,10 +267,6 @@ <h2>More Information</h2>
+ <li><a href="http://groups.google.com/group/express-js">Google Group</a> for discussion</li>
+ <li>Visit the <a href="http://github.com/visionmedia/express/wiki">Wiki</a></li>
+ <li><a href="http://hideyukisaito.com/doc/expressjs/">日本語ドキュメンテーション</a> by <a href="https://github.com/hideyukisaito">hideyukisaito</a></li>
+-<li>Screencast &ndash; <a href="http://bit.ly/eRYu0O">Introduction</a></li>
+-<li>Screencast &ndash; <a href="http://bit.ly/dU13Fx">View Partials</a></li>
+-<li>Screencast &ndash; <a href="http://bit.ly/hX4IaH">Route Specific Middleware</a></li>
+-<li>Screencast &ndash; <a href="http://bit.ly/eNqmVs">Route Path Placeholder Preconditions</a></li>
+ </ul>
+ 
+ 			</div>
+diff --git a/docs/index.md b/docs/index.md
+index f0f98f9db7..4f31f2e3b3 100644
+--- a/docs/index.md
++++ b/docs/index.md
+@@ -34,7 +34,7 @@ The following are the major contributors of Express (in no specific order).
+ 
+ ## Third-Party Modules
+ 
+-The following modules compliment or extend Express directly:
++The following modules complement or extend Express directly:
+ 
+   * [express-resource](http://github.com/visionmedia/express-resource) provides resourceful routing
+   * [express-messages](http://github.com/visionmedia/express-messages) flash message notification rendering
+diff --git a/docs/layout/head.html b/docs/layout/head.html
+index 562582b882..5e7d2b567d 100644
+--- a/docs/layout/head.html
++++ b/docs/layout/head.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+diff --git a/docs/migrate.html b/docs/migrate.html
+index 8b00c4c169..70ceb200ad 100644
+--- a/docs/migrate.html
++++ b/docs/migrate.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+diff --git a/docs/screencasts.html b/docs/screencasts.html
+index 32c8ae25b6..1884a1afec 100644
+--- a/docs/screencasts.html
++++ b/docs/screencasts.html
+@@ -3,6 +3,19 @@
+ 		<title>Express - node web framework</title>
+ 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+ 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
++		<script type="text/javascript">
++
++      var _gaq = _gaq || [];
++      _gaq.push(['_setAccount', 'UA-25235225-1']);
++      _gaq.push(['_trackPageview']);
++
++      (function() {
++        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
++        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
++        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
++      })();
++
++    </script>
+ 		<style>
+ 			#tagline {
+ 			  margin-left: 75px;
+diff --git a/examples/jade/app.js b/examples/jade/app.js
+index 44b62f1cdd..5ce16c62d2 100644
+--- a/examples/jade/app.js
++++ b/examples/jade/app.js
+@@ -13,13 +13,17 @@ var pub = __dirname + '/public';
+ // and then serve with connect's staticProvider
+ 
+ var app = express.createServer();
++app.use(express.logger('dev'));
+ app.use(express.compiler({ src: pub, enable: ['sass'] }));
+ app.use(app.router);
+ app.use(express.static(pub));
+ app.use(express.errorHandler({ dump: true, stack: true }));
+ 
+-// Optional since express defaults to CWD/views
++// we're using jade's template inheritance, so we dont need
++// the express layout concept
++app.set('view options', { layout: false });
+ 
++// Optional since express defaults to CWD/views
+ app.set('views', __dirname + '/views');
+ 
+ // Set our default template engine to "jade"
+@@ -34,30 +38,15 @@ function User(name, email) {
+ 
+ // Dummy users
+ var users = [
+-    new User('tj', 'tj@vision-media.ca')
+-  , new User('ciaran', 'ciaranj@gmail.com')
+-  , new User('aaron', 'aaron.heckmann+github@gmail.com')
++    new User('Tobi', 'tobi@learnboost.com')
++  , new User('Loki', 'loki@learnboost.com')
++  , new User('Jane', 'jane@learnboost.com')
+ ];
+ 
+ app.get('/', function(req, res){
+   res.render('users', { users: users });
+ });
+ 
+-app.get('/users/callback', function(req, res){
+-  // a callback is also accepted
+-  res.partial('users/user', users, function(err, html){
+-    if (err) throw err;
+-    res.send(html);
+-  });
+-});
+-
+-app.get('/users', function(req, res){
+-  // we can use res.partial() as if
+-  // we were in a view, utilizing the same api
+-  // to render a fragment
+-  res.partial('users/user', users);
+-});
+-
+ app.get('/users/list', function(req, res){
+   // use "object" to utilize the name deduced from
+   // the view filename. The examples below are equivalent
+diff --git a/examples/jade/views/layout.jade b/examples/jade/views/layout.jade
+index 378718b805..47a0ef691a 100644
+--- a/examples/jade/views/layout.jade
++++ b/examples/jade/views/layout.jade
+@@ -1,6 +1,8 @@
+-!!!
++doctype 5
+ html
+   head
+-    title Jade Example
++    block title
++      title Jade Example
+     link(rel="stylesheet", href="/stylesheets/style.css")
+-  body!= body
+\ No newline at end of file
++  body
++    block content
+\ No newline at end of file
+diff --git a/examples/jade/views/users/index.jade b/examples/jade/views/users/index.jade
+index be9a94ed15..a3d862ece4 100644
+--- a/examples/jade/views/users/index.jade
++++ b/examples/jade/views/users/index.jade
+@@ -1,3 +1,12 @@
+-- if (users.length)
+-  h1 Users
+-  #users!= partial('user', users)
+\ No newline at end of file
++
++extends ../layout
++
++block title
++  title Users
++
++block content
++  if users.length
++    h1 Users
++    #users
++      for user in users
++        include ./user
+\ No newline at end of file
+diff --git a/examples/jade/views/users/list.jade b/examples/jade/views/users/list.jade
+index c22f7df62f..39460f1473 100644
+--- a/examples/jade/views/users/list.jade
++++ b/examples/jade/views/users/list.jade
+@@ -1,3 +1,4 @@
+ ul#users
+-  - each user in list
+-    li!= partial('user', user)
+\ No newline at end of file
++  for user in list
++    li
++      include ./user
+\ No newline at end of file
+diff --git a/examples/json-config/app.js b/examples/json-config/app.js
+new file mode 100644
+index 0000000000..337e768d5d
+--- /dev/null
++++ b/examples/json-config/app.js
+@@ -0,0 +1,26 @@
++
++/**
++ * Module dependencies.
++ */
++
++var express = require('../../');
++
++app = express.createServer();
++
++// load the config for this environment (NODE_ENV)
++
++var config = require('./config')[app.settings.env];
++
++// apply settings
++
++for (var key in config) app.set(key, config[key]);
++
++// apply middleware
++
++config.middleware.forEach(app.use.bind(app));
++
++app.get('/', function(req, res){
++  res.render('index', { layout: false });
++});
++
++app.listen(3000);
+\ No newline at end of file
+diff --git a/examples/json-config/config.js b/examples/json-config/config.js
+new file mode 100644
+index 0000000000..31542c5ef2
+--- /dev/null
++++ b/examples/json-config/config.js
+@@ -0,0 +1,19 @@
++
++// ok so it's not JSON, but close enough :)
++
++var express = require('../../');
++
++exports.development = {
++    'view engine': 'jade'
++  , 'views': __dirname + '/views'
++  , 'title': 'My Site'
++  , 'middleware': [
++      express.logger('dev')
++    , app.router
++    , express.static(__dirname + '/public')
++  ]
++};
++
++exports.production = {
++  
++};
+\ No newline at end of file
+diff --git a/examples/json-config/views/index.jade b/examples/json-config/views/index.jade
+new file mode 100644
+index 0000000000..9367757f21
+--- /dev/null
++++ b/examples/json-config/views/index.jade
+@@ -0,0 +1,4 @@
++html
++  body
++    h1 #{settings.title}
++    p Simple example
+\ No newline at end of file
+diff --git a/lib/express.js b/lib/express.js
+index c794e803f6..cb8ad59f5d 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -28,7 +28,7 @@ var exports = module.exports = connect.middleware;
+  * Framework version.
+  */
+ 
+-exports.version = '2.4.3';
++exports.version = '2.5.6';
+ 
+ /**
+  * Shortcut for `new Server(...)`.
+diff --git a/lib/http.js b/lib/http.js
+index 8ab9327a2a..4256dc45e8 100644
+--- a/lib/http.js
++++ b/lib/http.js
+@@ -66,7 +66,6 @@ app.init = function(middleware){
+   this.dynamicViewHelpers = {};
+   this.errorHandlers = [];
+ 
+-  this.set('home', '/');
+   this.set('env', process.env.NODE_ENV || 'development');
+ 
+   // expose objects to each other
+@@ -208,7 +207,7 @@ app.registerErrorHandlers = function(){
+  */
+ 
+ app.use = function(route, middleware){
+-  var app, home, handle;
++  var app, base, handle;
+ 
+   if ('string' != typeof route) {
+     middleware = route, route = '/';
+@@ -234,9 +233,10 @@ app.use = function(route, middleware){
+   // mounted an app, invoke the hook
+   // and adjust some settings
+   if (app) {
+-    home = app.set('home');
+-    if ('/' == home) home = '';
+-    app.set('home', app.route + home);
++    base = this.set('basepath') || this.route;
++    if ('/' == base) base = '';
++    base = base + (app.set('basepath') || app.route);
++    app.set('basepath', base);
+     app.parent = this;
+     if (app.__mounted) app.__mounted.call(app, this);
+   }
+@@ -312,7 +312,7 @@ app.dynamicHelpers = function(obj){
+ };
+ 
+ /**
+- * Map the given param placeholder `name`(s) to the given callback `fn`.
++ * Map the given param placeholder `name`(s) to the given callback(s).
+  *
+  * Param mapping is used to provide pre-conditions to routes
+  * which us normalized placeholders. This callback has the same
+@@ -332,6 +332,38 @@ app.dynamicHelpers = function(obj){
+  *        });
+  *      });
+  *
++ * Passing a single function allows you to map logic
++ * to the values passed to `app.param()`, for example
++ * this is useful to provide coercion support in a concise manner.
++ *
++ * The following example maps regular expressions to param values
++ * ensuring that they match, otherwise passing control to the next
++ * route:
++ *
++ *      app.param(function(name, regexp){
++ *        if (regexp instanceof RegExp) {
++ *          return function(req, res, next, val){
++ *            var captures;
++ *            if (captures = regexp.exec(String(val))) {
++ *              req.params[name] = captures;
++ *              next();
++ *            } else {
++ *              next('route');
++ *            }
++ *          }
++ *        }
++ *      });
++ *
++ * We can now use it as shown below, where "/commit/:commit" expects
++ * that the value for ":commit" is at 5 or more digits. The capture
++ * groups are then available as `req.params.commit` as we defined
++ * in the function above.
++ *
++ *    app.param('commit', /^\d{5,}$/);
++ *
++ * For more of this useful functionality take a look
++ * at [express-params](http://github.com/visionmedia/express-params).
++ *
+  * @param {String|Array|Function} name
+  * @param {Function} fn
+  * @return {Server} for chaining
+@@ -339,18 +371,25 @@ app.dynamicHelpers = function(obj){
+  */
+ 
+ app.param = function(name, fn){
++  var self = this
++    , fns = [].slice.call(arguments, 1);
++
+   // array
+   if (Array.isArray(name)) {
+     name.forEach(function(name){
+-      this.param(name, fn);
+-    }, this);
++      fns.forEach(function(fn){
++        self.param(name, fn);
++      });
++    });
+   // param logic
+   } else if ('function' == typeof name) {
+     this.routes.param(name);
+   // single
+   } else {
+     if (':' == name[0]) name = name.substr(1);
+-    this.routes.param(name, fn);
++    fns.forEach(function(fn){
++      self.routes.param(name, fn);
++    });
+   }
+ 
+   return this;
+diff --git a/lib/request.js b/lib/request.js
+index f9d21626df..1d5ab40134 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -12,6 +12,7 @@
+ var http = require('http')
+   , req = http.IncomingMessage.prototype
+   , utils = require('./utils')
++  , parse = require('url').parse
+   , mime = require('mime');
+ 
+ /**
+@@ -87,6 +88,17 @@ req.get = function(field, param){
+   return RegExp.$1 || RegExp.$2;
+ };
+ 
++/**
++ * Short-hand for `require('url').parse(req.url).pathname`.
++ *
++ * @return {String}
++ * @api public
++ */
++
++req.__defineGetter__('path', function(){
++  return parse(this.url).pathname;
++});
++
+ /**
+  * Check if the _Accept_ header is present, and includes the given `type`.
+  *
+@@ -217,10 +229,10 @@ req.flash = function(type, msg){
+       , args = arguments
+       , formatters = this.app.flashFormatters || {};
+     formatters.__proto__ = flashFormatters;
+-    msg = utils.miniMarkdown(utils.escape(msg));
++    msg = utils.miniMarkdown(msg);
+     msg = msg.replace(/%([a-zA-Z])/g, function(_, format){
+       var formatter = formatters[format];
+-      if (formatter) return formatter(args[i++]);
++      if (formatter) return formatter(utils.escape(args[i++]));
+     });
+     return (msgs[type] = msgs[type] || []).push(msg);
+   } else if (type) {
+@@ -280,16 +292,18 @@ req.flash = function(type, msg){
+ req.is = function(type){
+   var fn = this.app.is(type);
+   if (fn) return fn(this);
+-  var contentType = this.headers['content-type'];
+-  if (!contentType) return;
++  var ct = this.headers['content-type'];
++  if (!ct) return false;
++  ct = ct.split(';')[0];
+   if (!~type.indexOf('/')) type = mime.lookup(type);
+   if (~type.indexOf('*')) {
+-    type = type.split('/')
+-    contentType = contentType.split('/');
+-    if ('*' == type[0] && type[1] == contentType[1]) return true;
+-    if ('*' == type[1] && type[0] == contentType[0]) return true;
++    type = type.split('/');
++    ct = ct.split('/');
++    if ('*' == type[0] && type[1] == ct[1]) return true;
++    if ('*' == type[1] && type[0] == ct[0]) return true;
++    return false;
+   }
+-  return !! ~contentType.indexOf(type);
++  return !! ~ct.indexOf(type);
+ };
+ 
+ // Callback for isXMLHttpRequest / xhr
+diff --git a/lib/response.js b/lib/response.js
+index 2d91e6b51d..a671771a90 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -52,7 +52,7 @@ res.send = function(body, headers, status){
+   status = status || this.statusCode;
+ 
+   // allow 0 args as 204
+-  if (!arguments.length || undefined === body) body = status = 204;
++  if (!arguments.length || undefined === body) status = 204;
+ 
+   // determine content type
+   switch (typeof body) {
+@@ -81,7 +81,7 @@ res.send = function(body, headers, status){
+   }
+ 
+   // populate Content-Length
+-  if (!this.header('Content-Length')) {
++  if (undefined !== body && !this.header('Content-Length')) {
+     this.header('Content-Length', Buffer.isBuffer(body)
+       ? body.length
+       : Buffer.byteLength(body));
+@@ -100,11 +100,12 @@ res.send = function(body, headers, status){
+   if (204 == status || 304 == status) {
+     this.removeHeader('Content-Type');
+     this.removeHeader('Content-Length');
++    body = '';
+   }
+ 
+   // respond
+   this.statusCode = status;
+-  this.end('HEAD' == this.req.method ? undefined : body);
++  this.end('HEAD' == this.req.method ? null : body);
+   return this;
+ };
+ 
+@@ -270,17 +271,14 @@ res.download = function(path, filename, fn, fn2){
+  *
+  * @param {String} name
+  * @param {String} val
+- * @return {String}
++ * @return {ServerResponse} for chaining
+  * @api public
+  */
+ 
+ res.header = function(name, val){
+-  if (val === undefined) {
+-    return this.getHeader(name);
+-  } else {
+-    this.setHeader(name, val);
+-    return val;
+-  }
++  if (1 == arguments.length) return this.getHeader(name);
++  this.setHeader(name, val);
++  return this;
+ };
+ 
+ /**
+@@ -304,7 +302,7 @@ res.clearCookie = function(name, options){
+  * Options:
+  *
+  *    - `maxAge`   max-age in milliseconds, converted to `expires`
+- *    - `path`     defaults to the "home" setting which is typically "/"
++ *    - `path`     defaults to the "basepath" setting which is typically "/"
+  *
+  * Examples:
+  *
+@@ -323,7 +321,7 @@ res.clearCookie = function(name, options){
+ res.cookie = function(name, val, options){
+   options = options || {};
+   if ('maxAge' in options) options.expires = new Date(Date.now() + options.maxAge);
+-  if (undefined === options.path) options.path = this.app.set('home');
++  if (undefined === options.path) options.path = this.app.set('basepath');
+   var cookie = utils.serializeCookie(name, val, options);
+   this.header('Set-Cookie', cookie);
+ };
+@@ -335,8 +333,8 @@ res.cookie = function(name, val, options){
+  * The given `url` can also be the name of a mapped url, for
+  * example by default express supports "back" which redirects
+  * to the _Referrer_ or _Referer_ headers or the application's
+- * "home" setting. Express also supports "home" out of the box,
+- * which can be set via `app.set('home', '/blog');`, and defaults
++ * "basepath" setting. Express also supports "basepath" out of the box,
++ * which can be set via `app.set('basepath', '/blog');`, and defaults
+  * to '/'.
+  *
+  * Redirect Mapping:
+@@ -376,8 +374,9 @@ res.cookie = function(name, val, options){
+ res.redirect = function(url, status){
+   var app = this.app
+     , req = this.req
+-    , base = app.set('home') || '/'
++    , base = app.set('basepath') || app.route
+     , status = status || 302
++    , head = 'HEAD' == req.method
+     , body;
+ 
+   // Setup redirect map
+@@ -400,14 +399,13 @@ res.redirect = function(url, status){
+   // Relative
+   if (!~url.indexOf('://')) {
+     // Respect mount-point
+-    if (app.route) url = join(app.route, url);
++    if ('/' != base && 0 != url.indexOf(base)) url = base + url;
+ 
+     // Absolute
+     var host = req.headers.host
+       , tls = req.connection.encrypted;
+     url = 'http' + (tls ? 's' : '') + '://' + host + url;
+   }
+-  
+ 
+   // Support text/{plain,html} by default
+   if (req.accepts('html')) {
+@@ -421,7 +419,7 @@ res.redirect = function(url, status){
+   // Respond
+   this.statusCode = status;
+   this.header('Location', url);
+-  this.end(body);
++  this.end(head ? null : body);
+ };
+ 
+ /**
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 2882dab74e..ff1498b8cd 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -79,10 +79,23 @@ Router.prototype.param = function(name, fn){
+     throw new Error('invalid param() call for ' + name + ', got ' + fn);
+   }
+ 
+-  this.params[name] = fn;
++  (this.params[name] = this.params[name] || []).push(fn);
+   return this;
+ };
+ 
++/**
++ * Return a `Collection` of all routes defined.
++ *
++ * @return {Collection}
++ * @api public
++ */
++
++Router.prototype.all = function(){
++  return this.find(function(){
++    return true;
++  });
++};
++
+ /**
+  * Remove the given `route`, returns
+  * a bool indicating if the route was present
+@@ -182,14 +195,18 @@ Router.prototype._dispatch = function(req, res, next){
+     , self = this;
+ 
+   // route dispatch
+-  (function pass(i){
+-    var route
++  (function pass(i, err){
++    var paramCallbacks
++      , paramIndex = 0
++      , paramVal
++      , route
+       , keys
++      , key
+       , ret;
+ 
+     // match next route
+-    function nextRoute() {
+-      pass(req._route_index + 1);
++    function nextRoute(err) {
++      pass(req._route_index + 1, err);
+     }
+ 
+     // match route
+@@ -199,7 +216,7 @@ Router.prototype._dispatch = function(req, res, next){
+     if (!route && 'OPTIONS' == req.method) return self._options(req, res);
+ 
+     // no route
+-    if (!route) return next();
++    if (!route) return next(err);
+ 
+     // we have a route
+     // start at param 0
+@@ -207,50 +224,58 @@ Router.prototype._dispatch = function(req, res, next){
+     keys = route.keys;
+     i = 0;
+ 
+-    (function param(err) {
+-      var key = keys[i++]
+-        , val = key && req.params[key.name]
+-        , fn = key && params[key.name]
+-        , ret;
++    // param callbacks
++    function param(err) {
++      paramIndex = 0;
++      key = keys[i++];
++      paramVal = key && req.params[key.name];
++      paramCallbacks = key && params[key.name];
+ 
+       try {
+         if ('route' == err) {
+           nextRoute();
+         } else if (err) {
+-          next(err);
+-        } else if (fn && undefined !== val) {
+-          fn(req, res, param, val);
++          i = 0;
++          callbacks(err);
++        } else if (paramCallbacks && undefined !== paramVal) {
++          paramCallback();
+         } else if (key) {
+           param();
+         } else {
+           i = 0;
+-          middleware();
++          callbacks();
+         }
+       } catch (err) {
+-        next(err);
+-      }
+-    })();
+-
+-    // invoke route middleware
+-    function middleware(err) {
+-      var fn = route.middleware[i++];
+-      if ('route' == err) {
+-        nextRoute();
+-      } else if (err) {
+-        next(err);
+-      } else if (fn) {
+-        fn(req, res, middleware);
+-      } else {
+-        done();
++        param(err);
+       }
+     };
+ 
+-    // invoke middleware callback
+-    function done() {
+-      route.callback.call(self, req, res, function(err){
+-        if (err) return next(err);
+-        pass(req._route_index + 1);
+-      });
++    param(err);
++    
++    // single param callbacks
++    function paramCallback(err) {
++      var fn = paramCallbacks[paramIndex++];
++      if (err || !fn) return param(err);
++      fn(req, res, paramCallback, paramVal, key.name);
++    }
++
++    // invoke route callbacks
++    function callbacks(err) {
++      var fn = route.callbacks[i++];
++      try {
++        if ('route' == err) {
++          nextRoute();
++        } else if (err && fn) {
++          if (fn.length < 4) return callbacks(err);
++          fn(err, req, res, callbacks);
++        } else if (fn) {
++          fn(req, res, callbacks);
++        } else {
++          nextRoute(err);
++        }
++      } catch (err) {
++        callbacks(err);
++      }
+     }
+   })(0);
+ };
+@@ -344,37 +369,26 @@ Router.prototype._match = function(req, i){
+ };
+ 
+ /**
+- * Route `method`, `path`, and optional middleware
+- * to the callback `fn`.
++ * Route `method`, `path`, and one or more callbacks.
+  *
+  * @param {String} method
+  * @param {String} path
+- * @param {Function} ...
+- * @param {Function} fn
++ * @param {Function} callback...
+  * @return {Router} for chaining
+  * @api private
+  */
+ 
+-Router.prototype._route = function(method, path, fn){
++Router.prototype._route = function(method, path, callbacks){
+   var app = this.app
+-    , middleware = [];
+-
+-  // slice middleware
+-  if (arguments.length > 3) {
+-    middleware = toArray(arguments, 2);
+-    fn = middleware.pop();
+-    middleware = utils.flatten(middleware);
+-  }
++    , callbacks = utils.flatten(toArray(arguments, 2));
+ 
+-  // ensure path and callback are given
+-  if (!path) throw new Error(method + 'route requires a path');
+-  if (!fn) throw new Error(method + ' route ' + path + ' requires a callback');
++  // ensure path was given
++  if (!path) throw new Error('app.' + method + '() requires a path');
+ 
+   // create the route
+-  var route = new Route(method, path, fn, {
++  var route = new Route(method, path, callbacks, {
+       sensitive: app.enabled('case sensitive routes')
+     , strict: app.enabled('strict routing')
+-    , middleware: middleware
+   });
+ 
+   // add it
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 795882760f..7f2965c656 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -13,27 +13,25 @@ module.exports = Route;
+ 
+ /**
+  * Initialize `Route` with the given HTTP `method`, `path`,
+- * and callback `fn` and `options`.
++ * and an array of `callbacks` and `options`.
+  *
+  * Options:
+  *
+  *   - `sensitive`    enable case-sensitive routes
+  *   - `strict`       enable strict matching for trailing slashes
+- *   - `middleware`   array of middleware
+  *
+  * @param {String} method
+  * @param {String} path
+- * @param {Function} fn
++ * @param {Array} callbacks
+  * @param {Object} options.
+  * @api private
+  */
+ 
+-function Route(method, path, fn, options) {
++function Route(method, path, callbacks, options) {
+   options = options || {};
+-  this.callback = fn;
+   this.path = path;
+   this.method = method;
+-  this.middleware = options.middleware;
++  this.callbacks = callbacks;
+   this.regexp = normalize(path
+     , this.keys = []
+     , options.sensitive
+@@ -81,10 +79,10 @@ function normalize(path, keys, sensitive, strict) {
+         + (optional ? '' : slash)
+         + '(?:'
+         + (optional ? slash : '')
+-        + (format || '') + (capture || '([^/]+?)') + ')'
++        + (format || '') + (capture || (format && '([^/.]+?)' || '([^/]+?)')) + ')'
+         + (optional || '');
+     })
+     .replace(/([\/.])/g, '\\$1')
+-    .replace(/\*/g, '(.+)');
++    .replace(/\*/g, '(.*)');
+   return new RegExp('^' + path + '$', sensitive ? '' : 'i');
+-}
+\ No newline at end of file
++}
+diff --git a/lib/utils.js b/lib/utils.js
+index 622d9b870d..d579f7cbef 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -5,6 +5,19 @@
+  * MIT Licensed
+  */
+ 
++/**
++ * Check if `path` looks absolute.
++ *
++ * @param {String} path
++ * @return {Boolean}
++ * @api private
++ */
++
++exports.isAbsolute = function(path){
++  if ('/' == path[0]) return true;
++  if (':' == path[1] && '\\' == path[2]) return true;
++};
++
+ /**
+  * Merge object `b` with `a` giving precedence to
+  * values in object `a`.
+diff --git a/lib/view.js b/lib/view.js
+index e1068b5415..52582491d0 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -47,7 +47,10 @@ exports.register = View.register;
+  */
+ 
+ exports.compile = function(view, cache, cid, options){
+-  if (cache && cid && cache[cid]) return cache[cid];
++  if (cache && cid && cache[cid]){
++    options.filename = cache[cid].path;
++    return cache[cid];
++  }
+ 
+   // lookup
+   view = exports.lookup(view, options);
+@@ -58,13 +61,13 @@ exports.compile = function(view, cache, cid, options){
+     var err = new Error('failed to locate view "' + view.original.view + '"');
+     err.view = view.original;
+     throw err;
+-  }    
++  }
+ 
+   // compile
+   options.filename = view.path;
+   view.fn = view.templateEngine.compile(view.contents, options);
+   cache[cid] = view;
+-  
++
+   return view;
+ };
+ 
+@@ -81,11 +84,11 @@ exports.compile = function(view, cache, cid, options){
+  *
+  * Lookup:
+  *
+- *   - partial `_<name>` 
+- *   - any `<name>/index` 
+- *   - non-layout `../<name>/index` 
+- *   - any `<root>/<name>` 
+- *   - partial `<root>/_<name>` 
++ *   - partial `_<name>`
++ *   - any `<name>/index`
++ *   - non-layout `../<name>/index`
++ *   - any `<root>/<name>`
++ *   - partial `<root>/_<name>`
+  *
+  * @param {String} view
+  * @param {Object} options
+@@ -161,7 +164,7 @@ function renderPartial(res, view, options, parentLocals, parent){
+ 
+   // Inherit locals from parent
+   union(options, parentLocals);
+-  
++
+   // Merge locals
+   if (locals) merge(options, locals);
+ 
+@@ -179,8 +182,6 @@ function renderPartial(res, view, options, parentLocals, parent){
+         options[name] = object;
+       } else if (name === global) {
+         merge(options, object);
+-      } else {
+-        options.scope = object;
+       }
+     }
+     return res.render(view, options, null, parent, true);
+@@ -204,7 +205,7 @@ function renderPartial(res, view, options, parentLocals, parent){
+         options.lastInCollection = i == len - 1;
+         object = val;
+         buf += render();
+-      }      
++      }
+     } else {
+       keys = Object.keys(collection);
+       len = keys.length;
+@@ -229,20 +230,20 @@ function renderPartial(res, view, options, parentLocals, parent){
+ };
+ 
+ /**
+- * Render `view` partial with the given `options`. Optionally a 
++ * Render `view` partial with the given `options`. Optionally a
+  * callback `fn(err, str)` may be passed instead of writing to
+  * the socket.
+  *
+  * Options:
+  *
+- *   - `object` Single object with name derived from the view (unless `as` is present) 
++ *   - `object` Single object with name derived from the view (unless `as` is present)
+  *
+  *   - `as` Variable name for each `collection` value, defaults to the view name.
+  *     * as: 'something' will add the `something` local variable
+  *     * as: this will use the collection value as the template context
+  *     * as: global will merge the collection value's properties with `locals`
+  *
+- *   - `collection` Array of objects, the name is derived from the view name itself. 
++ *   - `collection` Array of objects, the name is derived from the view name itself.
+  *     For example _video.html_ will have a object _video_ available to it.
+  *
+  * @param  {String} view
+@@ -296,7 +297,7 @@ res.partial = function(view, options, fn){
+  * automatically, however otherwise a response of _200_ and _text/html_ is given.
+  *
+  * Options:
+- *  
++ *
+  *  - `scope`     Template evaluation context (the value of `this`)
+  *  - `debug`     Output debugging information
+  *  - `status`    Response status code
+@@ -432,7 +433,7 @@ res._render = function(view, opts, fn, parent, sub){
+   // partial return
+   } else if (partial) {
+     return str;
+-  // render complete, and 
++  // render complete, and
+   // callback given
+   } else if (fn) {
+     fn(null, str);
+@@ -456,4 +457,4 @@ function hintAtViewPaths(view, options) {
+     console.error('  - %s', path);
+   });
+   console.error();
+-}
+\ No newline at end of file
++}
+diff --git a/lib/view/view.js b/lib/view/view.js
+index 6dcc448b91..7d9392cb36 100644
+--- a/lib/view/view.js
++++ b/lib/view/view.js
+@@ -10,6 +10,7 @@
+  */
+ 
+ var path = require('path')
++  , utils = require('../utils')
+   , extname = path.extname
+   , dirname = path.dirname
+   , basename = path.basename
+@@ -99,7 +100,7 @@ View.prototype.resolvePath = function(){
+   // Implicit engine
+   if (!~this.basename.indexOf('.')) path += this.extension;
+   // Absolute
+-  if ('/' == path[0]) return path;
++  if (utils.isAbsolute(path)) return path;
+   // Relative to parent
+   if (this.relative && this.parent) return this.parent.dirname + '/' + path;
+   // Relative to root
+diff --git a/package.json b/package.json
+index 8aa64c99ee..32c41a069d 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "express",
+   "description": "Sinatra inspired web development framework",
+-  "version": "2.4.3",
++  "version": "2.5.6",
+   "author": "TJ Holowaychuk <tj@vision-media.ca>",
+   "contributors": [ 
+     { "name": "TJ Holowaychuk", "email": "tj@vision-media.ca" }, 
+@@ -10,18 +10,19 @@
+     { "name": "Guillermo Rauch", "email": "rauchg@gmail.com" }
+   ],
+   "dependencies": {
+-    "connect": ">= 1.5.2 < 2.0.0",
++    "connect": "1.x",
+     "mime": ">= 0.0.1",
+-    "qs": ">= 0.0.6"
++    "qs": ">= 0.3.1",
++    "mkdirp": "0.0.7"
+   },
+   "devDependencies": {
+     "connect-form": "0.2.1",
+     "ejs": "0.4.2",
+-    "expresso": "0.7.2",
+-    "hamljs": "0.5.1",
+-    "jade": "0.11.0",
++    "expresso": "0.9.2",
++    "hamljs": "0.6.x",
++    "jade": "0.16.2",
+     "stylus": "0.13.0",
+-    "should": "0.2.1",
++    "should": "0.3.2",
+     "express-messages": "0.0.2",
+     "node-markdown": ">= 0.0.1",
+     "connect-redis": ">= 0.0.1"
+@@ -34,5 +35,5 @@
+     "test": "make test",
+     "prepublish" : "npm prune"
+   },
+-  "engines": { "node": ">= 0.4.1 < 0.5.0" }
++  "engines": { "node": ">= 0.4.1 < 0.7.0" }
+ }
+\ No newline at end of file

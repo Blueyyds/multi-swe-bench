@@ -1,0 +1,363 @@
+diff --git a/test/Router.js b/test/Router.js
+index 21cdff2c6c..01a6e2c472 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -53,6 +53,16 @@ describe('Router', function(){
+     router.handle({ url: '', method: 'GET' }, {}, done);
+   });
+ 
++  it('should handle missing URL', function (done) {
++    var router = new Router()
++
++    router.use(function (req, res) {
++      throw new Error('should not be called')
++    })
++
++    router.handle({ method: 'GET' }, {}, done)
++  })
++
+   it('should not stack overflow with many registered routes', function(done){
+     var handler = function(req, res){ res.end(new Error('wrong handler')) };
+     var router = new Router();
+@@ -337,6 +347,24 @@ describe('Router', function(){
+       assert.equal(count, methods.length);
+       done();
+     })
++
++    it('should be called for any URL when "*"', function (done) {
++      var cb = after(4, done)
++      var router = new Router()
++
++      function no () {
++        throw new Error('should not be called')
++      }
++
++      router.all('*', function (req, res) {
++        res.end()
++      })
++
++      router.handle({ url: '/', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '/foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: 'foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '*', method: 'GET' }, { end: cb }, no)
++    })
+   })
+ 
+   describe('.use', function() {
+@@ -353,6 +381,24 @@ describe('Router', function(){
+       router.use.bind(router, '/', new Date()).should.throw(/requires middleware function.*Date/)
+     })
+ 
++    it('should be called for any URL', function (done) {
++      var cb = after(4, done)
++      var router = new Router()
++
++      function no () {
++        throw new Error('should not be called')
++      }
++
++      router.use(function (req, res) {
++        res.end()
++      })
++
++      router.handle({ url: '/', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '/foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: 'foo', method: 'GET' }, { end: cb }, no)
++      router.handle({ url: '*', method: 'GET' }, { end: cb }, no)
++    })
++
+     it('should accept array of middleware', function(done){
+       var count = 0;
+       var router = new Router();
+diff --git a/test/app.router.js b/test/app.router.js
+index 6d41778c03..e838b2e33f 100644
+--- a/test/app.router.js
++++ b/test/app.router.js
+@@ -77,7 +77,7 @@ describe('app.router', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect(404, 'Cannot GET /\n', cb);
++      .expect(404, cb)
+ 
+       request(app)
+       .delete('/')
+@@ -563,6 +563,30 @@ describe('app.router', function(){
+   })
+ 
+   describe('*', function(){
++    it('should capture everything', function (done) {
++      var app = express()
++
++      app.get('*', function (req, res) {
++        res.end(req.params[0])
++      })
++
++      request(app)
++      .get('/user/tobi.json')
++      .expect('/user/tobi.json', done)
++    })
++
++    it('should decore the capture', function (done) {
++      var app = express()
++
++      app.get('*', function (req, res) {
++        res.end(req.params[0])
++      })
++
++      request(app)
++      .get('/user/tobi%20and%20loki.json')
++      .expect('/user/tobi and loki.json', done)
++    })
++
+     it('should denote a greedy capture group', function(done){
+       var app = express();
+ 
+@@ -908,6 +932,37 @@ describe('app.router', function(){
+     })
+   })
+ 
++  describe('when next("router") is called', function () {
++    it('should jump out of router', function (done) {
++      var app = express()
++      var router = express.Router()
++
++      function fn (req, res, next) {
++        res.set('X-Hit', '1')
++        next('router')
++      }
++
++      router.get('/foo', fn, function (req, res, next) {
++        res.end('failure')
++      })
++
++      router.get('/foo', function (req, res, next) {
++        res.end('failure')
++      })
++
++      app.use(router)
++
++      app.get('/foo', function (req, res) {
++        res.end('success')
++      })
++
++      request(app)
++      .get('/foo')
++      .expect('X-Hit', '1')
++      .expect(200, 'success', done)
++    })
++  })
++
+   describe('when next(err) is called', function(){
+     it('should break out of app.router', function(done){
+       var app = express()
+diff --git a/test/req.fresh.js b/test/req.fresh.js
+index 0f1aa982ad..1aa8fa5b21 100644
+--- a/test/req.fresh.js
++++ b/test/req.fresh.js
+@@ -36,8 +36,8 @@ describe('req', function(){
+     it('should return false without response headers', function(done){
+       var app = express();
+ 
++      app.disable('x-powered-by')
+       app.use(function(req, res){
+-        res._headers = null;
+         res.send(req.fresh);
+       });
+ 
+diff --git a/test/req.stale.js b/test/req.stale.js
+index c92c5a9fb8..30c9d05d51 100644
+--- a/test/req.stale.js
++++ b/test/req.stale.js
+@@ -36,8 +36,8 @@ describe('req', function(){
+     it('should return true without response headers', function(done){
+       var app = express();
+ 
++      app.disable('x-powered-by')
+       app.use(function(req, res){
+-        res._headers = null;
+         res.send(req.stale);
+       });
+ 
+diff --git a/test/res.redirect.js b/test/res.redirect.js
+index 9f3bd43676..755bb1c1c6 100644
+--- a/test/res.redirect.js
++++ b/test/res.redirect.js
+@@ -1,5 +1,4 @@
+ 
+-var http = require('http');
+ var express = require('..');
+ var request = require('supertest');
+ var utils = require('./support/utils');
+@@ -104,7 +103,7 @@ describe('res', function(){
+       .set('Accept', 'text/html')
+       .expect('Content-Type', /html/)
+       .expect('Location', 'http://google.com')
+-      .expect(302, '<p>' + http.STATUS_CODES[302] + '. Redirecting to <a href="http://google.com">http://google.com</a></p>', done);
++      .expect(302, '<p>Found. Redirecting to <a href="http://google.com">http://google.com</a></p>', done)
+     })
+ 
+     it('should escape the url', function(done){
+@@ -120,7 +119,7 @@ describe('res', function(){
+       .set('Accept', 'text/html')
+       .expect('Content-Type', /html/)
+       .expect('Location', '%3Cla\'me%3E')
+-      .expect(302, '<p>' + http.STATUS_CODES[302] + '. Redirecting to <a href="%3Cla&#39;me%3E">%3Cla&#39;me%3E</a></p>', done)
++      .expect(302, '<p>Found. Redirecting to <a href="%3Cla&#39;me%3E">%3Cla&#39;me%3E</a></p>', done)
+     })
+ 
+     it('should include the redirect type', function(done){
+@@ -152,7 +151,7 @@ describe('res', function(){
+       .set('Accept', 'text/plain, */*')
+       .expect('Content-Type', /plain/)
+       .expect('Location', 'http://google.com')
+-      .expect(302, http.STATUS_CODES[302] + '. Redirecting to http://google.com', done);
++      .expect(302, 'Found. Redirecting to http://google.com', done)
+     })
+ 
+     it('should encode the url', function(done){
+@@ -168,7 +167,7 @@ describe('res', function(){
+       .set('Accept', 'text/plain, */*')
+       .expect('Content-Type', /plain/)
+       .expect('Location', 'http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E')
+-      .expect(302, http.STATUS_CODES[302] + '. Redirecting to http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E', done)
++      .expect(302, 'Found. Redirecting to http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E', done)
+     })
+ 
+     it('should include the redirect type', function(done){
+diff --git a/test/res.send.js b/test/res.send.js
+index 719424657c..f2e7d759c1 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -133,7 +133,7 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
++      .expect('ETag', 'W/"3e7-qPnkJ3CVdVhFJQvUBfF10TmVA7g"')
+       .expect(200, done);
+     })
+ 
+@@ -201,7 +201,7 @@ describe('res', function(){
+ 
+       request(app)
+       .get('/')
+-      .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
++      .expect('ETag', 'W/"3e7-qPnkJ3CVdVhFJQvUBfF10TmVA7g"')
+       .expect(200, done);
+     })
+ 
+@@ -355,7 +355,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"c-ZUfd0NJ26qwjlKF4r8qb2g"')
++        .expect('ETag', 'W/"c-IgR/L5SF7CJQff4wxKGF/vfPuZ0"')
+         .expect(200, done);
+       });
+ 
+@@ -371,7 +371,7 @@ describe('res', function(){
+ 
+           request(app)
+           [method]('/')
+-          .expect('ETag', 'W/"c-ZUfd0NJ26qwjlKF4r8qb2g"')
++          .expect('ETag', 'W/"c-IgR/L5SF7CJQff4wxKGF/vfPuZ0"')
+           .expect(200, done);
+         })
+       });
+@@ -387,7 +387,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"0-1B2M2Y8AsgTpgAmY7PhCfg"')
++        .expect('ETag', 'W/"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"')
+         .expect(200, done);
+       })
+ 
+@@ -403,7 +403,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"3e7-VYgCBglFKiDVAcpzPNt4Sg"')
++        .expect('ETag', 'W/"3e7-qPnkJ3CVdVhFJQvUBfF10TmVA7g"')
+         .expect(200, done);
+       });
+ 
+@@ -485,7 +485,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', '"d-Otu60XkfuuPskIiUxJY4cA"')
++        .expect('ETag', '"d-HwnTDHB9U/PRbFMN1z1wps51lqk"')
+         .expect(200, done);
+       })
+     })
+@@ -502,7 +502,7 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('ETag', 'W/"d-Otu60XkfuuPskIiUxJY4cA"')
++        .expect('ETag', 'W/"d-HwnTDHB9U/PRbFMN1z1wps51lqk"')
+         .expect(200, done)
+       })
+     })
+diff --git a/test/utils.js b/test/utils.js
+index b673196260..c49019fe12 100644
+--- a/test/utils.js
++++ b/test/utils.js
+@@ -5,23 +5,23 @@ var utils = require('../lib/utils');
+ describe('utils.etag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.etag('express!')
+-    .should.eql('"8-zZdv4imtWD49AHEviejT6A"')
++    .should.eql('"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.etag('express❤', 'utf8')
+-    .should.eql('"a-fsFba4IxwQS6h6Umb+FNxw"')
++    .should.eql('"a-JBiXf7GyzxwcrxY4hVXUwa7tmks"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.etag(buf)
+-    .should.eql('"8-zZdv4imtWD49AHEviejT6A"');
++    .should.eql('"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support empty string', function(){
+     utils.etag('')
+-    .should.eql('"0-1B2M2Y8AsgTpgAmY7PhCfg"');
++    .should.eql('"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"')
+   })
+ })
+ 
+@@ -50,23 +50,23 @@ describe('utils.setCharset(type, charset)', function () {
+ describe('utils.wetag(body, encoding)', function(){
+   it('should support strings', function(){
+     utils.wetag('express!')
+-    .should.eql('W/"8-zZdv4imtWD49AHEviejT6A"')
++    .should.eql('W/"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support utf8 strings', function(){
+     utils.wetag('express❤', 'utf8')
+-    .should.eql('W/"a-fsFba4IxwQS6h6Umb+FNxw"')
++    .should.eql('W/"a-JBiXf7GyzxwcrxY4hVXUwa7tmks"')
+   })
+ 
+   it('should support buffer', function(){
+     var buf = new Buffer('express!')
+     utils.wetag(buf)
+-    .should.eql('W/"8-zZdv4imtWD49AHEviejT6A"');
++    .should.eql('W/"8-O2uVAFaQ1rZvlKLT14RnuvjPIdg"')
+   })
+ 
+   it('should support empty string', function(){
+     utils.wetag('')
+-    .should.eql('W/"0-1B2M2Y8AsgTpgAmY7PhCfg"');
++    .should.eql('W/"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"')
+   })
+ })
+ 

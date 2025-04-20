@@ -1,0 +1,13 @@
+diff --git a/examples/multi-router/index.js b/examples/multi-router/index.js
+index ff31e514a5..78bae9d6e3 100644
+--- a/examples/multi-router/index.js
++++ b/examples/multi-router/index.js
+@@ -6,7 +6,7 @@ app.use('/api/v1', require('./controllers/api_v1'));
+ app.use('/api/v2', require('./controllers/api_v2'));
+ 
+ app.get('/', function(req, res) {
+-  res.send('Hello form root route.');
++  res.send('Hello from root route.')
+ });
+ 
+ /* istanbul ignore next */

@@ -29,12 +29,8 @@ from multi_swe_bench.collect.util import get_tokens, optional_int
 
 
 def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="A command-line tool for processing repositories."
-    )
-    parser.add_argument(
-        "--out_dir", type=Path, required=True, help="Output directory path."
-    )
+    parser = argparse.ArgumentParser(description="A command-line tool for processing repositories.")
+    parser.add_argument("--out_dir", type=Path, required=True, help="Output directory path.")
     parser.add_argument(
         "--tokens",
         type=str,
@@ -69,14 +65,47 @@ def extract_patches(pull: dict, token: str) -> tuple[str, str]:
     patch = requests.get(pull["diff_url"], headers=headers).text
     test_patch = ""
     fix_patch = ""
-    for hunk in PatchSet(patch):
-        if any(
-            test_word in hunk.path for test_word in ["test", "tests", "e2e", "testing"]
-        ):
-            test_patch += str(hunk)
-        else:
-            fix_patch += str(hunk)
-    return fix_patch, test_patch
+
+    try:
+        patch_set = PatchSet(patch)
+        for hunk in patch_set:
+            try:
+                if any(test_word in hunk.path for test_word in ["test", "tests", "e2e", "testing"]):
+                    test_patch += str(hunk)
+                else:
+                    fix_patch += str(hunk)
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                # Skip files with problematic encodings
+                continue
+    except Exception as e:
+        # If patch parsing fails completely, try manual parsing
+        lines = patch.split("\n")
+        current_file = None
+        current_patch = []
+
+        for line in lines:
+            if line.startswith("diff --git"):
+                if current_file and current_patch:
+                    patch_content = "\n".join(current_patch)
+                    if any(test_word in current_file for test_word in ["test", "tests", "e2e", "testing"]):
+                        test_patch += patch_content + "\n"
+                    else:
+                        fix_patch += patch_content + "\n"
+                current_file = line
+                current_patch = [line]
+            else:
+                if current_patch is not None:
+                    current_patch.append(line)
+
+        # Handle the last file
+        if current_file and current_patch:
+            patch_content = "\n".join(current_patch)
+            if any(test_word in current_file for test_word in ["test", "tests", "e2e", "testing"]):
+                test_patch += patch_content + "\n"
+            else:
+                fix_patch += patch_content + "\n"
+
+    return fix_patch.strip(), test_patch.strip()
 
 
 def get_failed_number(log_file: Path) -> Optional[int]:
@@ -122,9 +151,7 @@ def main(
         filtered_prs_with_issues = [json.loads(line) for line in file]
 
     try:
-        with open(
-            out_dir / f"{org}__{repo}_raw_dataset.jsonl", "r", encoding="utf-8"
-        ) as file:
+        with open(out_dir / f"{org}__{repo}_raw_dataset.jsonl", "r", encoding="utf-8") as file:
             raw_dataset = {}
             for line in file:
                 data = json.loads(line)
@@ -142,15 +169,9 @@ def main(
     processed_number = min(raw_dataset.keys()) if raw_dataset else failed_number
     print(f"minimum processed number: {processed_number}")
 
-    with open(
-        out_dir / f"{org}__{repo}_raw_dataset.jsonl", "a", encoding="utf-8"
-    ) as file:
+    with open(out_dir / f"{org}__{repo}_raw_dataset.jsonl", "a", encoding="utf-8") as file:
         for pr in tqdm(filtered_prs_with_issues, desc="Building Dataset"):
-            if (
-                pr["number"] in raw_dataset
-                or pr["number"] >= processed_number
-                or pr["number"] > failed_number
-            ):
+            if pr["number"] in raw_dataset or pr["number"] >= processed_number or pr["number"] > failed_number:
                 continue
 
             for attempt in range(retry_attempts):
@@ -169,9 +190,7 @@ def main(
                     if delay_on_error is None or attempt == retry_attempts - 1:
                         raise e
                     else:
-                        print(
-                            f"The {attempt + 1} attempt failed. Sleeping then retrying..."
-                        )
+                        print(f"The {attempt + 1} attempt failed. Sleeping then retrying...")
                         for i in tqdm(range(delay_on_error), desc="Sleeping"):
                             time.sleep(1)
 

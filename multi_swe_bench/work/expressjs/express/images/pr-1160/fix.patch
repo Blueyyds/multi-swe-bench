@@ -1,0 +1,24 @@
+diff --git a/lib/request.js b/lib/request.js
+index 6a03e78e45..efea5b201d 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -131,6 +131,19 @@ req.acceptsLanguage = function(lang){
+     : true;
+ };
+ 
++/**
++ * Builds absolute uri from req,
++ * Example: http://localhost/foo
++ *
++ * @param {String} host
++ * @return {String}
++ * @api public
++ */
++
++req.buildAbsoluteUri = function(host) {
++  return this.protocol + '://' + (host || this.get('host')) + this.path;
++}
++
+ /**
+  * Return an array of Accepted media types
+  * ordered from highest quality to lowest.

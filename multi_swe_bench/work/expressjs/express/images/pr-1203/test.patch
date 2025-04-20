@@ -1,0 +1,33 @@
+diff --git a/test/app.router.js b/test/app.router.js
+index f48e58e0d0..c865318bea 100644
+--- a/test/app.router.js
++++ b/test/app.router.js
+@@ -347,6 +347,29 @@ describe('app.router', function(){
+       .expect('users/0.json', done);
+     })
+     
++    it('should not be greedy immediately after param', function(done){
++      var app = express();
++
++      app.get('/user/:user*', function(req, res){
++        res.end(req.params.user);
++      });
++
++      request(app)
++      .get('/user/122')
++      .expect('122', done);
++    })
++    it('should eat everything after /', function(done){
++      var app = express();
++
++      app.get('/user/:user*', function(req, res){
++        res.end(req.params.user);
++      });
++
++      request(app)
++      .get('/user/122/aaa')
++      .expect('122', done);
++    })
++    
+     it('should span multiple segments', function(done){
+       var app = express();

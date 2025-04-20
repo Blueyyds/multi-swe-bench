@@ -1,0 +1,114 @@
+diff --git a/test/app.options.js b/test/app.options.js
+index 20234723a5..9c88abafe5 100644
+--- a/test/app.options.js
++++ b/test/app.options.js
+@@ -72,7 +72,7 @@ describe('OPTIONS', function(){
+     .expect(200, 'GET,HEAD', done);
+   })
+ 
+-  describe('when error occurs in respone handler', function () {
++  describe('when error occurs in response handler', function () {
+     it('should pass error to callback', function (done) {
+       var app = express();
+       var router = express.Router();
+diff --git a/test/app.router.js b/test/app.router.js
+index 03b43eb081..11e492cbfa 100644
+--- a/test/app.router.js
++++ b/test/app.router.js
+@@ -757,7 +757,7 @@ describe('app.router', function(){
+       .expect('editing tj (old)', cb);
+     })
+ 
+-    it('should work inside literal paranthesis', function(done){
++    it('should work inside literal parenthesis', function(done){
+       var app = express();
+ 
+       app.get('/:user\\(:op\\)', function(req, res){
+diff --git a/test/req.acceptsEncoding.js b/test/req.acceptsEncoding.js
+index 930b4ea76c..12708fc014 100644
+--- a/test/req.acceptsEncoding.js
++++ b/test/req.acceptsEncoding.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsEncoding', function(){
+-    it('should be true if encoding accpeted', function(done){
++    it('should be true if encoding accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if encoding not accpeted', function(done){
++    it('should be false if encoding not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.acceptsEncodings.js b/test/req.acceptsEncodings.js
+index c4c68e1e8e..c036c29769 100644
+--- a/test/req.acceptsEncodings.js
++++ b/test/req.acceptsEncodings.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsEncodingss', function(){
+-    it('should be true if encoding accpeted', function(done){
++    it('should be true if encoding accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if encoding not accpeted', function(done){
++    it('should be false if encoding not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.acceptsLanguage.js b/test/req.acceptsLanguage.js
+index 36afc47f92..b14d920bd6 100644
+--- a/test/req.acceptsLanguage.js
++++ b/test/req.acceptsLanguage.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsLanguage', function(){
+-    it('should be true if language accpeted', function(done){
++    it('should be true if language accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if language not accpeted', function(done){
++    it('should be false if language not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+diff --git a/test/req.acceptsLanguages.js b/test/req.acceptsLanguages.js
+index 8d11eb81e8..6a9cb3366b 100644
+--- a/test/req.acceptsLanguages.js
++++ b/test/req.acceptsLanguages.js
+@@ -4,7 +4,7 @@ var express = require('../')
+ 
+ describe('req', function(){
+   describe('.acceptsLanguages', function(){
+-    it('should be true if language accpeted', function(done){
++    it('should be true if language accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){
+@@ -19,7 +19,7 @@ describe('req', function(){
+       .expect(200, done);
+     })
+ 
+-    it('should be false if language not accpeted', function(done){
++    it('should be false if language not accepted', function(done){
+       var app = express();
+ 
+       app.use(function(req, res){

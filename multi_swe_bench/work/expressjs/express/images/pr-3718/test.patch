@@ -1,0 +1,13 @@
+diff --git a/test/acceptance/multi-router.js b/test/acceptance/multi-router.js
+index 9590ee94d4..4362a8300b 100644
+--- a/test/acceptance/multi-router.js
++++ b/test/acceptance/multi-router.js
+@@ -6,7 +6,7 @@ describe('multi-router', function(){
+     it('should respond with root handler', function(done){
+       request(app)
+       .get('/')
+-      .expect(200, 'Hello form root route.', done)
++      .expect(200, 'Hello from root route.', done)
+     })
+   })
+ 

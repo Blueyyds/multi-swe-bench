@@ -1,0 +1,24 @@
+diff --git a/History.md b/History.md
+index 35259befee..2410810d33 100644
+--- a/History.md
++++ b/History.md
+@@ -2,6 +2,7 @@ unreleased
+ ==========
+ 
+   * Add `express.raw` to parse bodies into `Buffer`
++  * Add `express.text` to parse bodies into string
+   * Improve error message for non-strings to `res.sendFile`
+   * Improve error message for `null`/`undefined` to `res.status`
+   * Support multiple hosts in `X-Forwarded-Host`
+diff --git a/lib/express.js b/lib/express.js
+index f618ccc125..d188a16db7 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -79,6 +79,7 @@ exports.json = bodyParser.json
+ exports.query = require('./middleware/query');
+ exports.raw = bodyParser.raw
+ exports.static = require('serve-static');
++exports.text = bodyParser.text
+ exports.urlencoded = bodyParser.urlencoded
+ 
+ /**

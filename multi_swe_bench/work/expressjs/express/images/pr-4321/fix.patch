@@ -1,0 +1,50 @@
+diff --git a/History.md b/History.md
+index 371fa7292e..3b811bc022 100644
+--- a/History.md
++++ b/History.md
+@@ -3,6 +3,19 @@
+ 
+ This incorporates all changes after 4.17.1 up to 4.17.2.
+ 
++  * deps: router@2.0.0-beta.1
++    - Add new `?`, `*`, and `+` parameter modifiers
++    - Internalize private `router.process_params` method
++    - Matching group expressions are only RegExp syntax
++    - Named matching groups no longer available by position in `req.params`
++    - Regular expressions can only be used in a matching group
++    - Remove `debug` dependency
++    - Special `*` path segment behavior removed
++    - deps: array-flatten@3.0.0
++    - deps: parseurl@~1.3.3
++    - deps: path-to-regexp@3.2.0
++    - deps: setprototypeof@1.2.0
++
+ 5.0.0-alpha.8 / 2020-03-25
+ ==========================
+ 
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index 9321f3bf95..dc59532c40 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -17,7 +17,7 @@ app.get('/', function(req, res){
+ 
+ // /files/* is accessed via req.params[0]
+ // but here we name it :file
+-app.get('/files/:file(*)', function(req, res, next){
++app.get('/files/:file+', function (req, res, next) {
+   var filePath = path.join(__dirname, 'files', req.params.file);
+ 
+   res.download(filePath, function (err) {
+diff --git a/package.json b/package.json
+index ca0740add3..30f06d5a14 100644
+--- a/package.json
++++ b/package.json
+@@ -50,7 +50,7 @@
+     "proxy-addr": "~2.0.7",
+     "qs": "6.9.6",
+     "range-parser": "~1.2.1",
+-    "router": "2.0.0-alpha.1",
++    "router": "2.0.0-beta.1",
+     "safe-buffer": "5.2.1",
+     "send": "0.17.2",
+     "serve-static": "1.14.2",

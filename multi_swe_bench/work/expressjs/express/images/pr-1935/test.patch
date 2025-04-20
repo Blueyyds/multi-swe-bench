@@ -1,0 +1,64 @@
+diff --git a/test/Route.js b/test/Route.js
+index 62ec5da5e1..aea1604b9f 100644
+--- a/test/Route.js
++++ b/test/Route.js
+@@ -6,15 +6,6 @@ var express = require('../')
+ 
+ describe('Route', function(){
+ 
+-  describe('.match', function(){
+-    it('should match', function(){
+-      var route = new Route('/foo/bar');
+-
+-      assert(route.match('/foo/bar'));
+-      assert(!route.match('/foo/baz'));
+-    })
+-  })
+-
+   describe('.all', function(){
+     it('should add handler', function(done){
+       var route = new Route('/foo');
+diff --git a/test/Router.js b/test/Router.js
+index 10d6acb001..28ca067026 100644
+--- a/test/Router.js
++++ b/test/Router.js
+@@ -94,4 +94,39 @@ describe('Router', function(){
+       done();
+     })
+   })
++
++  describe('.param', function() {
++    it('should call param function when routing VERBS', function(done) {
++      var router = new Router();
++
++      router.param('id', function(req, res, next, id) {
++        assert.equal(id, '123');
++        next();
++      });
++
++      router.get('/foo/:id/bar', function(req, res, next) {
++        assert.equal(req.params.id, '123');
++        next();
++      });
++
++      router.handle({ url: '/foo/123/bar', method: 'get' }, {}, done);
++    });
++
++    it('should call param function when routing middleware', function(done) {
++      var router = new Router();
++
++      router.param('id', function(req, res, next, id) {
++        assert.equal(id, '123');
++        next();
++      });
++
++      router.use('/foo/:id/bar', function(req, res, next) {
++        assert.equal(req.params.id, '123');
++        assert.equal(req.url, '/baz');
++        next();
++      });
++
++      router.handle({ url: '/foo/123/bar/baz', method: 'get' }, {}, done);
++    });
++  });
+ })

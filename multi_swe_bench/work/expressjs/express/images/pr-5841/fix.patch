@@ -1,0 +1,35 @@
+diff --git a/History.md b/History.md
+index c02b24ffba..c31c154c4c 100644
+--- a/History.md
++++ b/History.md
+@@ -2771,7 +2771,7 @@ unreleased
+   * Added `req.subdomains`
+   * Added `req.protocol`
+   * Added `req.secure`
+-  * Added `req.path`
++  * Added `req.pathname`
+   * Added `req.ips`
+   * Added `req.fresh`
+   * Added `req.stale`
+@@ -2872,7 +2872,7 @@ unreleased
+ 
+   * Added mkdirp to express(1). Closes #795
+   * Added simple _json-config_ example
+-  * Added  shorthand for the parsed request's pathname via `req.path`
++  * Added  shorthand for the parsed request's pathname via `req.pathname`
+   * Changed connect dep to 1.7.x to fix npm issue...
+   * Fixed `res.redirect()` __HEAD__ support. [reported by xerox]
+   * Fixed `req.flash()`, only escape args
+diff --git a/examples/static-files/index.js b/examples/static-files/index.js
+index 609c546b47..c92e883d10 100644
+--- a/examples/static-files/index.js
++++ b/examples/static-files/index.js
+@@ -15,7 +15,7 @@ app.use(logger('dev'));
+ // express on its own has no notion
+ // of a "file". The express.static()
+ // middleware checks for a file matching
+-// the `req.path` within the directory
++// the `req.pathname` within the directory
+ // that you pass it. In this case "GET /js/app.js"
+ // will look for "./public/js/app.js".
+ 

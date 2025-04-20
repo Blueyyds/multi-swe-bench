@@ -1,0 +1,649 @@
+diff --git a/.travis.yml b/.travis.yml
+index 924fd00a2a..e6139739cc 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -8,6 +8,14 @@ node_js:
+   - "4.7"
+   - "5.12"
+   - "6.9"
++  - "7.5"
++matrix:
++  include:
++    - node_js: "8.0"
++      env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
++  allow_failures:
++    # Allow the nightly installs to fail
++    - env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+ sudo: false
+ cache:
+   directories:
+diff --git a/History.md b/History.md
+index 4a706a4d10..824f2443d3 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,73 @@
++unreleased
++==========
++
++  * Add debug message when loading view engine
++  * Add `next("router")` to exit from router
++  * Fix case where `router.use` skipped requests routes did not
++  * Remove usage of `res._headers` private field
++    - Improves compatibility with Node.js 8 nightly
++  * Skip routing when `req.url` is not set
++  * Use `%o` in path debug to tell types apart
++  * Use `Object.create` to setup request & response prototypes
++  * Use `setprototypeof` module to replace `__proto__` setting
++  * Use `statuses` instead of `http` module for status messages
++  * deps: debug@2.6.1
++    - Allow colors in workers
++    - Deprecated `DEBUG_FD` environment variable set to `3` or higher
++    - Fix error when running under React Native
++    - Use same color for same namespace
++    - deps: ms@0.7.2
++  * deps: etag@~1.8.0
++    - Use SHA1 instead of MD5 for ETag hashing
++    - Works with FIPS 140-2 OpenSSL configuration
++  * deps: finalhandler@~1.0.0
++    - Fix exception when `err` cannot be converted to a string
++    - Fully URL-encode the pathname in the 404
++    - Only include the pathname in the 404 message
++    - Send complete HTML document
++    - Set `Content-Security-Policy: default-src 'self'` header
++    - deps: debug@2.6.1
++  * deps: fresh@0.5.0
++    - Fix false detection of `no-cache` request directive
++    - Fix incorrect result when `If-None-Match` has both `*` and ETags
++    - Fix weak `ETag` matching to match spec
++    - perf: delay reading header values until needed
++    - perf: enable strict mode
++    - perf: hoist regular expressions
++    - perf: remove duplicate conditional
++    - perf: remove unnecessary boolean coercions
++    - perf: skip checking modified time if ETag check failed
++    - perf: skip parsing `If-None-Match` when no `ETag` header
++    - perf: use `Date.parse` instead of `new Date`
++  * deps: qs@6.3.1
++    - Fix array parsing from skipping empty values
++    - Fix compacting nested arrays
++  * deps: send@0.15.0
++    - Fix false detection of `no-cache` request directive
++    - Fix incorrect result when `If-None-Match` has both `*` and ETags
++    - Fix weak `ETag` matching to match spec
++    - Remove usage of `res._headers` private field
++    - Support `If-Match` and `If-Unmodified-Since` headers
++    - Use `res.getHeaderNames()` when available
++    - Use `res.headersSent` when available
++    - deps: debug@2.6.1
++    - deps: etag@~1.8.0
++    - deps: fresh@0.5.0
++    - deps: http-errors@~1.6.1
++  * deps: serve-static@1.12.0
++    - Fix false detection of `no-cache` request directive
++    - Fix incorrect result when `If-None-Match` has both `*` and ETags
++    - Fix weak `ETag` matching to match spec
++    - Remove usage of `res._headers` private field
++    - Send complete HTML document in redirect response
++    - Set default CSP header in redirect response
++    - Support `If-Match` and `If-Unmodified-Since` headers
++    - Use `res.getHeaderNames()` when available
++    - Use `res.headersSent` when available
++    - deps: send@0.15.0
++  * perf: add fast match path for `*` route
++  * perf: improve `req.ips` performance
++
+ 4.14.1 / 2017-01-28
+ ===================
+ 
+diff --git a/appveyor.yml b/appveyor.yml
+index 72f8698790..4717f2735a 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -8,6 +8,7 @@ environment:
+     - nodejs_version: "4.7"
+     - nodejs_version: "5.12"
+     - nodejs_version: "6.9"
++    - nodejs_version: "7.5"
+ cache:
+   - node_modules
+ install:
+diff --git a/lib/application.js b/lib/application.js
+index 0ee4def389..0fe0eb4402 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -28,6 +28,7 @@ var deprecate = require('depd')('express');
+ var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
++var setPrototyeOf = require('setprototypeof')
+ var slice = Array.prototype.slice;
+ 
+ /**
+@@ -94,10 +95,10 @@ app.defaultConfiguration = function defaultConfiguration() {
+     }
+ 
+     // inherit protos
+-    this.request.__proto__ = parent.request;
+-    this.response.__proto__ = parent.response;
+-    this.engines.__proto__ = parent.engines;
+-    this.settings.__proto__ = parent.settings;
++    setPrototyeOf(this.request, parent.request)
++    setPrototyeOf(this.response, parent.response)
++    setPrototyeOf(this.engines, parent.engines)
++    setPrototyeOf(this.settings, parent.settings)
+   });
+ 
+   // setup locals
+@@ -227,8 +228,8 @@ app.use = function use(fn) {
+     router.use(path, function mounted_app(req, res, next) {
+       var orig = req.app;
+       fn.handle(req, res, function (err) {
+-        req.__proto__ = orig.request;
+-        res.__proto__ = orig.response;
++        setPrototyeOf(req, orig.request)
++        setPrototyeOf(res, orig.response)
+         next(err);
+       });
+     });
+diff --git a/lib/express.js b/lib/express.js
+index 540c8be6f4..187e4e2d7c 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -41,8 +41,16 @@ function createApplication() {
+   mixin(app, EventEmitter.prototype, false);
+   mixin(app, proto, false);
+ 
+-  app.request = { __proto__: req, app: app };
+-  app.response = { __proto__: res, app: app };
++  // expose the prototype that will get set on requests
++  app.request = Object.create(req, {
++    app: { configurable: true, enumerable: true, writable: true, value: app }
++  })
++
++  // expose the prototype that will get set on responses
++  app.response = Object.create(res, {
++    app: { configurable: true, enumerable: true, writable: true, value: app }
++  })
++
+   app.init();
+   return app;
+ }
+diff --git a/lib/middleware/init.js b/lib/middleware/init.js
+index f3119ed3a1..328c4a863d 100644
+--- a/lib/middleware/init.js
++++ b/lib/middleware/init.js
+@@ -8,6 +8,13 @@
+ 
+ 'use strict';
+ 
++/**
++ * Module dependencies.
++ * @private
++ */
++
++var setPrototyeOf = require('setprototypeof')
++
+ /**
+  * Initialization middleware, exposing the
+  * request and response to each other, as well
+@@ -25,8 +32,8 @@ exports.init = function(app){
+     res.req = req;
+     req.next = next;
+ 
+-    req.__proto__ = app.request;
+-    res.__proto__ = app.response;
++    setPrototyeOf(req, app.request)
++    setPrototyeOf(res, app.response)
+ 
+     res.locals = res.locals || Object.create(null);
+ 
+diff --git a/lib/request.js b/lib/request.js
+index 513c9bf3d4..3432e6776f 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -25,11 +25,17 @@ var proxyaddr = require('proxy-addr');
+ 
+ /**
+  * Request prototype.
++ * @public
+  */
+ 
+-var req = exports = module.exports = {
+-  __proto__: http.IncomingMessage.prototype
+-};
++var req = Object.create(http.IncomingMessage.prototype)
++
++/**
++ * Module exports.
++ * @public
++ */
++
++module.exports = req
+ 
+ /**
+  * Return request header.
+@@ -356,7 +362,12 @@ defineGetter(req, 'ip', function ip(){
+ defineGetter(req, 'ips', function ips() {
+   var trust = this.app.get('trust proxy fn');
+   var addrs = proxyaddr.all(this, trust);
+-  return addrs.slice(1).reverse();
++
++  // reverse the order (to farthest -> closest)
++  // and remove socket address
++  addrs.reverse().pop()
++
++  return addrs
+ });
+ 
+ /**
+@@ -447,14 +458,18 @@ defineGetter(req, 'host', deprecate.function(function host(){
+ 
+ defineGetter(req, 'fresh', function(){
+   var method = this.method;
+-  var s = this.res.statusCode;
++  var res = this.res
++  var status = res.statusCode
+ 
+   // GET or HEAD for weak freshness validation only
+   if ('GET' !== method && 'HEAD' !== method) return false;
+ 
+   // 2xx or 304 as per rfc2616 14.26
+-  if ((s >= 200 && s < 300) || 304 === s) {
+-    return fresh(this.headers, (this.res._headers || {}));
++  if ((status >= 200 && status < 300) || 304 === status) {
++    return fresh(this.headers, {
++      'etag': res.get('ETag'),
++      'last-modified': res.get('Last-Modified')
++    })
+   }
+ 
+   return false;
+diff --git a/lib/response.js b/lib/response.js
+index 6128f450a9..6aefe1b178 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -20,12 +20,12 @@ var http = require('http');
+ var isAbsolute = require('./utils').isAbsolute;
+ var onFinished = require('on-finished');
+ var path = require('path');
++var statuses = require('statuses')
+ var merge = require('utils-merge');
+ var sign = require('cookie-signature').sign;
+ var normalizeType = require('./utils').normalizeType;
+ var normalizeTypes = require('./utils').normalizeTypes;
+ var setCharset = require('./utils').setCharset;
+-var statusCodes = http.STATUS_CODES;
+ var cookie = require('cookie');
+ var send = require('send');
+ var extname = path.extname;
+@@ -35,11 +35,17 @@ var vary = require('vary');
+ 
+ /**
+  * Response prototype.
++ * @public
+  */
+ 
+-var res = module.exports = {
+-  __proto__: http.ServerResponse.prototype
+-};
++var res = Object.create(http.ServerResponse.prototype)
++
++/**
++ * Module exports.
++ * @public
++ */
++
++module.exports = res
+ 
+ /**
+  * Module variables.
+@@ -129,7 +135,7 @@ res.send = function send(body) {
+ 
+     deprecate('res.send(status): Use res.sendStatus(status) instead');
+     this.statusCode = chunk;
+-    chunk = statusCodes[chunk];
++    chunk = statuses[chunk]
+   }
+ 
+   switch (typeof chunk) {
+@@ -334,7 +340,7 @@ res.jsonp = function jsonp(obj) {
+  */
+ 
+ res.sendStatus = function sendStatus(statusCode) {
+-  var body = statusCodes[statusCode] || String(statusCode);
++  var body = statuses[statusCode] || String(statusCode)
+ 
+   this.statusCode = statusCode;
+   this.type('txt');
+@@ -876,12 +882,12 @@ res.redirect = function redirect(url) {
+   // Support text/{plain,html} by default
+   this.format({
+     text: function(){
+-      body = statusCodes[status] + '. Redirecting to ' + address;
++      body = statuses[status] + '. Redirecting to ' + address
+     },
+ 
+     html: function(){
+       var u = escapeHtml(address);
+-      body = '<p>' + statusCodes[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>';
++      body = '<p>' + statuses[status] + '. Redirecting to <a href="' + u + '">' + u + '</a></p>'
+     },
+ 
+     default: function(){
+diff --git a/lib/router/index.js b/lib/router/index.js
+index dac2514815..1f426068d7 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -21,6 +21,7 @@ var debug = require('debug')('express:router');
+ var deprecate = require('depd')('express');
+ var flatten = require('array-flatten');
+ var parseUrl = require('parseurl');
++var setPrototypeOf = require('setprototypeof')
+ 
+ /**
+  * Module variables.
+@@ -47,7 +48,7 @@ var proto = module.exports = function(options) {
+   }
+ 
+   // mixin Router class functions
+-  router.__proto__ = proto;
++  setPrototypeOf(router, proto)
+ 
+   router.params = {};
+   router._params = [];
+@@ -137,11 +138,8 @@ proto.handle = function handle(req, res, out) {
+ 
+   debug('dispatching %s %s', req.method, req.url);
+ 
+-  var search = 1 + req.url.indexOf('?');
+-  var pathlength = search ? search - 1 : req.url.length;
+-  var fqdn = req.url[0] !== '/' && 1 + req.url.substr(0, pathlength).indexOf('://');
+-  var protohost = fqdn ? req.url.substr(0, req.url.indexOf('/', 2 + fqdn)) : '';
+   var idx = 0;
++  var protohost = getProtohost(req.url) || ''
+   var removed = '';
+   var slashAdded = false;
+   var paramcalled = {};
+@@ -193,6 +191,12 @@ proto.handle = function handle(req, res, out) {
+       removed = '';
+     }
+ 
++    // signal to exit router
++    if (layerError === 'router') {
++      setImmediate(done, null)
++      return
++    }
++
+     // no more matching layers
+     if (idx >= stack.length) {
+       setImmediate(done, layerError);
+@@ -282,18 +286,19 @@ proto.handle = function handle(req, res, out) {
+   }
+ 
+   function trim_prefix(layer, layerError, layerPath, path) {
+-    var c = path[layerPath.length];
+-    if (c && '/' !== c && '.' !== c) return next(layerError);
+-
+-     // Trim off the part of the url that matches the route
+-     // middleware (.use stuff) needs to have the path stripped
+     if (layerPath.length !== 0) {
++      // Validate path breaks on a path separator
++      var c = path[layerPath.length]
++      if (c && c !== '/' && c !== '.') return next(layerError)
++
++      // Trim off the part of the url that matches the route
++      // middleware (.use stuff) needs to have the path stripped
+       debug('trim prefix (%s) from url %s', layerPath, req.url);
+       removed = layerPath;
+       req.url = protohost + req.url.substr(protohost.length + removed.length);
+ 
+       // Ensure leading slash
+-      if (!fqdn && req.url[0] !== '/') {
++      if (!protohost && req.url[0] !== '/') {
+         req.url = '/' + req.url;
+         slashAdded = true;
+       }
+@@ -351,11 +356,6 @@ proto.process_params = function process_params(layer, called, req, res, done) {
+ 
+     paramIndex = 0;
+     key = keys[i++];
+-
+-    if (!key) {
+-      return done();
+-    }
+-
+     name = key.name;
+     paramVal = req.params[name];
+     paramCallbacks = params[name];
+@@ -459,7 +459,7 @@ proto.use = function use(fn) {
+     }
+ 
+     // add the middleware
+-    debug('use %s %s', path, fn.name || '<anonymous>');
++    debug('use %o %s', path, fn.name || '<anonymous>')
+ 
+     var layer = new Layer(path, {
+       sensitive: this.caseSensitive,
+@@ -531,6 +531,23 @@ function getPathname(req) {
+   }
+ }
+ 
++// Get get protocol + host for a URL
++function getProtohost(url) {
++  if (typeof url !== 'string' || url.length === 0 || url[0] === '/') {
++    return undefined
++  }
++
++  var searchIndex = url.indexOf('?')
++  var pathLength = searchIndex !== -1
++    ? searchIndex
++    : url.length
++  var fqdnIndex = url.substr(0, pathLength).indexOf('://')
++
++  return fqdnIndex !== -1
++    ? url.substr(0, url.indexOf('/', 3 + fqdnIndex))
++    : undefined
++}
++
+ // get type for error message
+ function gettype(obj) {
+   var type = typeof obj;
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+index fe9210cb9d..4dc8e86d4f 100644
+--- a/lib/router/layer.js
++++ b/lib/router/layer.js
+@@ -35,7 +35,7 @@ function Layer(path, options, fn) {
+     return new Layer(path, options, fn);
+   }
+ 
+-  debug('new %s', path);
++  debug('new %o', path)
+   var opts = options || {};
+ 
+   this.handle = fn;
+@@ -44,9 +44,9 @@ function Layer(path, options, fn) {
+   this.path = undefined;
+   this.regexp = pathRegexp(path, this.keys = [], opts);
+ 
+-  if (path === '/' && opts.end === false) {
+-    this.regexp.fast_slash = true;
+-  }
++  // set fast path flags
++  this.regexp.fast_star = path === '*'
++  this.regexp.fast_slash = path === '/' && opts.end === false
+ }
+ 
+ /**
+@@ -108,23 +108,28 @@ Layer.prototype.handle_request = function handle(req, res, next) {
+  */
+ 
+ Layer.prototype.match = function match(path) {
+-  if (path == null) {
+-    // no path, nothing matches
+-    this.params = undefined;
+-    this.path = undefined;
+-    return false;
+-  }
++  var match
++
++  if (path != null) {
++    // fast path non-ending match for / (any path matches)
++    if (this.regexp.fast_slash) {
++      this.params = {}
++      this.path = ''
++      return true
++    }
+ 
+-  if (this.regexp.fast_slash) {
+-    // fast path non-ending match for / (everything matches)
+-    this.params = {};
+-    this.path = '';
+-    return true;
+-  }
++    // fast path for * (everything matched in a param)
++    if (this.regexp.fast_star) {
++      this.params = {'0': decode_param(path)}
++      this.path = path
++      return true
++    }
+ 
+-  var m = this.regexp.exec(path);
++    // match the path
++    match = this.regexp.exec(path)
++  }
+ 
+-  if (!m) {
++  if (!match) {
+     this.params = undefined;
+     this.path = undefined;
+     return false;
+@@ -132,15 +137,15 @@ Layer.prototype.match = function match(path) {
+ 
+   // store values
+   this.params = {};
+-  this.path = m[0];
++  this.path = match[0]
+ 
+   var keys = this.keys;
+   var params = this.params;
+ 
+-  for (var i = 1; i < m.length; i++) {
++  for (var i = 1; i < match.length; i++) {
+     var key = keys[i - 1];
+     var prop = key.name;
+-    var val = decode_param(m[i]);
++    var val = decode_param(match[i])
+ 
+     if (val !== undefined || !(hasOwnProperty.call(params, prop))) {
+       params[prop] = val;
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 2788d7b735..ea82ed29df 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -44,7 +44,7 @@ function Route(path) {
+   this.path = path;
+   this.stack = [];
+ 
+-  debug('new %s', path);
++  debug('new %o', path)
+ 
+   // route handlers for various http methods
+   this.methods = {};
+@@ -112,10 +112,16 @@ Route.prototype.dispatch = function dispatch(req, res, done) {
+   next();
+ 
+   function next(err) {
++    // signal to exit route
+     if (err && err === 'route') {
+       return done();
+     }
+ 
++    // signal to exit router
++    if (err && err === 'router') {
++      return done(err)
++    }
++
+     var layer = stack[idx++];
+     if (!layer) {
+       return done(err);
+@@ -196,7 +202,7 @@ methods.forEach(function(method){
+         throw new Error(msg);
+       }
+ 
+-      debug('%s %s', method, this.path);
++      debug('%s %o', method, this.path)
+ 
+       var layer = Layer('/', {}, handle);
+       layer.method = method;
+diff --git a/lib/view.js b/lib/view.js
+index 52415d4c28..1728725d29 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -75,7 +75,9 @@ function View(name, options) {
+ 
+   if (!opts.engines[this.ext]) {
+     // load engine
+-    opts.engines[this.ext] = require(this.ext.substr(1)).__express;
++    var mod = this.ext.substr(1)
++    debug('require "%s"', mod)
++    opts.engines[this.ext] = require(mod).__express
+   }
+ 
+   // store loaded engine
+diff --git a/package.json b/package.json
+index 72b266a3af..79b3b0e31c 100644
+--- a/package.json
++++ b/package.json
+@@ -33,38 +33,40 @@
+     "content-type": "~1.0.2",
+     "cookie": "0.3.1",
+     "cookie-signature": "1.0.6",
+-    "debug": "~2.2.0",
++    "debug": "2.6.1",
+     "depd": "~1.1.0",
+     "encodeurl": "~1.0.1",
+     "escape-html": "~1.0.3",
+-    "etag": "~1.7.0",
+-    "finalhandler": "0.5.1",
+-    "fresh": "0.3.0",
++    "etag": "~1.8.0",
++    "finalhandler": "~1.0.0",
++    "fresh": "0.5.0",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+     "on-finished": "~2.3.0",
+     "parseurl": "~1.3.1",
+     "path-to-regexp": "0.1.7",
+     "proxy-addr": "~1.1.3",
+-    "qs": "6.2.0",
++    "qs": "6.3.1",
+     "range-parser": "~1.2.0",
+-    "send": "0.14.2",
+-    "serve-static": "~1.11.2",
++    "send": "0.15.0",
++    "serve-static": "1.12.0",
++    "setprototypeof": "1.0.3",
++    "statuses": "~1.3.1",
+     "type-is": "~1.6.14",
+     "utils-merge": "1.0.0",
+     "vary": "~1.1.0"
+   },
+   "devDependencies": {
+     "after": "0.8.2",
+-    "body-parser": "1.16.0",
++    "body-parser": "1.16.1",
+     "cookie-parser": "~1.4.3",
+-    "ejs": "2.5.5",
+-    "express-session": "1.15.0",
++    "ejs": "2.5.6",
++    "express-session": "1.15.1",
+     "istanbul": "0.4.5",
+     "marked": "0.3.6",
+-    "method-override": "~2.3.6",
++    "method-override": "2.3.7",
+     "mocha": "3.2.0",
+-    "morgan": "~1.7.0",
++    "morgan": "1.8.1",
+     "multiparty": "4.1.3",
+     "pbkdf2-password": "1.2.1",
+     "should": "11.2.0",

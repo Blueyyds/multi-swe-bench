@@ -1,0 +1,60 @@
+diff --git a/test/acceptance/web-service.js b/test/acceptance/web-service.js
+index 521fa9fa28..fa2c10bfdb 100644
+--- a/test/acceptance/web-service.js
++++ b/test/acceptance/web-service.js
+@@ -53,7 +53,7 @@ describe('web-service', function(){
+         .get('/api/repos?api-key=foo')
+         .expect('Content-Type', 'application/json; charset=utf-8')
+         .expect(/"name":"express"/)
+-        .expect(/"url":"http:\/\/github.com\/expressjs\/express"/)
++        .expect(/"url":"https:\/\/github.com\/expressjs\/express"/)
+         .expect(200, done)
+       })
+     })
+@@ -82,7 +82,7 @@ describe('web-service', function(){
+         .get('/api/user/loki/repos?api-key=foo')
+         .expect('Content-Type', 'application/json; charset=utf-8')
+         .expect(/"name":"stylus"/)
+-        .expect(/"url":"http:\/\/github.com\/learnboost\/stylus"/)
++        .expect(/"url":"https:\/\/github.com\/learnboost\/stylus"/)
+         .expect(200, done)
+       })
+ 
+diff --git a/test/res.send.js b/test/res.send.js
+index 2410554248..13658fe6b0 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -1,4 +1,5 @@
+ 
++var assert = require('assert')
+ var Buffer = require('safe-buffer').Buffer
+ var express = require('..');
+ var methods = require('methods');
+@@ -54,7 +55,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.send(201).should.equal(res);
++        res.send(201)
+       });
+ 
+       request(app)
+@@ -354,6 +355,18 @@ describe('res', function(){
+     .expect('{"foo":"bar"}', done);
+   })
+ 
++  it('should be chainable', function (done) {
++    var app = express()
++
++    app.use(function (req, res) {
++      assert.equal(res.send('hey'), res)
++    })
++
++    request(app)
++    .get('/')
++    .expect(200, 'hey', done)
++  })
++
+   describe('"etag" setting', function () {
+     describe('when enabled', function () {
+       it('should send ETag', function (done) {

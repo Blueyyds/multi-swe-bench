@@ -1,0 +1,17 @@
+diff --git a/test/acceptance/web-service.js b/test/acceptance/web-service.js
+index fa2c10bfdb..2e37b48c8c 100644
+--- a/test/acceptance/web-service.js
++++ b/test/acceptance/web-service.js
+@@ -97,9 +97,9 @@ describe('web-service', function(){
+   describe('when requesting an invalid route', function(){
+     it('should respond with 404 json', function(done){
+       request(app)
+-      .get('/api/something?api-key=bar')
+-      .expect('Content-Type', /json/)
+-      .expect(404, '{"error":"Lame, can\'t find that"}', done)
++        .get('/api/something?api-key=bar')
++        .expect('Content-Type', /json/)
++        .expect(404, '{"error":"Sorry, can\'t find that"}', done)
+     })
+   })
+ })

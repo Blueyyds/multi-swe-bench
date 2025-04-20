@@ -1,0 +1,17 @@
+diff --git a/lib/response.js b/lib/response.js
+index 641704b04a..4907f4731e 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -56,7 +56,11 @@ var charsetRegExp = /;\s*charset\s*=/;
+  */
+ 
+ res.status = function status(code) {
+-  this.statusCode = code;
++  if (code !== null && code !== undefined) {
++    this.statusCode = code;
++  } else {
++    throw new TypeError('Invalid status code.')
++  }
+   return this;
+ };
+ 

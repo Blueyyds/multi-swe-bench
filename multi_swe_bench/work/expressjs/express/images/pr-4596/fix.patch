@@ -1,0 +1,31 @@
+diff --git a/History.md b/History.md
+index 9f3f876512..fbe0126907 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,8 @@
++unreleased
++==========
++
++  * Support proper 205 responses using `res.send`
++
+ 4.17.3 / 2022-02-16
+ ===================
+ 
+diff --git a/lib/response.js b/lib/response.js
+index ba02008522..4c9fbfc243 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -213,6 +213,13 @@ res.send = function send(body) {
+     chunk = '';
+   }
+ 
++  // alter headers for 205
++  if (this.statusCode === 205) {
++    this.set('Content-Length', '0')
++    this.removeHeader('Transfer-Encoding')
++    chunk = ''
++  }
++
+   if (req.method === 'HEAD') {
+     // skip body for HEAD
+     this.end();

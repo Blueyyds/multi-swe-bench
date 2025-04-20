@@ -1,0 +1,264 @@
+diff --git a/test/req.get.js b/test/req.get.js
+index 144a256848..109a2d90ce 100644
+--- a/test/req.get.js
++++ b/test/req.get.js
+@@ -31,5 +31,29 @@ describe('req', function(){
+       .set('Referrer', 'http://foobar.com')
+       .expect('http://foobar.com', done);
+     })
++
++    it('should throw missing header name', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.end(req.get())
++      })
++
++      request(app)
++      .get('/')
++      .expect(500, /TypeError: name argument is required to req.get/, done)
++    })
++
++    it('should throw for non-string header name', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.end(req.get(42))
++      })
++
++      request(app)
++      .get('/')
++      .expect(500, /TypeError: name must be a string to req.get/, done)
++    })
+   })
+-})
+\ No newline at end of file
++})
+diff --git a/test/req.query.js b/test/req.query.js
+index 1915141199..d3d29abd16 100644
+--- a/test/req.query.js
++++ b/test/req.query.js
+@@ -43,7 +43,7 @@ describe('req', function(){
+         var app = createApp('simple');
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{"user[name]":"tj"}', done);
+       });
+     });
+@@ -55,7 +55,7 @@ describe('req', function(){
+         });
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{"length":17}', done);
+       });
+     });
+@@ -65,7 +65,7 @@ describe('req', function(){
+         var app = createApp(false);
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{}', done);
+       });
+     });
+@@ -75,7 +75,7 @@ describe('req', function(){
+         var app = createApp(true);
+ 
+         request(app)
+-        .get('/?user[name]=tj')
++        .get('/?user%5Bname%5D=tj')
+         .expect(200, '{"user[name]":"tj"}', done);
+       });
+     });
+diff --git a/test/req.range.js b/test/req.range.js
+index 08cf8f91e9..d530d85a64 100644
+--- a/test/req.range.js
++++ b/test/req.range.js
+@@ -12,9 +12,9 @@ function req(ret) {
+ describe('req', function(){
+   describe('.range(size)', function(){
+     it('should return parsed ranges', function(){
+-      var ret = [{ start: 0, end: 50 }, { start: 60, end: 100 }];
+-      ret.type = 'bytes';
+-      req('bytes=0-50,60-100').range(120).should.eql(ret);
++      var ranges = [{ start: 0, end: 50 }, { start: 51, end: 100 }]
++      ranges.type = 'bytes'
++      assert.deepEqual(req('bytes=0-50,51-100').range(120), ranges)
+     })
+ 
+     it('should cap to the given size', function(){
+@@ -35,4 +35,14 @@ describe('req', function(){
+       assert(req('').range(120) === undefined);
+     })
+   })
++
++  describe('.range(size, options)', function(){
++    describe('with "combine: true" option', function(){
++      it('should return combined ranges', function(){
++        var ranges = [{ start: 0, end: 100 }]
++        ranges.type = 'bytes'
++        assert.deepEqual(req('bytes=0-50,51-100').range(120, { combine: true }), ranges)
++      })
++    })
++  })
+ })
+diff --git a/test/res.location.js b/test/res.location.js
+index 2b42bf358d..bb9eb6f92e 100644
+--- a/test/res.location.js
++++ b/test/res.location.js
+@@ -16,5 +16,31 @@ describe('res', function(){
+       .expect('Location', 'http://google.com')
+       .expect(200, done)
+     })
++
++    it('should encode "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.location('https://google.com?q=\u2603 §10').end()
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%E2%98%83%20%C2%A710')
++      .expect(200, done)
++    })
++
++    it('should not touch already-encoded sequences in "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.location('https://google.com?q=%A710').end()
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%A710')
++      .expect(200, done)
++    })
+   })
+ })
+diff --git a/test/res.redirect.js b/test/res.redirect.js
+index 8511c40f2a..9f3bd43676 100644
+--- a/test/res.redirect.js
++++ b/test/res.redirect.js
+@@ -18,6 +18,32 @@ describe('res', function(){
+       .expect('location', 'http://google.com')
+       .expect(302, done)
+     })
++
++    it('should encode "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.redirect('https://google.com?q=\u2603 §10')
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%E2%98%83%20%C2%A710')
++      .expect(302, done)
++    })
++
++    it('should not touch already-encoded sequences in "url"', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.redirect('https://google.com?q=%A710')
++      })
++
++      request(app)
++      .get('/')
++      .expect('Location', 'https://google.com?q=%A710')
++      .expect(302, done)
++    })
+   })
+ 
+   describe('.redirect(status, url)', function(){
+@@ -85,7 +111,7 @@ describe('res', function(){
+       var app = express();
+ 
+       app.use(function(req, res){
+-        res.redirect('<lame>');
++        res.redirect('<la\'me>');
+       });
+ 
+       request(app)
+@@ -93,8 +119,8 @@ describe('res', function(){
+       .set('Host', 'http://example.com')
+       .set('Accept', 'text/html')
+       .expect('Content-Type', /html/)
+-      .expect('Location', '<lame>')
+-      .expect(302, '<p>' + http.STATUS_CODES[302] + '. Redirecting to <a href="&lt;lame&gt;">&lt;lame&gt;</a></p>', done);
++      .expect('Location', '%3Cla\'me%3E')
++      .expect(302, '<p>' + http.STATUS_CODES[302] + '. Redirecting to <a href="%3Cla&#39;me%3E">%3Cla&#39;me%3E</a></p>', done)
+     })
+ 
+     it('should include the redirect type', function(done){
+@@ -141,8 +167,8 @@ describe('res', function(){
+       .set('Host', 'http://example.com')
+       .set('Accept', 'text/plain, */*')
+       .expect('Content-Type', /plain/)
+-      .expect('Location', 'http://example.com/?param=<script>alert("hax");</script>')
+-      .expect(302, http.STATUS_CODES[302] + '. Redirecting to http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E', done);
++      .expect('Location', 'http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E')
++      .expect(302, http.STATUS_CODES[302] + '. Redirecting to http://example.com/?param=%3Cscript%3Ealert(%22hax%22);%3C/script%3E', done)
+     })
+ 
+     it('should include the redirect type', function(done){
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index 78013a50eb..705c15a8b7 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -286,6 +286,14 @@ describe('res', function(){
+     })
+   })
+ 
++  describe('.sendFile(path, options)', function () {
++    it('should pass options to send module', function (done) {
++      request(createApp(path.resolve(fixtures, 'name.txt'), { start: 0, end: 1 }))
++      .get('/')
++      .expect(200, 'to', done)
++    })
++  })
++
+   describe('.sendfile(path, fn)', function(){
+     it('should invoke the callback when complete', function(done){
+       var app = express();
+@@ -702,6 +710,20 @@ describe('res', function(){
+   })
+ })
+ 
++  describe('.sendfile(path, options)', function () {
++    it('should pass options to send module', function (done) {
++      var app = express()
++
++      app.use(function (req, res) {
++        res.sendfile(path.resolve(fixtures, 'name.txt'), { start: 0, end: 1 })
++      })
++
++      request(app)
++      .get('/')
++      .expect(200, 'to', done)
++    })
++  })
++
+ function createApp(path, options, fn) {
+   var app = express();
+ 
+diff --git a/test/utils.js b/test/utils.js
+index b7e8b52009..b673196260 100644
+--- a/test/utils.js
++++ b/test/utils.js
+@@ -73,6 +73,7 @@ describe('utils.wetag(body, encoding)', function(){
+ describe('utils.isAbsolute()', function(){
+   it('should support windows', function(){
+     assert(utils.isAbsolute('c:\\'));
++    assert(utils.isAbsolute('c:/'));
+     assert(!utils.isAbsolute(':\\'));
+   })
+ 

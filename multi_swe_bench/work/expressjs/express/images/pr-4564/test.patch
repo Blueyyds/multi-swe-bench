@@ -1,0 +1,35 @@
+diff --git a/test/app.param.js b/test/app.param.js
+index 8785567751..577b00710b 100644
+--- a/test/app.param.js
++++ b/test/app.param.js
+@@ -185,7 +185,7 @@ describe('app', function(){
+       });
+ 
+       app.param('user', function(req, res, next, user) {
+-        next(new Error('invalid invokation'));
++        next(new Error('invalid invocation'))
+       });
+ 
+       app.post('/:user', function(req, res, next) {
+diff --git a/test/express.static.js b/test/express.static.js
+index 485ee4c0c1..56d3657bff 100644
+--- a/test/express.static.js
++++ b/test/express.static.js
+@@ -429,7 +429,7 @@ describe('express.static()', function () {
+ 
+   describe('lastModified', function () {
+     describe('when false', function () {
+-      it('should not include Last-Modifed', function (done) {
++      it('should not include Last-Modified', function (done) {
+         request(createApp(fixtures, { 'lastModified': false }))
+           .get('/nums.txt')
+           .expect(utils.shouldNotHaveHeader('Last-Modified'))
+@@ -438,7 +438,7 @@ describe('express.static()', function () {
+     })
+ 
+     describe('when true', function () {
+-      it('should include Last-Modifed', function (done) {
++      it('should include Last-Modified', function (done) {
+         request(createApp(fixtures, { 'lastModified': true }))
+           .get('/nums.txt')
+           .expect('Last-Modified', /^\w{3}, \d+ \w+ \d+ \d+:\d+:\d+ \w+$/)

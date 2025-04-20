@@ -1,0 +1,577 @@
+diff --git a/test/config.js b/test/config.js
+index 59d38f07a3..e298e76a5c 100644
+--- a/test/config.js
++++ b/test/config.js
+@@ -1,30 +1,36 @@
+ 
+-var express = require('../')
+-  , assert = require('assert');
++var assert = require('assert');
++var express = require('..');
+ 
+-describe('config', function(){
+-  describe('.set()', function(){
+-    it('should set a value', function(){
++describe('config', function () {
++  describe('.set()', function () {
++    it('should set a value', function () {
+       var app = express();
+-      app.set('foo', 'bar').should.equal(app);
++      app.set('foo', 'bar');
++      assert.equal(app.get('foo'), 'bar');
++    })
++
++    it('should return the app', function () {
++      var app = express();
++      assert.equal(app.set('foo', 'bar'), app);
+     })
+ 
+-    it('should return the app when undefined', function(){
++    it('should return the app when undefined', function () {
+       var app = express();
+-      app.set('foo', undefined).should.equal(app);
++      assert.equal(app.set('foo', undefined), app);
+     })
+ 
+     describe('"etag"', function(){
+       it('should throw on bad value', function(){
+-        var app = express()
+-        app.set.bind(app, 'etag', 42).should.throw(/unknown value/)
++        var app = express();
++        assert.throws(app.set.bind(app, 'etag', 42), /unknown value/);
+       })
+ 
+       it('should set "etag fn"', function(){
+         var app = express()
+         var fn = function(){}
+         app.set('etag', fn)
+-        app.get('etag fn').should.equal(fn)
++        assert.equal(app.get('etag fn'), fn)
+       })
+     })
+ 
+@@ -33,7 +39,7 @@ describe('config', function(){
+         var app = express()
+         var fn = function(){}
+         app.set('trust proxy', fn)
+-        app.get('trust proxy fn').should.equal(fn)
++        assert.equal(app.get('trust proxy fn'), fn)
+       })
+     })
+   })
+@@ -41,34 +47,73 @@ describe('config', function(){
+   describe('.get()', function(){
+     it('should return undefined when unset', function(){
+       var app = express();
+-      assert(undefined === app.get('foo'));
++      assert.strictEqual(app.get('foo'), undefined);
+     })
+     
+     it('should otherwise return the value', function(){
+       var app = express();
+       app.set('foo', 'bar');
+-      app.get('foo').should.equal('bar');
++      assert.equal(app.get('foo'), 'bar');
+     })
+ 
+     describe('when mounted', function(){
+       it('should default to the parent app', function(){
+-        var app = express()
+-          , blog = express();
++        var app = express();
++        var blog = express();
+ 
+         app.set('title', 'Express');
+         app.use(blog);
+-        blog.get('title').should.equal('Express');
++        assert.equal(blog.get('title'), 'Express');
+       })
+-      
++
+       it('should given precedence to the child', function(){
+-        var app = express()
+-          , blog = express();
++        var app = express();
++        var blog = express();
+ 
+         app.use(blog);
+         app.set('title', 'Express');
+         blog.set('title', 'Some Blog');
+ 
+-        blog.get('title').should.equal('Some Blog');
++        assert.equal(blog.get('title'), 'Some Blog');
++      })
++
++      it('should inherit "trust proxy" setting', function () {
++        var app = express();
++        var blog = express();
++
++        function fn() { return false }
++
++        app.set('trust proxy', fn);
++        assert.equal(app.get('trust proxy'), fn);
++        assert.equal(app.get('trust proxy fn'), fn);
++
++        app.use(blog);
++
++        assert.equal(blog.get('trust proxy'), fn);
++        assert.equal(blog.get('trust proxy fn'), fn);
++      })
++
++      it('should prefer child "trust proxy" setting', function () {
++        var app = express();
++        var blog = express();
++
++        function fn1() { return false }
++        function fn2() { return true }
++
++        app.set('trust proxy', fn1);
++        assert.equal(app.get('trust proxy'), fn1);
++        assert.equal(app.get('trust proxy fn'), fn1);
++
++        blog.set('trust proxy', fn2);
++        assert.equal(blog.get('trust proxy'), fn2);
++        assert.equal(blog.get('trust proxy fn'), fn2);
++
++        app.use(blog);
++
++        assert.equal(app.get('trust proxy'), fn1);
++        assert.equal(app.get('trust proxy fn'), fn1);
++        assert.equal(blog.get('trust proxy'), fn2);
++        assert.equal(blog.get('trust proxy fn'), fn2);
+       })
+     })
+   })
+@@ -76,42 +121,42 @@ describe('config', function(){
+   describe('.enable()', function(){
+     it('should set the value to true', function(){
+       var app = express();
+-      app.enable('tobi').should.equal(app);
+-      app.get('tobi').should.be.true;
++      assert.equal(app.enable('tobi'), app);
++      assert.strictEqual(app.get('tobi'), true);
+     })
+   })
+   
+   describe('.disable()', function(){
+     it('should set the value to false', function(){
+       var app = express();
+-      app.disable('tobi').should.equal(app);
+-      app.get('tobi').should.be.false;
++      assert.equal(app.disable('tobi'), app);
++      assert.strictEqual(app.get('tobi'), false);
+     })
+   })
+   
+   describe('.enabled()', function(){
+     it('should default to false', function(){
+       var app = express();
+-      app.enabled('foo').should.be.false;
++      assert.strictEqual(app.enabled('foo'), false);
+     })
+     
+     it('should return true when set', function(){
+       var app = express();
+       app.set('foo', 'bar');
+-      app.enabled('foo').should.be.true;
++      assert.strictEqual(app.enabled('foo'), true);
+     })
+   })
+   
+   describe('.disabled()', function(){
+     it('should default to true', function(){
+       var app = express();
+-      app.disabled('foo').should.be.true;
++      assert.strictEqual(app.disabled('foo'), true);
+     })
+     
+     it('should return false when set', function(){
+       var app = express();
+       app.set('foo', 'bar');
+-      app.disabled('foo').should.be.false;
++      assert.strictEqual(app.disabled('foo'), false);
+     })
+   })
+ })
+diff --git a/test/req.ip.js b/test/req.ip.js
+index 19d0fee147..3ca575e11b 100644
+--- a/test/req.ip.js
++++ b/test/req.ip.js
+@@ -35,6 +35,23 @@ describe('req', function(){
+           .set('X-Forwarded-For', 'client, p1, p2')
+           .expect('p1', done);
+         })
++
++        it('should return the addr after trusted proxy, from sub app', function (done) {
++          var app = express();
++          var sub = express();
++
++          app.set('trust proxy', 2);
++          app.use(sub);
++
++          sub.use(function (req, res, next) {
++            res.send(req.ip);
++          });
++
++          request(app)
++          .get('/')
++          .set('X-Forwarded-For', 'client, p1, p2')
++          .expect(200, 'p1', done);
++        })
+       })
+ 
+       describe('when "trust proxy" is disabled', function(){
+diff --git a/test/res.send.js b/test/res.send.js
+index 6148e00207..6c1361b5b1 100644
+--- a/test/res.send.js
++++ b/test/res.send.js
+@@ -1,7 +1,8 @@
+ 
+-var express = require('../')
+-  , request = require('supertest')
+-  , assert = require('assert');
++var assert = require('assert');
++var express = require('..');
++var methods = require('methods');
++var request = require('supertest');
+ 
+ describe('res', function(){
+   describe('.send(null)', function(){
+@@ -114,10 +115,10 @@ describe('res', function(){
+       })
+     })
+ 
+-    it('should set ETag', function(done){
++    it('should set ETag', function (done) {
+       var app = express();
+ 
+-      app.use(function(req, res){
++      app.use(function (req, res) {
+         var str = Array(1000).join('-');
+         res.send(str);
+       });
+@@ -125,24 +126,7 @@ describe('res', function(){
+       request(app)
+       .get('/')
+       .expect('ETag', 'W/"3e7-8084ccd1"')
+-      .end(done);
+-    })
+-
+-    it('should not set ETag for non-GET/HEAD', function(done){
+-      var app = express();
+-
+-      app.use(function(req, res){
+-        var str = Array(1000).join('-');
+-        res.send(str);
+-      });
+-
+-      request(app)
+-      .post('/')
+-      .end(function(err, res){
+-        if (err) return done(err);
+-        assert(!res.header.etag, 'has an ETag');
+-        done();
+-      });
++      .expect(200, done);
+     })
+ 
+     it('should not override Content-Type', function(done){
+@@ -203,10 +187,10 @@ describe('res', function(){
+       })
+     })
+ 
+-    it('should set ETag', function(done){
++    it('should set ETag', function (done) {
+       var app = express();
+ 
+-      app.use(function(req, res){
++      app.use(function (req, res) {
+         var str = Array(1000).join('-');
+         res.send(new Buffer(str));
+       });
+@@ -214,7 +198,7 @@ describe('res', function(){
+       request(app)
+       .get('/')
+       .expect('ETag', 'W/"3e7-8084ccd1"')
+-      .end(done);
++      .expect(200, done);
+     })
+ 
+     it('should not override Content-Type', function(done){
+@@ -364,12 +348,12 @@ describe('res', function(){
+     .expect('{"foo":"bar"}', done);
+   })
+ 
+-  describe('"etag" setting', function(){
+-    describe('when enabled', function(){
+-      it('should send ETag', function(done){
++  describe('"etag" setting', function () {
++    describe('when enabled', function () {
++      it('should send ETag', function (done) {
+         var app = express();
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.send('kajdslfkasdf');
+         });
+ 
+@@ -377,27 +361,46 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"c-5aee35d8"', done)
+-      })
++        .expect('ETag', 'W/"c-5aee35d8"')
++        .expect(200, done);
++      });
++
++      methods.forEach(function (method) {
++        if (method === 'connect') return;
+ 
+-      it('should send ETag for empty string response', function(done){
+-        var app = express()
++        it('should send ETag in response to ' + method.toUpperCase() + ' request', function (done) {
++          var app = express();
+ 
+-        app.use(function(req, res){
+-          res.send('')
++          app[method]('/', function (req, res) {
++            res.send('kajdslfkasdf');
++          });
++
++          request(app)
++          [method]('/')
++          .expect('ETag', 'W/"c-5aee35d8"')
++          .expect(200, done);
++        })
++      });
++
++      it('should send ETag for empty string response', function (done) {
++        var app = express();
++
++        app.use(function (req, res) {
++          res.send('');
+         });
+ 
+-        app.enable('etag')
++        app.enable('etag');
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"0-0"', done)
++        .expect('ETag', 'W/"0-0"')
++        .expect(200, done);
+       })
+ 
+-      it('should send ETag for long response', function(done){
++      it('should send ETag for long response', function (done) {
+         var app = express();
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           var str = Array(1000).join('-');
+           res.send(str);
+         });
+@@ -406,13 +409,14 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"3e7-8084ccd1"', done)
++        .expect('ETag', 'W/"3e7-8084ccd1"')
++        .expect(200, done);
+       });
+ 
+-      it('should not override ETag when manually set', function(done){
++      it('should not override ETag when manually set', function (done) {
+         var app = express();
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.set('etag', '"asdf"');
+           res.send(200);
+         });
+@@ -421,32 +425,31 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', '"asdf"', done)
++        .expect('ETag', '"asdf"')
++        .expect(200, done);
+       });
+ 
+-      it('should not send ETag for res.send()', function(done){
+-        var app = express()
++      it('should not send ETag for res.send()', function (done) {
++        var app = express();
+ 
+-        app.use(function(req, res){
+-          res.send()
++        app.use(function (req, res) {
++          res.send();
+         });
+ 
+-        app.enable('etag')
++        app.enable('etag');
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          res.headers.should.not.have.property('etag');
+-          done();
+-        })
++        .expect(shouldNotHaveHeader('ETag'))
++        .expect(200, done);
+       })
+     });
+ 
+-    describe('when disabled', function(){
+-      it('should send no ETag', function(done){
++    describe('when disabled', function () {
++      it('should send no ETag', function (done) {
+         var app = express();
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           var str = Array(1000).join('-');
+           res.send(str);
+         });
+@@ -455,99 +458,105 @@ describe('res', function(){
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          res.headers.should.not.have.property('etag');
+-          done();
+-        });
++        .expect(shouldNotHaveHeader('ETag'))
++        .expect(200, done);
+       });
+ 
+-      it('should send ETag when manually set', function(done){
++      it('should send ETag when manually set', function (done) {
+         var app = express();
+ 
+         app.disable('etag');
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.set('etag', '"asdf"');
+           res.send(200);
+         });
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', '"asdf"', done)
++        .expect('ETag', '"asdf"')
++        .expect(200, done);
+       });
+     });
+ 
+-    describe('when "strong"', function(){
+-      it('should send strong ETag', function(done){
+-        var app = express()
++    describe('when "strong"', function () {
++      it('should send strong ETag', function (done) {
++        var app = express();
+ 
+         app.set('etag', 'strong');
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.send('hello, world!');
+         });
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', '"Otu60XkfuuPskIiUxJY4cA=="', done)
++        .expect('ETag', '"Otu60XkfuuPskIiUxJY4cA=="')
++        .expect(200, done);
+       })
+     })
+ 
+-    describe('when "weak"', function(){
+-      it('should send weak ETag', function(done){
+-        var app = express()
++    describe('when "weak"', function () {
++      it('should send weak ETag', function (done) {
++        var app = express();
+ 
+         app.set('etag', 'weak');
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.send('hello, world!');
+         });
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', 'W/"d-58988d13"', done)
++        .expect('ETag', 'W/"d-58988d13"')
++        .expect(200, done)
+       })
+     })
+ 
+-    describe('when a function', function(){
+-      it('should send custom ETag', function(done){
+-        var app = express()
++    describe('when a function', function () {
++      it('should send custom ETag', function (done) {
++        var app = express();
+ 
+-        app.set('etag', function(body, encoding){
++        app.set('etag', function (body, encoding) {
+           var chunk = !Buffer.isBuffer(body)
+             ? new Buffer(body, encoding)
+             : body;
+-          chunk.toString().should.equal('hello, world!')
+-          return '"custom"'
++          chunk.toString().should.equal('hello, world!');
++          return '"custom"';
+         });
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.send('hello, world!');
+         });
+ 
+         request(app)
+         .get('/')
+-        .expect('etag', '"custom"', done)
++        .expect('ETag', '"custom"')
++        .expect(200, done);
+       })
+ 
+-      it('should not send falsy ETag', function(done){
+-        var app = express()
++      it('should not send falsy ETag', function (done) {
++        var app = express();
+ 
+-        app.set('etag', function(body, encoding){
+-          return undefined
++        app.set('etag', function (body, encoding) {
++          return undefined;
+         });
+ 
+-        app.use(function(req, res){
++        app.use(function (req, res) {
+           res.send('hello, world!');
+         });
+ 
+         request(app)
+         .get('/')
+-        .end(function(err, res){
+-          res.headers.should.not.have.property('etag')
+-          done();
+-        })
++        .expect(shouldNotHaveHeader('ETag'))
++        .expect(200, done);
+       })
+     })
+   })
+ })
++
++function shouldNotHaveHeader(header) {
++  return function (res) {
++    assert.ok(!(header.toLowerCase() in res.headers), 'should not have header ' + header)
++  }
++}

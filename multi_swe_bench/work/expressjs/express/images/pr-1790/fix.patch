@@ -1,0 +1,54 @@
+diff --git a/examples/mvc/index.js b/examples/mvc/index.js
+index 3811db4a5d..2bb4b0d558 100644
+--- a/examples/mvc/index.js
++++ b/examples/mvc/index.js
+@@ -27,9 +27,6 @@ app.response.message = function(msg){
+ // log
+ if (!module.parent) app.use(express.logger('dev'));
+ 
+-// serve static files
+-app.use(express.static(__dirname + '/public'));
+-
+ // session support
+ app.use(express.cookieParser('some secret here'));
+ app.use(express.session());
+@@ -66,6 +63,9 @@ app.use(function(req, res, next){
+ // load controllers
+ require('./lib/boot')(app, { verbose: !module.parent });
+ 
++// serve static files
++app.use(express.static(__dirname + '/public'));
++
+ // assume "not found" in the error msgs
+ // is a 404. this is somewhat silly, but
+ // valid, you can do whatever you like, set
+diff --git a/package.json b/package.json
+index 1eaafee766..9d77764ba5 100644
+--- a/package.json
++++ b/package.json
+@@ -22,7 +22,7 @@
+     }
+   ],
+   "dependencies": {
+-    "connect": "2.9.2",
++    "connect": "2.10.0",
+     "commander": "1.3.2",
+     "range-parser": "0.0.4",
+     "mkdirp": "0.3.5",
+@@ -37,13 +37,13 @@
+   "devDependencies": {
+     "ejs": "*",
+     "mocha": "*",
+-    "jade": "0.30.0",
++    "jade": "0.35.0",
+     "hjs": "*",
+     "stylus": "*",
+-    "should": "2",
++    "should": "2.0.2",
+     "connect-redis": "*",
+     "marked": "*",
+-    "supertest": "0.6.0"
++    "supertest": "0.8.0"
+   },
+   "keywords": [
+     "express",

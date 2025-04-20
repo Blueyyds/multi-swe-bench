@@ -1,0 +1,2209 @@
+diff --git a/.travis.yml b/.travis.yml
+index b163d5dc22..ebdea3cbf6 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -4,6 +4,7 @@ node_js:
+   - "0.12"
+   - "1.0"
+   - "1.8"
++  - "2.0"
+ sudo: false
+ before_install: "npm rm --save-dev connect-redis"
+ script: "npm run-script test-ci"
+diff --git a/History.md b/History.md
+index 3ce212fa52..d72226591e 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,84 @@
++unreleased
++==========
++
++  * Add settings to debug output
++  * Fix `res.format` error when only `default` provided
++  * Fix issue where `next('route')` in `app.param` would incorrectly skip values
++  * Fix hiding platform issues with `decodeURIComponent`
++    - Only `URIError`s are a 400
++  * Fix using `*` before params in routes
++  * Fix using capture groups before params in routes
++  * Simplify `res.cookie` to call `res.append`
++  * Use `array-flatten` module for flattening arrays
++  * deps: accepts@~1.2.9
++    - deps: mime-types@~2.1.1
++    - perf: avoid argument reassignment & argument slice
++    - perf: avoid negotiator recursive construction
++    - perf: enable strict mode
++    - perf: remove unnecessary bitwise operator
++  * deps: cookie@0.1.3
++    - perf: deduce the scope of try-catch deopt
++    - perf: remove argument reassignments
++  * deps: escape-html@1.0.2
++  * deps: etag@~1.7.0
++    - Always include entity length in ETags for hash length extensions
++    - Generate non-Stats ETags using MD5 only (no longer CRC32)
++    - Improve stat performance by removing hashing
++    - Improve support for JXcore
++    - Remove base64 padding in ETags to shorten
++    - Support "fake" stats objects in environments without fs
++    - Use MD5 instead of MD4 in weak ETags over 1KB
++  * deps: finalhandler@0.4.0
++    - Fix a false-positive when unpiping in Node.js 0.8
++    - Support `statusCode` property on `Error` objects
++    - Use `unpipe` module for unpiping requests
++    - deps: escape-html@1.0.2
++    - deps: on-finished@~2.3.0
++    - perf: enable strict mode
++    - perf: remove argument reassignment
++  * deps: fresh@0.3.0
++    - Add weak `ETag` matching support
++  * deps: on-finished@~2.3.0
++    - Add defined behavior for HTTP `CONNECT` requests
++    - Add defined behavior for HTTP `Upgrade` requests
++    - deps: ee-first@1.1.1
++  * deps: path-to-regexp@0.1.6
++  * deps: send@0.13.0
++    - Allow Node.js HTTP server to set `Date` response header
++    - Fix incorrectly removing `Content-Location` on 304 response
++    - Improve the default redirect response headers
++    - Send appropriate headers on default error response
++    - Use `http-errors` for standard emitted errors
++    - Use `statuses` instead of `http` module for status messages
++    - deps: escape-html@1.0.2
++    - deps: etag@~1.7.0
++    - deps: fresh@0.3.0
++    - deps: on-finished@~2.3.0
++    - perf: enable strict mode
++    - perf: remove unnecessary array allocations
++  * deps: serve-static@~1.10.0
++    - Add `fallthrough` option
++    - Fix reading options from options prototype
++    - Improve the default redirect response headers
++    - Malformed URLs now `next()` instead of 400
++    - deps: escape-html@1.0.2
++    - deps: send@0.13.0
++    - perf: enable strict mode
++    - perf: remove argument reassignment
++  * deps: type-is@~1.6.3
++    - deps: mime-types@~2.1.1
++    - perf: reduce try block size
++    - perf: remove bitwise operations
++  * perf: enable strict mode
++  * perf: isolate `app.render` try block
++  * perf: remove argument reassignments in application
++  * perf: remove argument reassignments in request prototype
++  * perf: remove argument reassignments in response prototype
++  * perf: remove argument reassignments in routing
++  * perf: remove argument reassignments in `View`
++  * perf: skip attempting to decode zero length string
++  * perf: use saved reference to `http.STATUS_CODES`
++
+ 4.12.4 / 2015-05-17
+ ===================
+ 
+@@ -771,6 +852,60 @@
+    - `app.route()` - Proxy to the app's `Router#route()` method to create a new route
+    - Router & Route - public API
+ 
++3.21.0 / 2015-06-18
++===================
++
++  * deps: basic-auth@1.0.2
++    - perf: enable strict mode
++    - perf: hoist regular expression
++    - perf: parse with regular expressions
++    - perf: remove argument reassignment
++  * deps: connect@2.30.0
++    - deps: body-parser@~1.13.1
++    - deps: bytes@2.1.0
++    - deps: compression@~1.5.0
++    - deps: cookie@0.1.3
++    - deps: cookie-parser@~1.3.5
++    - deps: csurf@~1.8.3
++    - deps: errorhandler@~1.4.0
++    - deps: express-session@~1.11.3
++    - deps: finalhandler@0.4.0
++    - deps: fresh@0.3.0
++    - deps: morgan@~1.6.0
++    - deps: serve-favicon@~2.3.0
++    - deps: serve-index@~1.7.0
++    - deps: serve-static@~1.10.0
++    - deps: type-is@~1.6.3
++  * deps: cookie@0.1.3
++    - perf: deduce the scope of try-catch deopt
++    - perf: remove argument reassignments
++  * deps: escape-html@1.0.2
++  * deps: etag@~1.7.0
++    - Always include entity length in ETags for hash length extensions
++    - Generate non-Stats ETags using MD5 only (no longer CRC32)
++    - Improve stat performance by removing hashing
++    - Improve support for JXcore
++    - Remove base64 padding in ETags to shorten
++    - Support "fake" stats objects in environments without fs
++    - Use MD5 instead of MD4 in weak ETags over 1KB
++  * deps: fresh@0.3.0
++    - Add weak `ETag` matching support
++  * deps: mkdirp@0.5.1
++    - Work in global strict mode
++  * deps: send@0.13.0
++    - Allow Node.js HTTP server to set `Date` response header
++    - Fix incorrectly removing `Content-Location` on 304 response
++    - Improve the default redirect response headers
++    - Send appropriate headers on default error response
++    - Use `http-errors` for standard emitted errors
++    - Use `statuses` instead of `http` module for status messages
++    - deps: escape-html@1.0.2
++    - deps: etag@~1.7.0
++    - deps: fresh@0.3.0
++    - deps: on-finished@~2.3.0
++    - perf: enable strict mode
++    - perf: remove unnecessary array allocations
++
+ 3.20.3 / 2015-05-17
+ ===================
+ 
+@@ -1620,7 +1755,7 @@
+  * update commander
+  * jsonp: check if callback is a function
+  * router: wrap encodeURIComponent in a try/catch #1735 (@lxe)
+- * res.format: now includes chraset @1747 (@sorribas)
++ * res.format: now includes charset @1747 (@sorribas)
+  * res.links: allow multiple calls @1746 (@sorribas)
+ 
+ 3.4.0 / 2013-09-07
+@@ -1899,7 +2034,7 @@
+   * Added another example to content-negotiation
+   * Added `fresh` dep
+   * Changed: `res.send()` always checks freshness
+-  * Fixed: expose connects mime module. Cloases #1165
++  * Fixed: expose connects mime module. Closes #1165
+ 
+ 3.0.0beta2 / 2012-06-06
+ ==================
+@@ -1981,7 +2116,7 @@
+   * Added `req.ips`
+   * Added `req.fresh`
+   * Added `req.stale`
+-  * Added comma-delmited / array support for `req.accepts()`
++  * Added comma-delimited / array support for `req.accepts()`
+   * Added debug instrumentation
+   * Added `res.set(obj)`
+   * Added `res.set(field, value)`
+diff --git a/appveyor.yml b/appveyor.yml
+index 8be4511b02..aa7554cfd5 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -4,6 +4,7 @@ environment:
+     - nodejs_version: "0.12"
+     - nodejs_version: "1.0"
+     - nodejs_version: "1.8"
++    - nodejs_version: "2.0"
+ install:
+   - ps: Install-Product node $env:nodejs_version
+   - npm rm --save-dev connect-redis
+diff --git a/index.js b/index.js
+index 3da3378379..d219b0c878 100644
+--- a/index.js
++++ b/index.js
+@@ -1,2 +1,11 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
+ 
+ module.exports = require('./lib/express');
+diff --git a/lib/application.js b/lib/application.js
+index 5ec44248ca..a9df910354 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -6,13 +6,14 @@
+  * MIT Licensed
+  */
+ 
++'use strict';
++
+ /**
+  * Module dependencies.
+- * @api private
++ * @private
+  */
+ 
+ var finalhandler = require('finalhandler');
+-var flatten = require('./utils').flatten;
+ var Router = require('./router');
+ var methods = require('methods');
+ var middleware = require('./middleware/init');
+@@ -24,6 +25,7 @@ var compileETag = require('./utils').compileETag;
+ var compileQueryParser = require('./utils').compileQueryParser;
+ var compileTrust = require('./utils').compileTrust;
+ var deprecate = require('depd')('express');
++var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
+ var slice = Array.prototype.slice;
+@@ -36,7 +38,7 @@ var app = exports = module.exports = {};
+ 
+ /**
+  * Variable for trust proxy inheritance back-compat
+- * @api private
++ * @private
+  */
+ 
+ var trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';
+@@ -48,27 +50,28 @@ var trustProxyDefaultSymbol = '@@symbol:trust_proxy_default';
+  *   - setup default middleware
+  *   - setup route reflection methods
+  *
+- * @api private
++ * @private
+  */
+ 
+-app.init = function(){
++app.init = function init() {
+   this.cache = {};
+-  this.settings = {};
+   this.engines = {};
++  this.settings = {};
++
+   this.defaultConfiguration();
+ };
+ 
+ /**
+  * Initialize application configuration.
+- *
+- * @api private
++ * @private
+  */
+ 
+-app.defaultConfiguration = function(){
++app.defaultConfiguration = function defaultConfiguration() {
++  var env = process.env.NODE_ENV || 'development';
++
+   // default settings
+   this.enable('x-powered-by');
+   this.set('etag', 'weak');
+-  var env = process.env.NODE_ENV || 'development';
+   this.set('env', env);
+   this.set('query parser', 'extended');
+   this.set('subdomain offset', 2);
+@@ -128,9 +131,9 @@ app.defaultConfiguration = function(){
+  * We cannot add the base router in the defaultConfiguration because
+  * it reads app settings which might be set after that has run.
+  *
+- * @api private
++ * @private
+  */
+-app.lazyrouter = function() {
++app.lazyrouter = function lazyrouter() {
+   if (!this._router) {
+     this._router = new Router({
+       caseSensitive: this.enabled('case sensitive routing'),
+@@ -145,17 +148,17 @@ app.lazyrouter = function() {
+ /**
+  * Dispatch a req, res pair into the application. Starts pipeline processing.
+  *
+- * If no _done_ callback is provided, then default error handlers will respond
++ * If no callback is provided, then default error handlers will respond
+  * in the event of an error bubbling through the stack.
+  *
+- * @api private
++ * @private
+  */
+ 
+-app.handle = function(req, res, done) {
++app.handle = function handle(req, res, callback) {
+   var router = this._router;
+ 
+   // final handler
+-  done = done || finalhandler(req, res, {
++  var done = callback || finalhandler(req, res, {
+     env: this.get('env'),
+     onerror: logerror.bind(this)
+   });
+@@ -177,7 +180,7 @@ app.handle = function(req, res, done) {
+  * If the _fn_ parameter is an express app, then it will be
+  * mounted at the _route_ specified.
+  *
+- * @api public
++ * @public
+  */
+ 
+ app.use = function use(fn) {
+@@ -244,10 +247,10 @@ app.use = function use(fn) {
+  * Routes are isolated middleware stacks for specific paths.
+  * See the Route api docs for details.
+  *
+- * @api public
++ * @public
+  */
+ 
+-app.route = function(path){
++app.route = function route(path) {
+   this.lazyrouter();
+   return this._router.route(path);
+ };
+@@ -283,13 +286,22 @@ app.route = function(path){
+  * @param {String} ext
+  * @param {Function} fn
+  * @return {app} for chaining
+- * @api public
++ * @public
+  */
+ 
+-app.engine = function(ext, fn){
+-  if ('function' != typeof fn) throw new Error('callback function required');
+-  if ('.' != ext[0]) ext = '.' + ext;
+-  this.engines[ext] = fn;
++app.engine = function engine(ext, fn) {
++  if (typeof fn !== 'function') {
++    throw new Error('callback function required');
++  }
++
++  // get file extension
++  var extension = ext[0] !== '.'
++    ? '.' + ext
++    : ext;
++
++  // store engine
++  this.engines[extension] = fn;
++
+   return this;
+ };
+ 
+@@ -302,20 +314,22 @@ app.engine = function(ext, fn){
+  * @param {String|Array} name
+  * @param {Function} fn
+  * @return {app} for chaining
+- * @api public
++ * @public
+  */
+ 
+-app.param = function(name, fn){
++app.param = function param(name, fn) {
+   this.lazyrouter();
+ 
+   if (Array.isArray(name)) {
+-    name.forEach(function(key) {
+-      this.param(key, fn);
+-    }, this);
++    for (var i = 0; i < name.length; i++) {
++      this.param(name[i], fn);
++    }
++
+     return this;
+   }
+ 
+   this._router.param(name, fn);
++
+   return this;
+ };
+ 
+@@ -331,30 +345,29 @@ app.param = function(name, fn){
+  * @param {String} setting
+  * @param {*} [val]
+  * @return {Server} for chaining
+- * @api public
++ * @public
+  */
+ 
+-app.set = function(setting, val){
++app.set = function set(setting, val) {
+   if (arguments.length === 1) {
+     // app.get(setting)
+     return this.settings[setting];
+   }
+ 
++  debug('set "%s" to %o', setting, val);
++
+   // set value
+   this.settings[setting] = val;
+ 
+   // trigger matched settings
+   switch (setting) {
+     case 'etag':
+-      debug('compile etag %s', val);
+       this.set('etag fn', compileETag(val));
+       break;
+     case 'query parser':
+-      debug('compile query parser %s', val);
+       this.set('query parser fn', compileQueryParser(val));
+       break;
+     case 'trust proxy':
+-      debug('compile trust proxy %s', val);
+       this.set('trust proxy fn', compileTrust(val));
+ 
+       // trust proxy inherit back-compat
+@@ -380,10 +393,10 @@ app.set = function(setting, val){
+  * return value would be "/blog/admin".
+  *
+  * @return {String}
+- * @api private
++ * @private
+  */
+ 
+-app.path = function(){
++app.path = function path() {
+   return this.parent
+     ? this.parent.path() + this.mountpath
+     : '';
+@@ -401,11 +414,11 @@ app.path = function(){
+  *
+  * @param {String} setting
+  * @return {Boolean}
+- * @api public
++ * @public
+  */
+ 
+-app.enabled = function(setting){
+-  return !!this.set(setting);
++app.enabled = function enabled(setting) {
++  return Boolean(this.set(setting));
+ };
+ 
+ /**
+@@ -420,10 +433,10 @@ app.enabled = function(setting){
+  *
+  * @param {String} setting
+  * @return {Boolean}
+- * @api public
++ * @public
+  */
+ 
+-app.disabled = function(setting){
++app.disabled = function disabled(setting) {
+   return !this.set(setting);
+ };
+ 
+@@ -432,10 +445,10 @@ app.disabled = function(setting){
+  *
+  * @param {String} setting
+  * @return {app} for chaining
+- * @api public
++ * @public
+  */
+ 
+-app.enable = function(setting){
++app.enable = function enable(setting) {
+   return this.set(setting, true);
+ };
+ 
+@@ -444,10 +457,10 @@ app.enable = function(setting){
+  *
+  * @param {String} setting
+  * @return {app} for chaining
+- * @api public
++ * @public
+  */
+ 
+-app.disable = function(setting){
++app.disable = function disable(setting) {
+   return this.set(setting, false);
+ };
+ 
+@@ -457,7 +470,10 @@ app.disable = function(setting){
+ 
+ methods.forEach(function(method){
+   app[method] = function(path){
+-    if ('get' == method && 1 == arguments.length) return this.set(path);
++    if (method === 'get' && arguments.length === 1) {
++      // app.get(setting)
++      return this.set(path);
++    }
+ 
+     this.lazyrouter();
+ 
+@@ -474,17 +490,18 @@ methods.forEach(function(method){
+  * @param {String} path
+  * @param {Function} ...
+  * @return {app} for chaining
+- * @api public
++ * @public
+  */
+ 
+-app.all = function(path){
++app.all = function all(path) {
+   this.lazyrouter();
+ 
+   var route = this._router.route(path);
+   var args = slice.call(arguments, 1);
+-  methods.forEach(function(method){
+-    route[method].apply(route, args);
+-  });
++
++  for (var i = 0; i < methods.length; i++) {
++    route[methods[i]].apply(route, args);
++  }
+ 
+   return this;
+ };
+@@ -506,43 +523,50 @@ app.del = deprecate.function(app.delete, 'app.del: Use app.delete instead');
+  *
+  * @param {String} name
+  * @param {String|Function} options or fn
+- * @param {Function} fn
+- * @api public
++ * @param {Function} callback
++ * @public
+  */
+ 
+-app.render = function(name, options, fn){
+-  var opts = {};
++app.render = function render(name, options, callback) {
+   var cache = this.cache;
++  var done = callback;
+   var engines = this.engines;
++  var opts = options;
++  var renderOptions = {};
+   var view;
+ 
+   // support callback function as second arg
+-  if ('function' == typeof options) {
+-    fn = options, options = {};
++  if (typeof options === 'function') {
++    done = options;
++    opts = {};
+   }
+ 
+   // merge app.locals
+-  merge(opts, this.locals);
++  merge(renderOptions, this.locals);
+ 
+   // merge options._locals
+-  if (options._locals) {
+-    merge(opts, options._locals);
++  if (opts._locals) {
++    merge(renderOptions, opts._locals);
+   }
+ 
+   // merge options
+-  merge(opts, options);
++  merge(renderOptions, opts);
+ 
+   // set .cache unless explicitly provided
+-  opts.cache = null == opts.cache
+-    ? this.enabled('view cache')
+-    : opts.cache;
++  if (renderOptions.cache == null) {
++    renderOptions.cache = this.enabled('view cache');
++  }
+ 
+   // primed cache
+-  if (opts.cache) view = cache[name];
++  if (renderOptions.cache) {
++    view = cache[name];
++  }
+ 
+   // view
+   if (!view) {
+-    view = new (this.get('view'))(name, {
++    var View = this.get('view');
++
++    view = new View(name, {
+       defaultEngine: this.get('view engine'),
+       root: this.get('views'),
+       engines: engines
+@@ -554,19 +578,17 @@ app.render = function(name, options, fn){
+         : 'directory "' + view.root + '"'
+       var err = new Error('Failed to lookup view "' + name + '" in views ' + dirs);
+       err.view = view;
+-      return fn(err);
++      return done(err);
+     }
+ 
+     // prime the cache
+-    if (opts.cache) cache[name] = view;
++    if (renderOptions.cache) {
++      cache[name] = view;
++    }
+   }
+ 
+   // render
+-  try {
+-    view.render(opts, fn);
+-  } catch (err) {
+-    fn(err);
+-  }
++  tryRender(view, renderOptions, done);
+ };
+ 
+ /**
+@@ -587,21 +609,35 @@ app.render = function(name, options, fn){
+  *    https.createServer({ ... }, app).listen(443);
+  *
+  * @return {http.Server}
+- * @api public
++ * @public
+  */
+ 
+-app.listen = function(){
++app.listen = function listen() {
+   var server = http.createServer(this);
+   return server.listen.apply(server, arguments);
+ };
+ 
+ /**
+-* Log error using console.error.
+-*
+-* @param {Error} err
+-* @api private
+-*/
++ * Log error using console.error.
++ *
++ * @param {Error} err
++ * @private
++ */
+ 
+-function logerror(err){
++function logerror(err) {
++  /* istanbul ignore next */
+   if (this.get('env') !== 'test') console.error(err.stack || err.toString());
+ }
++
++/**
++ * Try rendering a view.
++ * @private
++ */
++
++function tryRender(view, options, callback) {
++  try {
++    view.render(options, callback);
++  } catch (err) {
++    callback(err);
++  }
++}
+diff --git a/lib/express.js b/lib/express.js
+index bb8d8082a4..540c8be6f4 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -1,3 +1,13 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/lib/middleware/init.js b/lib/middleware/init.js
+index 1e3e903f04..f3119ed3a1 100644
+--- a/lib/middleware/init.js
++++ b/lib/middleware/init.js
+@@ -1,3 +1,13 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Initialization middleware, exposing the
+  * request and response to each other, as well
+diff --git a/lib/middleware/query.js b/lib/middleware/query.js
+index 092bbd9985..d86474a05a 100644
+--- a/lib/middleware/query.js
++++ b/lib/middleware/query.js
+@@ -1,3 +1,13 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Module dependencies.
+  */
+diff --git a/lib/request.js b/lib/request.js
+index 9996492557..33cac180ed 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -1,5 +1,16 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Module dependencies.
++ * @private
+  */
+ 
+ var accepts = require('accepts');
+@@ -41,18 +52,20 @@ var req = exports = module.exports = {
+  *
+  * @param {String} name
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ req.get =
+-req.header = function(name){
+-  switch (name = name.toLowerCase()) {
++req.header = function header(name) {
++  var lc = name.toLowerCase();
++
++  switch (lc) {
+     case 'referer':
+     case 'referrer':
+       return this.headers.referrer
+         || this.headers.referer;
+     default:
+-      return this.headers[name];
++      return this.headers[lc];
+   }
+ };
+ 
+@@ -99,7 +112,7 @@ req.header = function(name){
+  *
+  * @param {String|Array} type(s)
+  * @return {String|Array|Boolean}
+- * @api public
++ * @public
+  */
+ 
+ req.accepts = function(){
+@@ -112,7 +125,7 @@ req.accepts = function(){
+  *
+  * @param {String} ...encoding
+  * @return {String|Array}
+- * @api public
++ * @public
+  */
+ 
+ req.acceptsEncodings = function(){
+@@ -129,7 +142,7 @@ req.acceptsEncoding = deprecate.function(req.acceptsEncodings,
+  *
+  * @param {String} ...charset
+  * @return {String|Array}
+- * @api public
++ * @public
+  */
+ 
+ req.acceptsCharsets = function(){
+@@ -146,7 +159,7 @@ req.acceptsCharset = deprecate.function(req.acceptsCharsets,
+  *
+  * @param {String} ...lang
+  * @return {String|Array}
+- * @api public
++ * @public
+  */
+ 
+ req.acceptsLanguages = function(){
+@@ -174,7 +187,7 @@ req.acceptsLanguage = deprecate.function(req.acceptsLanguages,
+  *
+  * @param {Number} size
+  * @return {Array}
+- * @api public
++ * @public
+  */
+ 
+ req.range = function(size){
+@@ -197,7 +210,7 @@ req.range = function(size){
+  * @param {String} name
+  * @param {Mixed} [defaultValue]
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ req.param = function param(name, defaultValue) {
+@@ -238,14 +251,23 @@ req.param = function param(name, defaultValue) {
+  *      req.is('html');
+  *      // => false
+  *
+- * @param {String} type
+- * @return {Boolean}
+- * @api public
++ * @param {String|Array} types...
++ * @return {String|false|null}
++ * @public
+  */
+ 
+-req.is = function(types){
+-  if (!Array.isArray(types)) types = [].slice.call(arguments);
+-  return typeis(this, types);
++req.is = function is(types) {
++  var arr = types;
++
++  // support flattened arguments
++  if (!Array.isArray(types)) {
++    arr = new Array(arguments.length);
++    for (var i = 0; i < arr.length; i++) {
++      arr[i] = arguments[i];
++    }
++  }
++
++  return typeis(this, arr);
+ };
+ 
+ /**
+@@ -259,7 +281,7 @@ req.is = function(types){
+  * supplies https for you this may be enabled.
+  *
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'protocol', function protocol(){
+@@ -284,11 +306,11 @@ defineGetter(req, 'protocol', function protocol(){
+  *    req.protocol == 'https'
+  *
+  * @return {Boolean}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'secure', function secure(){
+-  return 'https' == this.protocol;
++  return this.protocol === 'https';
+ });
+ 
+ /**
+@@ -298,7 +320,7 @@ defineGetter(req, 'secure', function secure(){
+  * "trust proxy" is set.
+  *
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'ip', function ip(){
+@@ -315,7 +337,7 @@ defineGetter(req, 'ip', function ip(){
+  * "proxy2" were trusted.
+  *
+  * @return {Array}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'ips', function ips() {
+@@ -336,7 +358,7 @@ defineGetter(req, 'ips', function ips() {
+  * If "subdomain offset" is 3, req.subdomains is `["tobi"]`.
+  *
+  * @return {Array}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'subdomains', function subdomains() {
+@@ -356,7 +378,7 @@ defineGetter(req, 'subdomains', function subdomains() {
+  * Short-hand for `url.parse(req.url).pathname`.
+  *
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'path', function path() {
+@@ -371,7 +393,7 @@ defineGetter(req, 'path', function path() {
+  * be trusted.
+  *
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'hostname', function hostname(){
+@@ -390,7 +412,7 @@ defineGetter(req, 'hostname', function hostname(){
+     : 0;
+   var index = host.indexOf(':', offset);
+ 
+-  return ~index
++  return index !== -1
+     ? host.substring(0, index)
+     : host;
+ });
+@@ -407,7 +429,7 @@ defineGetter(req, 'host', deprecate.function(function host(){
+  * still match.
+  *
+  * @return {Boolean}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'fresh', function(){
+@@ -431,7 +453,7 @@ defineGetter(req, 'fresh', function(){
+  * resource has changed.
+  *
+  * @return {Boolean}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'stale', function stale(){
+@@ -442,12 +464,12 @@ defineGetter(req, 'stale', function stale(){
+  * Check if the request was an _XMLHttpRequest_.
+  *
+  * @return {Boolean}
+- * @api public
++ * @public
+  */
+ 
+ defineGetter(req, 'xhr', function xhr(){
+   var val = this.get('X-Requested-With') || '';
+-  return 'xmlhttprequest' == val.toLowerCase();
++  return val.toLowerCase() === 'xmlhttprequest';
+ });
+ 
+ /**
+@@ -456,7 +478,7 @@ defineGetter(req, 'xhr', function xhr(){
+  * @param {Object} obj
+  * @param {String} name
+  * @param {Function} getter
+- * @api private
++ * @private
+  */
+ function defineGetter(obj, name, getter) {
+   Object.defineProperty(obj, name, {
+diff --git a/lib/response.js b/lib/response.js
+index 1874300c51..641704b04a 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -5,9 +5,11 @@
+  * MIT Licensed
+  */
+ 
++'use strict';
++
+ /**
+  * Module dependencies.
+- * @api private
++ * @private
+  */
+ 
+ var contentDisposition = require('content-disposition');
+@@ -38,15 +40,22 @@ var res = module.exports = {
+   __proto__: http.ServerResponse.prototype
+ };
+ 
++/**
++ * Module variables.
++ * @private
++ */
++
++var charsetRegExp = /;\s*charset\s*=/;
++
+ /**
+  * Set status `code`.
+  *
+  * @param {Number} code
+  * @return {ServerResponse}
+- * @api public
++ * @public
+  */
+ 
+-res.status = function(code){
++res.status = function status(code) {
+   this.statusCode = code;
+   return this;
+ };
+@@ -63,7 +72,7 @@ res.status = function(code){
+  *
+  * @param {Object} links
+  * @return {ServerResponse}
+- * @api public
++ * @public
+  */
+ 
+ res.links = function(links){
+@@ -84,7 +93,7 @@ res.links = function(links){
+  *     res.send('<p>some html</p>');
+  *
+  * @param {string|number|boolean|object|Buffer} body
+- * @api public
++ * @public
+  */
+ 
+ res.send = function send(body) {
+@@ -119,7 +128,7 @@ res.send = function send(body) {
+ 
+     deprecate('res.send(status): Use res.sendStatus(status) instead');
+     this.statusCode = chunk;
+-    chunk = http.STATUS_CODES[chunk];
++    chunk = statusCodes[chunk];
+   }
+ 
+   switch (typeof chunk) {
+@@ -207,7 +216,7 @@ res.send = function send(body) {
+  *     res.json({ user: 'tj' });
+  *
+  * @param {string|number|boolean|object} obj
+- * @api public
++ * @public
+  */
+ 
+ res.json = function json(obj) {
+@@ -249,7 +258,7 @@ res.json = function json(obj) {
+  *     res.jsonp({ user: 'tj' });
+  *
+  * @param {string|number|boolean|object} obj
+- * @api public
++ * @public
+  */
+ 
+ res.jsonp = function jsonp(obj) {
+@@ -320,11 +329,11 @@ res.jsonp = function jsonp(obj) {
+  *     res.sendStatus(200);
+  *
+  * @param {number} statusCode
+- * @api public
++ * @public
+  */
+ 
+ res.sendStatus = function sendStatus(statusCode) {
+-  var body = http.STATUS_CODES[statusCode] || String(statusCode);
++  var body = statusCodes[statusCode] || String(statusCode);
+ 
+   this.statusCode = statusCode;
+   this.type('txt');
+@@ -336,7 +345,7 @@ res.sendStatus = function sendStatus(statusCode) {
+  * Transfer the file at the given `path`.
+  *
+  * Automatically sets the _Content-Type_ response header field.
+- * The callback `fn(err)` is invoked when the transfer is complete
++ * The callback `callback(err)` is invoked when the transfer is complete
+  * or when an error occurs. Be sure to check `res.sentHeader`
+  * if you wish to attempt responding, as the header and some data
+  * may have already been transferred.
+@@ -370,13 +379,15 @@ res.sendStatus = function sendStatus(statusCode) {
+  *       });
+  *     });
+  *
+- * @api public
++ * @public
+  */
+ 
+-res.sendFile = function sendFile(path, options, fn) {
++res.sendFile = function sendFile(path, options, callback) {
++  var done = callback;
+   var req = this.req;
+   var res = this;
+   var next = req.next;
++  var opts = options || {};
+ 
+   if (!path) {
+     throw new TypeError('path argument is required to res.sendFile');
+@@ -384,23 +395,21 @@ res.sendFile = function sendFile(path, options, fn) {
+ 
+   // support function as second arg
+   if (typeof options === 'function') {
+-    fn = options;
+-    options = {};
++    done = options;
++    opts = {};
+   }
+ 
+-  options = options || {};
+-
+-  if (!options.root && !isAbsolute(path)) {
++  if (!opts.root && !isAbsolute(path)) {
+     throw new TypeError('path must be absolute or specify root to res.sendFile');
+   }
+ 
+   // create file stream
+   var pathname = encodeURI(path);
+-  var file = send(req, pathname, options);
++  var file = send(req, pathname, opts);
+ 
+   // transfer
+-  sendfile(res, file, options, function (err) {
+-    if (fn) return fn(err);
++  sendfile(res, file, opts, function (err) {
++    if (done) return done(err);
+     if (err && err.code === 'EISDIR') return next();
+ 
+     // next() all but write errors
+@@ -414,7 +423,7 @@ res.sendFile = function sendFile(path, options, fn) {
+  * Transfer the file at the given `path`.
+  *
+  * Automatically sets the _Content-Type_ response header field.
+- * The callback `fn(err)` is invoked when the transfer is complete
++ * The callback `callback(err)` is invoked when the transfer is complete
+  * or when an error occurs. Be sure to check `res.sentHeader`
+  * if you wish to attempt responding, as the header and some data
+  * may have already been transferred.
+@@ -448,28 +457,28 @@ res.sendFile = function sendFile(path, options, fn) {
+  *       });
+  *     });
+  *
+- * @api public
++ * @public
+  */
+ 
+-res.sendfile = function(path, options, fn){
++res.sendfile = function (path, options, callback) {
++  var done = callback;
+   var req = this.req;
+   var res = this;
+   var next = req.next;
++  var opts = options || {};
+ 
+   // support function as second arg
+   if (typeof options === 'function') {
+-    fn = options;
+-    options = {};
++    done = options;
++    opts = {};
+   }
+ 
+-  options = options || {};
+-
+   // create file stream
+-  var file = send(req, path, options);
++  var file = send(req, path, opts);
+ 
+   // transfer
+-  sendfile(res, file, options, function (err) {
+-    if (fn) return fn(err);
++  sendfile(res, file, opts, function (err) {
++    if (done) return done(err);
+     if (err && err.code === 'EISDIR') return next();
+ 
+     // next() all but write errors
+@@ -486,33 +495,34 @@ res.sendfile = deprecate.function(res.sendfile,
+  * Transfer the file at the given `path` as an attachment.
+  *
+  * Optionally providing an alternate attachment `filename`,
+- * and optional callback `fn(err)`. The callback is invoked
++ * and optional callback `callback(err)`. The callback is invoked
+  * when the data transfer is complete, or when an error has
+  * ocurred. Be sure to check `res.headersSent` if you plan to respond.
+  *
+  * This method uses `res.sendfile()`.
+  *
+- * @api public
++ * @public
+  */
+ 
+-res.download = function download(path, filename, fn) {
++res.download = function download(path, filename, callback) {
++  var done = callback;
++  var name = filename;
++
+   // support function as second arg
+   if (typeof filename === 'function') {
+-    fn = filename;
+-    filename = null;
++    done = filename;
++    name = null;
+   }
+ 
+-  filename = filename || path;
+-
+   // set Content-Disposition when file is sent
+   var headers = {
+-    'Content-Disposition': contentDisposition(filename)
++    'Content-Disposition': contentDisposition(name || path)
+   };
+ 
+   // Resolve the full path for sendFile
+   var fullPath = resolve(path);
+ 
+-  return this.sendFile(fullPath, { headers: headers }, fn);
++  return this.sendFile(fullPath, { headers: headers }, done);
+ };
+ 
+ /**
+@@ -529,14 +539,16 @@ res.download = function download(path, filename, fn) {
+  *
+  * @param {String} type
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+ res.contentType =
+-res.type = function(type){
+-  return this.set('Content-Type', ~type.indexOf('/')
+-    ? type
+-    : mime.lookup(type));
++res.type = function contentType(type) {
++  var ct = type.indexOf('/') === -1
++    ? mime.lookup(type)
++    : type;
++
++  return this.set('Content-Type', ct);
+ };
+ 
+ /**
+@@ -593,7 +605,7 @@ res.type = function(type){
+  *
+  * @param {Object} obj
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+ res.format = function(obj){
+@@ -604,7 +616,9 @@ res.format = function(obj){
+   if (fn) delete obj.default;
+   var keys = Object.keys(obj);
+ 
+-  var key = req.accepts(keys);
++  var key = keys.length > 0
++    ? req.accepts(keys)
++    : false;
+ 
+   this.vary("Accept");
+ 
+@@ -615,7 +629,7 @@ res.format = function(obj){
+     fn();
+   } else {
+     var err = new Error('Not Acceptable');
+-    err.status = 406;
++    err.status = err.statusCode = 406;
+     err.types = normalizeTypes(keys).map(function(o){ return o.value });
+     next(err);
+   }
+@@ -628,7 +642,7 @@ res.format = function(obj){
+  *
+  * @param {String} filename
+  * @return {ServerResponse}
+- * @api public
++ * @public
+  */
+ 
+ res.attachment = function attachment(filename) {
+@@ -653,7 +667,7 @@ res.attachment = function attachment(filename) {
+  * @param {String} field
+  * @param {String|Array} val
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+ res.append = function append(field, val) {
+@@ -685,19 +699,23 @@ res.append = function append(field, val) {
+  * @param {String|Object} field
+  * @param {String|Array} val
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+ res.set =
+ res.header = function header(field, val) {
+   if (arguments.length === 2) {
+-    if (Array.isArray(val)) val = val.map(String);
+-    else val = String(val);
+-    if ('content-type' == field.toLowerCase() && !/;\s*charset\s*=/.test(val)) {
+-      var charset = mime.charsets.lookup(val.split(';')[0]);
+-      if (charset) val += '; charset=' + charset.toLowerCase();
++    var value = Array.isArray(val)
++      ? val.map(String)
++      : String(val);
++
++    // add charset to content-type
++    if (field.toLowerCase() === 'content-type' && !charsetRegExp.test(value)) {
++      var charset = mime.charsets.lookup(value.split(';')[0]);
++      if (charset) value += '; charset=' + charset.toLowerCase();
+     }
+-    this.setHeader(field, val);
++
++    this.setHeader(field, value);
+   } else {
+     for (var key in field) {
+       this.set(key, field[key]);
+@@ -711,7 +729,7 @@ res.header = function header(field, val) {
+  *
+  * @param {String} field
+  * @return {String}
+- * @api public
++ * @public
+  */
+ 
+ res.get = function(field){
+@@ -724,18 +742,17 @@ res.get = function(field){
+  * @param {String} name
+  * @param {Object} options
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+-res.clearCookie = function(name, options){
+-  var opts = { expires: new Date(1), path: '/' };
+-  return this.cookie(name, '', options
+-    ? merge(opts, options)
+-    : opts);
++res.clearCookie = function clearCookie(name, options) {
++  var opts = merge({ expires: new Date(1), path: '/' }, options);
++
++  return this.cookie(name, '', opts);
+ };
+ 
+ /**
+- * Set cookie `name` to `val`, with the given `options`.
++ * Set cookie `name` to `value`, with the given `options`.
+  *
+  * Options:
+  *
+@@ -752,41 +769,43 @@ res.clearCookie = function(name, options){
+  *    res.cookie('rememberme', '1', { maxAge: 900000, httpOnly: true })
+  *
+  * @param {String} name
+- * @param {String|Object} val
++ * @param {String|Object} value
+  * @param {Options} options
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+-res.cookie = function(name, val, options){
+-  options = merge({}, options);
++res.cookie = function (name, value, options) {
++  var opts = merge({}, options);
+   var secret = this.req.secret;
+-  var signed = options.signed;
+-  if (signed && !secret) throw new Error('cookieParser("secret") required for signed cookies');
+-  if ('number' == typeof val) val = val.toString();
+-  if ('object' == typeof val) val = 'j:' + JSON.stringify(val);
+-  if (signed) val = 's:' + sign(val, secret);
+-  if ('maxAge' in options) {
+-    options.expires = new Date(Date.now() + options.maxAge);
+-    options.maxAge /= 1000;
++  var signed = opts.signed;
++
++  if (signed && !secret) {
++    throw new Error('cookieParser("secret") required for signed cookies');
+   }
+-  if (null == options.path) options.path = '/';
+-  var headerVal = cookie.serialize(name, String(val), options);
+ 
+-  // supports multiple 'res.cookie' calls by getting previous value
+-  var prev = this.get('Set-Cookie');
+-  if (prev) {
+-    if (Array.isArray(prev)) {
+-      headerVal = prev.concat(headerVal);
+-    } else {
+-      headerVal = [prev, headerVal];
+-    }
++  var val = typeof value === 'object'
++    ? 'j:' + JSON.stringify(value)
++    : String(value);
++
++  if (signed) {
++    val = 's:' + sign(val, secret);
++  }
++
++  if ('maxAge' in opts) {
++    opts.expires = new Date(Date.now() + opts.maxAge);
++    opts.maxAge /= 1000;
+   }
+-  this.set('Set-Cookie', headerVal);
++
++  if (opts.path == null) {
++    opts.path = '/';
++  }
++
++  this.append('Set-Cookie', cookie.serialize(name, String(val), opts));
++
+   return this;
+ };
+ 
+-
+ /**
+  * Set the location header to `url`.
+  *
+@@ -801,17 +820,19 @@ res.cookie = function(name, val, options){
+  *
+  * @param {String} url
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+-res.location = function(url){
+-  var req = this.req;
++res.location = function location(url) {
++  var loc = url;
+ 
+   // "back" is an alias for the referrer
+-  if ('back' == url) url = req.get('Referrer') || '/';
++  if (url === 'back') {
++    loc = this.req.get('Referrer') || '/';
++  }
+ 
+-  // Respond
+-  this.set('Location', url);
++  // set location
++  this.set('Location', loc);
+   return this;
+ };
+ 
+@@ -830,7 +851,7 @@ res.location = function(url){
+  *    res.redirect(301, 'http://example.com');
+  *    res.redirect('../login'); // /blog/post/1 -> /blog/login
+  *
+- * @api public
++ * @public
+  */
+ 
+ res.redirect = function redirect(url) {
+@@ -886,7 +907,7 @@ res.redirect = function redirect(url) {
+  *
+  * @param {Array|String} field
+  * @return {ServerResponse} for chaining
+- * @api public
++ * @public
+  */
+ 
+ res.vary = function(field){
+@@ -911,31 +932,33 @@ res.vary = function(field){
+  *  - `cache`     boolean hinting to the engine it should cache
+  *  - `filename`  filename of the view being rendered
+  *
+- * @api public
++ * @public
+  */
+ 
+-res.render = function(view, options, fn){
+-  options = options || {};
+-  var self = this;
++res.render = function render(view, options, callback) {
++  var app = this.req.app;
++  var done = callback;
++  var opts = options || {};
+   var req = this.req;
+-  var app = req.app;
++  var self = this;
+ 
+   // support callback function as second arg
+-  if ('function' == typeof options) {
+-    fn = options, options = {};
++  if (typeof options === 'function') {
++    done = options;
++    opts = {};
+   }
+ 
+   // merge res.locals
+-  options._locals = self.locals;
++  opts._locals = self.locals;
+ 
+   // default callback to respond
+-  fn = fn || function(err, str){
++  done = done || function (err, str) {
+     if (err) return req.next(err);
+     self.send(str);
+   };
+ 
+   // render
+-  app.render(view, options, fn);
++  app.render(view, opts, done);
+ };
+ 
+ // pipe the send file stream
+diff --git a/lib/router/index.js b/lib/router/index.js
+index 209f881b1e..1f3ec6d49c 100644
+--- a/lib/router/index.js
++++ b/lib/router/index.js
+@@ -1,6 +1,16 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
+ 
+ /**
+  * Module dependencies.
++ * @private
+  */
+ 
+ var Route = require('./route');
+@@ -9,11 +19,12 @@ var methods = require('methods');
+ var mixin = require('utils-merge');
+ var debug = require('debug')('express:router');
+ var deprecate = require('depd')('express');
++var flatten = require('array-flatten');
+ var parseUrl = require('parseurl');
+-var utils = require('../utils');
+ 
+ /**
+  * Module variables.
++ * @private
+  */
+ 
+ var objectRegExp = /^\[object (\S+)\]$/;
+@@ -25,11 +36,11 @@ var toString = Object.prototype.toString;
+  *
+  * @param {Object} options
+  * @return {Router} which is an callable function
+- * @api public
++ * @public
+  */
+ 
+ var proto = module.exports = function(options) {
+-  options = options || {};
++  var opts = options || {};
+ 
+   function router(req, res, next) {
+     router.handle(req, res, next);
+@@ -40,9 +51,9 @@ var proto = module.exports = function(options) {
+ 
+   router.params = {};
+   router._params = [];
+-  router.caseSensitive = options.caseSensitive;
+-  router.mergeParams = options.mergeParams;
+-  router.strict = options.strict;
++  router.caseSensitive = opts.caseSensitive;
++  router.mergeParams = opts.mergeParams;
++  router.strict = opts.strict;
+   router.stack = [];
+ 
+   return router;
+@@ -79,7 +90,7 @@ var proto = module.exports = function(options) {
+  * @param {String} name
+  * @param {Function} fn
+  * @return {app} for chaining
+- * @api public
++ * @public
+  */
+ 
+ proto.param = function param(name, fn) {
+@@ -118,11 +129,10 @@ proto.param = function param(name, fn) {
+ 
+ /**
+  * Dispatch a req, res into the router.
+- *
+- * @api private
++ * @private
+  */
+ 
+-proto.handle = function(req, res, done) {
++proto.handle = function handle(req, res, out) {
+   var self = this;
+ 
+   debug('dispatching %s %s', req.method, req.url);
+@@ -146,7 +156,7 @@ proto.handle = function(req, res, done) {
+   // manage inter-router variables
+   var parentParams = req.params;
+   var parentUrl = req.baseUrl || '';
+-  done = restore(done, req, 'baseUrl', 'next', 'params');
++  var done = restore(out, req, 'baseUrl', 'next', 'params');
+ 
+   // setup next layer
+   req.next = next;
+@@ -306,11 +316,10 @@ proto.handle = function(req, res, done) {
+ 
+ /**
+  * Process any parameters for the layer.
+- *
+- * @api private
++ * @private
+  */
+ 
+-proto.process_params = function(layer, called, req, res, done) {
++proto.process_params = function process_params(layer, called, req, res, done) {
+   var params = this.params;
+ 
+   // captured parameters from the layer, keys and values
+@@ -357,7 +366,8 @@ proto.process_params = function(layer, called, req, res, done) {
+     }
+ 
+     // param previously called with same value or error occurred
+-    if (paramCalled && (paramCalled.error || paramCalled.match === paramVal)) {
++    if (paramCalled && (paramCalled.match === paramVal
++      || (paramCalled.error && paramCalled.error !== 'route'))) {
+       // restore value
+       req.params[name] = paramCalled.value;
+ 
+@@ -412,7 +422,7 @@ proto.process_params = function(layer, called, req, res, done) {
+  * handlers can operate without any code changes regardless of the "prefix"
+  * pathname.
+  *
+- * @api public
++ * @public
+  */
+ 
+ proto.use = function use(fn) {
+@@ -435,13 +445,15 @@ proto.use = function use(fn) {
+     }
+   }
+ 
+-  var callbacks = utils.flatten(slice.call(arguments, offset));
++  var callbacks = flatten(slice.call(arguments, offset));
+ 
+   if (callbacks.length === 0) {
+     throw new TypeError('Router.use() requires middleware functions');
+   }
+ 
+-  callbacks.forEach(function (fn) {
++  for (var i = 0; i < callbacks.length; i++) {
++    var fn = callbacks[i];
++
+     if (typeof fn !== 'function') {
+       throw new TypeError('Router.use() requires middleware function but got a ' + gettype(fn));
+     }
+@@ -458,7 +470,7 @@ proto.use = function use(fn) {
+     layer.route = undefined;
+ 
+     this.stack.push(layer);
+-  }, this);
++  }
+ 
+   return this;
+ };
+@@ -473,10 +485,10 @@ proto.use = function use(fn) {
+  *
+  * @param {String} path
+  * @return {Route}
+- * @api public
++ * @public
+  */
+ 
+-proto.route = function(path){
++proto.route = function route(path) {
+   var route = new Route(path);
+ 
+   var layer = new Layer(path, {
+diff --git a/lib/router/layer.js b/lib/router/layer.js
+index 88ebd3964c..fe9210cb9d 100644
+--- a/lib/router/layer.js
++++ b/lib/router/layer.js
+@@ -1,5 +1,16 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Module dependencies.
++ * @private
+  */
+ 
+ var pathRegexp = require('path-to-regexp');
+@@ -7,12 +18,14 @@ var debug = require('debug')('express:router:layer');
+ 
+ /**
+  * Module variables.
++ * @private
+  */
+ 
+ var hasOwnProperty = Object.prototype.hasOwnProperty;
+ 
+ /**
+- * Expose `Layer`.
++ * Module exports.
++ * @public
+  */
+ 
+ module.exports = Layer;
+@@ -23,15 +36,15 @@ function Layer(path, options, fn) {
+   }
+ 
+   debug('new %s', path);
+-  options = options || {};
++  var opts = options || {};
+ 
+   this.handle = fn;
+   this.name = fn.name || '<anonymous>';
+   this.params = undefined;
+   this.path = undefined;
+-  this.regexp = pathRegexp(path, this.keys = [], options);
++  this.regexp = pathRegexp(path, this.keys = [], opts);
+ 
+-  if (path === '/' && options.end === false) {
++  if (path === '/' && opts.end === false) {
+     this.regexp.fast_slash = true;
+   }
+ }
+@@ -123,17 +136,11 @@ Layer.prototype.match = function match(path) {
+ 
+   var keys = this.keys;
+   var params = this.params;
+-  var prop;
+-  var n = 0;
+-  var key;
+-  var val;
+-
+-  for (var i = 1, len = m.length; i < len; ++i) {
+-    key = keys[i - 1];
+-    prop = key
+-      ? key.name
+-      : n++;
+-    val = decode_param(m[i]);
++
++  for (var i = 1; i < m.length; i++) {
++    var key = keys[i - 1];
++    var prop = key.name;
++    var val = decode_param(m[i]);
+ 
+     if (val !== undefined || !(hasOwnProperty.call(params, prop))) {
+       params[prop] = val;
+@@ -148,19 +155,22 @@ Layer.prototype.match = function match(path) {
+  *
+  * @param {string} val
+  * @return {string}
+- * @api private
++ * @private
+  */
+ 
+-function decode_param(val){
+-  if (typeof val !== 'string') {
++function decode_param(val) {
++  if (typeof val !== 'string' || val.length === 0) {
+     return val;
+   }
+ 
+   try {
+     return decodeURIComponent(val);
+-  } catch (e) {
+-    var err = new TypeError("Failed to decode param '" + val + "'");
+-    err.status = 400;
++  } catch (err) {
++    if (err instanceof URIError) {
++      err.message = 'Failed to decode param \'' + val + '\'';
++      err.status = err.statusCode = 400;
++    }
++
+     throw err;
+   }
+ }
+diff --git a/lib/router/route.js b/lib/router/route.js
+index 6213b82170..2788d7b735 100644
+--- a/lib/router/route.js
++++ b/lib/router/route.js
+@@ -1,14 +1,34 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Module dependencies.
++ * @private
+  */
+ 
+ var debug = require('debug')('express:router:route');
++var flatten = require('array-flatten');
+ var Layer = require('./layer');
+ var methods = require('methods');
+-var utils = require('../utils');
+ 
+ /**
+- * Expose `Route`.
++ * Module variables.
++ * @private
++ */
++
++var slice = Array.prototype.slice;
++var toString = Object.prototype.toString;
++
++/**
++ * Module exports.
++ * @public
+  */
+ 
+ module.exports = Route;
+@@ -17,20 +37,22 @@ module.exports = Route;
+  * Initialize `Route` with the given `path`,
+  *
+  * @param {String} path
+- * @api private
++ * @public
+  */
+ 
+ function Route(path) {
+-  debug('new %s', path);
+   this.path = path;
+   this.stack = [];
+ 
++  debug('new %s', path);
++
+   // route handlers for various http methods
+   this.methods = {};
+ }
+ 
+ /**
+- * @api private
++ * Determine if the route handles a given method.
++ * @private
+  */
+ 
+ Route.prototype._handles_method = function _handles_method(method) {
+@@ -38,18 +60,18 @@ Route.prototype._handles_method = function _handles_method(method) {
+     return true;
+   }
+ 
+-  method = method.toLowerCase();
++  var name = method.toLowerCase();
+ 
+-  if (method === 'head' && !this.methods['head']) {
+-    method = 'get';
++  if (name === 'head' && !this.methods['head']) {
++    name = 'get';
+   }
+ 
+-  return Boolean(this.methods[method]);
++  return Boolean(this.methods[name]);
+ };
+ 
+ /**
+  * @return {Array} supported HTTP methods
+- * @api private
++ * @private
+  */
+ 
+ Route.prototype._options = function _options() {
+@@ -70,11 +92,10 @@ Route.prototype._options = function _options() {
+ 
+ /**
+  * dispatch req, res into this route
+- *
+- * @api private
++ * @private
+  */
+ 
+-Route.prototype.dispatch = function(req, res, done){
++Route.prototype.dispatch = function dispatch(req, res, done) {
+   var idx = 0;
+   var stack = this.stack;
+   if (stack.length === 0) {
+@@ -140,44 +161,50 @@ Route.prototype.dispatch = function(req, res, done){
+  * @api public
+  */
+ 
+-Route.prototype.all = function(){
+-  var callbacks = utils.flatten([].slice.call(arguments));
+-  callbacks.forEach(function(fn) {
+-    if (typeof fn !== 'function') {
+-      var type = {}.toString.call(fn);
++Route.prototype.all = function all() {
++  var handles = flatten(slice.call(arguments));
++
++  for (var i = 0; i < handles.length; i++) {
++    var handle = handles[i];
++
++    if (typeof handle !== 'function') {
++      var type = toString.call(handle);
+       var msg = 'Route.all() requires callback functions but got a ' + type;
+-      throw new Error(msg);
++      throw new TypeError(msg);
+     }
+ 
+-    var layer = Layer('/', {}, fn);
++    var layer = Layer('/', {}, handle);
+     layer.method = undefined;
+ 
+     this.methods._all = true;
+     this.stack.push(layer);
+-  }, this);
++  }
+ 
+   return this;
+ };
+ 
+ methods.forEach(function(method){
+   Route.prototype[method] = function(){
+-    var callbacks = utils.flatten([].slice.call(arguments));
++    var handles = flatten(slice.call(arguments));
++
++    for (var i = 0; i < handles.length; i++) {
++      var handle = handles[i];
+ 
+-    callbacks.forEach(function(fn) {
+-      if (typeof fn !== 'function') {
+-        var type = {}.toString.call(fn);
++      if (typeof handle !== 'function') {
++        var type = toString.call(handle);
+         var msg = 'Route.' + method + '() requires callback functions but got a ' + type;
+         throw new Error(msg);
+       }
+ 
+       debug('%s %s', method, this.path);
+ 
+-      var layer = Layer('/', {}, fn);
++      var layer = Layer('/', {}, handle);
+       layer.method = method;
+ 
+       this.methods[method] = true;
+       this.stack.push(layer);
+-    }, this);
++    }
++
+     return this;
+   };
+ });
+diff --git a/lib/utils.js b/lib/utils.js
+index ce53ad8b99..d10391c43d 100644
+--- a/lib/utils.js
++++ b/lib/utils.js
+@@ -5,6 +5,8 @@
+  * MIT Licensed
+  */
+ 
++'use strict';
++
+ /**
+  * Module dependencies.
+  * @api private
+@@ -13,6 +15,7 @@
+ var contentDisposition = require('content-disposition');
+ var contentType = require('content-type');
+ var deprecate = require('depd')('express');
++var flatten = require('array-flatten');
+ var mime = require('send').mime;
+ var basename = require('path').basename;
+ var etag = require('etag');
+@@ -76,18 +79,8 @@ exports.isAbsolute = function(path){
+  * @api private
+  */
+ 
+-exports.flatten = function(arr, ret){
+-  ret = ret || [];
+-  var len = arr.length;
+-  for (var i = 0; i < len; ++i) {
+-    if (Array.isArray(arr[i])) {
+-      exports.flatten(arr[i], ret);
+-    } else {
+-      ret.push(arr[i]);
+-    }
+-  }
+-  return ret;
+-};
++exports.flatten = deprecate.function(flatten,
++  'utils.flatten: use array-flatten npm module instead');
+ 
+ /**
+  * Normalize the given `type`, for example "html" becomes "text/html".
+diff --git a/lib/view.js b/lib/view.js
+index e0989b4dda..52415d4c28 100644
+--- a/lib/view.js
++++ b/lib/view.js
+@@ -1,5 +1,16 @@
++/*!
++ * express
++ * Copyright(c) 2009-2013 TJ Holowaychuk
++ * Copyright(c) 2013 Roman Shtylman
++ * Copyright(c) 2014-2015 Douglas Christopher Wilson
++ * MIT Licensed
++ */
++
++'use strict';
++
+ /**
+  * Module dependencies.
++ * @private
+  */
+ 
+ var debug = require('debug')('express:view');
+@@ -19,7 +30,8 @@ var join = path.join;
+ var resolve = path.resolve;
+ 
+ /**
+- * Expose `View`.
++ * Module exports.
++ * @public
+  */
+ 
+ module.exports = View;
+@@ -33,30 +45,51 @@ module.exports = View;
+  *   - `engines` template engine require() cache
+  *   - `root` root path for view lookup
+  *
+- * @param {String} name
+- * @param {Object} options
+- * @api private
++ * @param {string} name
++ * @param {object} options
++ * @public
+  */
+ 
+ function View(name, options) {
+-  options = options || {};
++  var opts = options || {};
++
++  this.defaultEngine = opts.defaultEngine;
++  this.ext = extname(name);
+   this.name = name;
+-  this.root = options.root;
+-  var engines = options.engines;
+-  this.defaultEngine = options.defaultEngine;
+-  var ext = this.ext = extname(name);
+-  if (!ext && !this.defaultEngine) throw new Error('No default engine was specified and no extension was provided.');
+-  if (!ext) name += (ext = this.ext = ('.' != this.defaultEngine[0] ? '.' : '') + this.defaultEngine);
+-  this.engine = engines[ext] || (engines[ext] = require(ext.slice(1)).__express);
+-  this.path = this.lookup(name);
++  this.root = opts.root;
++
++  if (!this.ext && !this.defaultEngine) {
++    throw new Error('No default engine was specified and no extension was provided.');
++  }
++
++  var fileName = name;
++
++  if (!this.ext) {
++    // get extension from default engine name
++    this.ext = this.defaultEngine[0] !== '.'
++      ? '.' + this.defaultEngine
++      : this.defaultEngine;
++
++    fileName += this.ext;
++  }
++
++  if (!opts.engines[this.ext]) {
++    // load engine
++    opts.engines[this.ext] = require(this.ext.substr(1)).__express;
++  }
++
++  // store loaded engine
++  this.engine = opts.engines[this.ext];
++
++  // lookup path
++  this.path = this.lookup(fileName);
+ }
+ 
+ /**
+  * Lookup view by the given `name`
+  *
+- * @param {String} name
+- * @return {String}
+- * @api private
++ * @param {string} name
++ * @private
+  */
+ 
+ View.prototype.lookup = function lookup(name) {
+@@ -81,16 +114,16 @@ View.prototype.lookup = function lookup(name) {
+ };
+ 
+ /**
+- * Render with the given `options` and callback `fn(err, str)`.
++ * Render with the given options.
+  *
+- * @param {Object} options
+- * @param {Function} fn
+- * @api private
++ * @param {object} options
++ * @param {function} callback
++ * @private
+  */
+ 
+-View.prototype.render = function render(options, fn) {
++View.prototype.render = function render(options, callback) {
+   debug('render "%s"', this.path);
+-  this.engine(this.path, options, fn);
++  this.engine(this.path, options, callback);
+ };
+ 
+ /**
+@@ -103,12 +136,10 @@ View.prototype.render = function render(options, fn) {
+ 
+ View.prototype.resolve = function resolve(dir, file) {
+   var ext = this.ext;
+-  var path;
+-  var stat;
+ 
+   // <path>.<ext>
+-  path = join(dir, file);
+-  stat = tryStat(path);
++  var path = join(dir, file);
++  var stat = tryStat(path);
+ 
+   if (stat && stat.isFile()) {
+     return path;
+diff --git a/package.json b/package.json
+index 63fe46b3dc..95a4a472f8 100644
+--- a/package.json
++++ b/package.json
+@@ -27,28 +27,29 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.2.7",
++    "accepts": "~1.2.9",
++    "array-flatten": "1.1.0",
+     "content-disposition": "0.5.0",
+     "content-type": "~1.0.1",
+-    "cookie": "0.1.2",
++    "cookie": "0.1.3",
+     "cookie-signature": "1.0.6",
+     "debug": "~2.2.0",
+     "depd": "~1.0.1",
+-    "escape-html": "1.0.1",
+-    "etag": "~1.6.0",
+-    "finalhandler": "0.3.6",
+-    "fresh": "0.2.4",
++    "escape-html": "1.0.2",
++    "etag": "~1.7.0",
++    "finalhandler": "0.4.0",
++    "fresh": "0.3.0",
+     "merge-descriptors": "1.0.0",
+     "methods": "~1.1.1",
+-    "on-finished": "~2.2.1",
++    "on-finished": "~2.3.0",
+     "parseurl": "~1.3.0",
+-    "path-to-regexp": "0.1.3",
++    "path-to-regexp": "0.1.6",
+     "proxy-addr": "~1.0.8",
+     "qs": "2.4.2",
+     "range-parser": "~1.0.2",
+-    "send": "0.12.3",
+-    "serve-static": "~1.9.3",
+-    "type-is": "~1.6.2",
++    "send": "0.13.0",
++    "serve-static": "~1.10.0",
++    "type-is": "~1.6.3",
+     "vary": "~1.0.0",
+     "utils-merge": "1.0.0"
+   },
+@@ -58,16 +59,16 @@
+     "istanbul": "0.3.9",
+     "marked": "0.3.3",
+     "mocha": "2.2.5",
+-    "should": "6.0.1",
++    "should": "7.0.1",
+     "supertest": "1.0.1",
+-    "body-parser": "~1.12.4",
++    "body-parser": "~1.13.1",
+     "connect-redis": "~2.3.0",
+-    "cookie-parser": "~1.3.4",
++    "cookie-parser": "~1.3.5",
+     "cookie-session": "~1.1.0",
+-    "express-session": "~1.11.2",
+-    "jade": "~1.9.2",
++    "express-session": "~1.11.3",
++    "jade": "~1.11.0",
+     "method-override": "~2.3.3",
+-    "morgan": "~1.5.3",
++    "morgan": "~1.6.0",
+     "multiparty": "~4.1.2",
+     "vhost": "~3.0.0"
+   },

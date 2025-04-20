@@ -1,0 +1,84 @@
+diff --git a/test/res.sendFile.js b/test/res.sendFile.js
+index b9e6007833..8d52b37329 100644
+--- a/test/res.sendFile.js
++++ b/test/res.sendFile.js
+@@ -5,6 +5,8 @@ var express = require('../')
+   , assert = require('assert');
+ var path = require('path');
+ var should = require('should');
++var net = require('net');
++var http = require('http');
+ var fixtures = path.join(__dirname, 'fixtures');
+ 
+ describe('res', function(){
+@@ -151,6 +153,14 @@ describe('res', function(){
+       .get('/')
+       .expect(200, 'got it', done);
+     })
++
++    it('should throw a TypeError if path is null', function(done){
++      var app = createApp(null);
++
++      request(app)
++      .get('/')
++      .expect(500, /path argument/, done);
++    })
+   })
+ 
+   describe('.sendfile(path, fn)', function(){
+@@ -479,6 +489,55 @@ describe('res', function(){
+       })
+     })
+   })
++  describe('with aborted requests', function(){
++
++    function sendAbortedRequest (app) {
++      var server = http.createServer(app);
++      app.server = server;
++      server.listen(function () {
++        var port = this.address().port;
++        var headers = [
++            'GET / HTTP/1.1',
++            'Host: localhost:' + port,
++            '',
++            ''
++          ].join('\r\n');
++
++        var socket = new net.Socket();
++        socket.connect(port, 'localhost', function() {
++          socket.write(headers, 'utf-8', function () {
++              socket.end();
++          });
++        });
++      });
++    }
++
++    it('should invoke callback', function(done){
++      var app = express();
++      app.get('/', function (req, res) {
++        res.sendFile(__filename, function (err) {
++          // assert(err); ?
++          app.server.close();
++          done();
++        });
++      });
++      sendAbortedRequest(app);
++    })
++
++    it('should also invoke callback when called on nextTick', function(done){
++      var app = express();
++      app.get('/', function (req, res) {
++        setImmediate(function () {
++          res.sendFile(__filename, function (err) {
++            // assert(err); ?
++            app.server.close();
++            done();
++          });  
++        });
++      });
++      sendAbortedRequest(app);
++    })
++  })
+ })
+ 
+ function createApp(path, options, fn) {

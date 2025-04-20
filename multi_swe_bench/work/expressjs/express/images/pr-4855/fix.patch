@@ -1,0 +1,27 @@
+diff --git a/History.md b/History.md
+index 2e549136a5..d7a2e43c35 100644
+--- a/History.md
++++ b/History.md
+@@ -1,6 +1,7 @@
+ unreleased
+ ==========
+ 
++  * Add "root" option to `res.download`
+   * Deprecate string and non-integer arguments to `res.status`
+   * Ignore `Object.prototype` values in settings through `app.set`/`app.get`
+   * Support proper 205 responses using `res.send`
+diff --git a/lib/response.js b/lib/response.js
+index 7a9564d262..101311e0eb 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -582,7 +582,9 @@ res.download = function download (path, filename, options, callback) {
+   opts.headers = headers
+ 
+   // Resolve the full path for sendFile
+-  var fullPath = resolve(path);
++  var fullPath = !opts.root
++    ? resolve(path)
++    : path
+ 
+   // send file
+   return this.sendFile(fullPath, opts, done)

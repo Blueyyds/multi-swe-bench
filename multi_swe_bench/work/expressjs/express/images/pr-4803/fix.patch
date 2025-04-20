@@ -1,0 +1,49 @@
+diff --git a/History.md b/History.md
+index fbe0126907..97345bb411 100644
+--- a/History.md
++++ b/History.md
+@@ -1,6 +1,7 @@
+ unreleased
+ ==========
+ 
++  * Ignore `Object.prototype` values in settings through `app.set`/`app.get`
+   * Support proper 205 responses using `res.send`
+ 
+ 4.17.3 / 2022-02-16
+diff --git a/lib/application.js b/lib/application.js
+index e65ba58895..ebb30b51b3 100644
+--- a/lib/application.js
++++ b/lib/application.js
+@@ -29,6 +29,13 @@ var flatten = require('array-flatten');
+ var merge = require('utils-merge');
+ var resolve = require('path').resolve;
+ var setPrototypeOf = require('setprototypeof')
++
++/**
++ * Module variables.
++ * @private
++ */
++
++var hasOwnProperty = Object.prototype.hasOwnProperty
+ var slice = Array.prototype.slice;
+ 
+ /**
+@@ -352,7 +359,17 @@ app.param = function param(name, fn) {
+ app.set = function set(setting, val) {
+   if (arguments.length === 1) {
+     // app.get(setting)
+-    return this.settings[setting];
++    var settings = this.settings
++
++    while (settings && settings !== Object.prototype) {
++      if (hasOwnProperty.call(settings, setting)) {
++        return settings[setting]
++      }
++
++      settings = Object.getPrototypeOf(settings)
++    }
++
++    return undefined
+   }
+ 
+   debug('set "%s" to %o', setting, val);

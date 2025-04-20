@@ -1,0 +1,419 @@
+diff --git a/.travis.yml b/.travis.yml
+index ebeed7008d..7b11677ec8 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -7,14 +7,16 @@ node_js:
+   - "3.3"
+   - "4.9"
+   - "5.12"
+-  - "6.14"
++  - "6.17"
+   - "7.10"
+-  - "8.12"
++  - "8.16"
++  - "9.11"
++  - "10.15"
++  - "11.15"
++  - "12.2"
+ matrix:
+   include:
+-    - node_js: "9"
+-      env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+-    - node_js: "10"
++    - node_js: "13"
+       env: "NVM_NODEJS_ORG_MIRROR=https://nodejs.org/download/nightly"
+   allow_failures:
+     # Allow the nightly installs to fail
+@@ -60,5 +62,5 @@ script:
+ after_script:
+   - |
+     # Upload coverage to coveralls
+-    npm install --save-dev coveralls@2.10.0
++    npm install --save-dev coveralls@2.12.0
+     coveralls < ./coverage/lcov.info
+diff --git a/Contributing.md b/Contributing.md
+index 41386568d6..f84c0138cb 100644
+--- a/Contributing.md
++++ b/Contributing.md
+@@ -19,7 +19,7 @@ expertise to resolve rare disputes.
+ 
+ Log an issue for any question or problem you might have. When in doubt, log an issue, and
+ any additional policies about what to include will be provided in the responses. The only
+-exception is security dislosures which should be sent privately.
++exception is security disclosures which should be sent privately.
+ 
+ Committers may direct you to another repository, ask for additional clarifications, and
+ add appropriate metadata before the issue is addressed.
+diff --git a/History.md b/History.md
+index 2f6eab101a..da36866652 100644
+--- a/History.md
++++ b/History.md
+@@ -1,3 +1,54 @@
++unreleased
++==========
++
++  * Add `express.raw` to parse bodies into `Buffer`
++  * Add `express.text` to parse bodies into string
++  * Improve error message for non-strings to `res.sendFile`
++  * Improve error message for `null`/`undefined` to `res.status`
++  * Support multiple hosts in `X-Forwarded-Host`
++  * deps: accepts@~1.3.7
++  * deps: body-parser@1.19.0
++    - Add encoding MIK
++    - Add petabyte (`pb`) support
++    - Fix parsing array brackets after index
++    - deps: bytes@3.1.0
++    - deps: http-errors@1.7.2
++    - deps: iconv-lite@0.4.24
++    - deps: qs@6.7.0
++    - deps: raw-body@2.4.0
++    - deps: type-is@~1.6.17
++  * deps: content-disposition@0.5.3
++  * deps: cookie@0.4.0
++    - Add `SameSite=None` support
++  * deps: finalhandler@~1.1.2
++    - Set stricter `Content-Security-Policy` header
++    - deps: parseurl@~1.3.3
++    - deps: statuses@~1.5.0
++  * deps: parseurl@~1.3.3
++  * deps: proxy-addr@~2.0.5
++    - deps: ipaddr.js@1.9.0
++  * deps: qs@6.7.0
++    - Fix parsing array brackets after index
++  * deps: range-parser@~1.2.1
++  * deps: send@0.17.1
++    - Set stricter CSP header in redirect & error responses
++    - deps: http-errors@~1.7.2
++    - deps: mime@1.6.0
++    - deps: ms@2.1.1
++    - deps: range-parser@~1.2.1
++    - deps: statuses@~1.5.0
++    - perf: remove redundant `path.normalize` call
++  * deps: serve-static@1.14.1
++    - Set stricter CSP header in redirect response
++    - deps: parseurl@~1.3.3
++    - deps: send@0.17.1
++  * deps: setprototypeof@1.1.1
++  * deps: statuses@~1.5.0
++    - Add `103 Early Hints`
++  * deps: type-is@~1.6.18
++    - deps: mime-types@~2.1.24
++    - perf: prevent internal `throw` on invalid type
++
+ 4.16.4 / 2018-10-10
+ ===================
+ 
+@@ -294,7 +345,7 @@
+     - Fix including type extensions in parameters in `Accept` parsing
+     - Fix parsing `Accept` parameters with quoted equals
+     - Fix parsing `Accept` parameters with quoted semicolons
+-    - Many performance improvments
++    - Many performance improvements
+     - deps: mime-types@~2.1.11
+     - deps: negotiator@0.6.1
+   * deps: content-type@~1.0.2
+@@ -309,7 +360,7 @@
+     - perf: enable strict mode
+     - perf: hoist regular expression
+     - perf: use for loop in parse
+-    - perf: use string concatination for serialization
++    - perf: use string concatenation for serialization
+   * deps: finalhandler@0.5.0
+     - Change invalid or non-numeric status code to 500
+     - Overwrite status message to match set status code
+@@ -319,7 +370,7 @@
+   * deps: proxy-addr@~1.1.2
+     - Fix accepting various invalid netmasks
+     - Fix IPv6-mapped IPv4 validation edge cases
+-    - IPv4 netmasks must be contingous
++    - IPv4 netmasks must be contiguous
+     - IPv6 addresses cannot be used as a netmask
+     - deps: ipaddr.js@1.1.1
+   * deps: qs@6.2.0
+@@ -1097,13 +1148,13 @@
+    - deps: negotiator@0.4.6
+  * deps: debug@1.0.2
+  * deps: send@0.4.3
+-   - Do not throw un-catchable error on file open race condition
++   - Do not throw uncatchable error on file open race condition
+    - Use `escape-html` for HTML escaping
+    - deps: debug@1.0.2
+    - deps: finished@1.2.2
+    - deps: fresh@0.2.2
+  * deps: serve-static@1.2.3
+-   - Do not throw un-catchable error on file open race condition
++   - Do not throw uncatchable error on file open race condition
+    - deps: send@0.4.3
+ 
+ 4.4.2 / 2014-06-09
+@@ -1983,7 +2034,7 @@
+    - deps: serve-static@1.2.3
+  * deps: debug@1.0.2
+  * deps: send@0.4.3
+-   - Do not throw un-catchable error on file open race condition
++   - Do not throw uncatchable error on file open race condition
+    - Use `escape-html` for HTML escaping
+    - deps: debug@1.0.2
+    - deps: finished@1.2.2
+@@ -3168,7 +3219,7 @@ Shaw]
+   * Updated haml submodule
+   * Changed ETag; removed inode, modified time only
+   * Fixed LF to CRLF for setting multiple cookies
+-  * Fixed cookie complation; values are now urlencoded
++  * Fixed cookie compilation; values are now urlencoded
+   * Fixed cookies parsing; accepts quoted values and url escaped cookies
+ 
+ 0.11.0 / 2010-05-06
+@@ -3363,7 +3414,7 @@ Shaw]
+ 
+   * Added "plot" format option for Profiler (for gnuplot processing)
+   * Added request number to Profiler plugin
+-  * Fixed binary encoding for multi-part file uploads, was previously defaulting to UTF8
++  * Fixed binary encoding for multipart file uploads, was previously defaulting to UTF8
+   * Fixed issue with routes not firing when not files are present. Closes #184
+   * Fixed process.Promise -> events.Promise
+ 
+@@ -3409,7 +3460,7 @@ Shaw]
+   * Updated sample chat app to show messages on load
+   * Updated libxmljs parseString -> parseHtmlString
+   * Fixed `make init` to work with older versions of git
+-  * Fixed specs can now run independent specs for those who cant build deps. Closes #127
++  * Fixed specs can now run independent specs for those who can't build deps. Closes #127
+   * Fixed issues introduced by the node url module changes. Closes 126.
+   * Fixed two assertions failing due to Collection#keys() returning strings
+   * Fixed faulty Collection#toArray() spec due to keys() returning strings
+diff --git a/Readme.md b/Readme.md
+index 582e8958c5..81d8d91615 100644
+--- a/Readme.md
++++ b/Readme.md
+@@ -9,8 +9,8 @@
+   [![Test Coverage][coveralls-image]][coveralls-url]
+ 
+ ```js
+-var express = require('express')
+-var app = express()
++const express = require('express')
++const app = express()
+ 
+ app.get('/', function (req, res) {
+   res.send('Hello World')
+@@ -90,6 +90,8 @@ $ npm install
+ $ npm start
+ ```
+ 
++  View the website at: http://localhost:3000
++
+ ## Philosophy
+ 
+   The Express philosophy is to provide small, robust tooling for HTTP servers, making
+@@ -125,6 +127,10 @@ $ npm install
+ $ npm test
+ ```
+ 
++## Contributing
++
++[Contributing Guide](Contributing.md)
++
+ ## People
+ 
+ The original author of Express is [TJ Holowaychuk](https://github.com/tj)
+diff --git a/appveyor.yml b/appveyor.yml
+index fc3582e4a5..84476a597d 100644
+--- a/appveyor.yml
++++ b/appveyor.yml
+@@ -7,9 +7,13 @@ environment:
+     - nodejs_version: "3.3"
+     - nodejs_version: "4.9"
+     - nodejs_version: "5.12"
+-    - nodejs_version: "6.14"
++    - nodejs_version: "6.17"
+     - nodejs_version: "7.10"
+-    - nodejs_version: "8.12"
++    - nodejs_version: "8.16"
++    - nodejs_version: "9.11"
++    - nodejs_version: "10.15"
++    - nodejs_version: "11.15"
++    - nodejs_version: "12.2"
+ cache:
+   - node_modules
+ install:
+diff --git a/examples/downloads/index.js b/examples/downloads/index.js
+index e6f3fa9db6..5f0772697c 100644
+--- a/examples/downloads/index.js
++++ b/examples/downloads/index.js
+@@ -21,7 +21,7 @@ app.get('/files/:file(*)', function(req, res, next){
+ 
+   res.download(filePath, function (err) {
+     if (!err) return; // file sent
+-    if (err && err.status !== 404) return next(err); // non-404 error
++    if (err.status !== 404) return next(err); // non-404 error
+     // file for download not found
+     res.statusCode = 404;
+     res.send('Cant find that file, sorry!');
+diff --git a/examples/mvc/public/style.css b/examples/mvc/public/style.css
+index 69fde2e23a..8a23f9d41c 100644
+--- a/examples/mvc/public/style.css
++++ b/examples/mvc/public/style.css
+@@ -1,6 +1,6 @@
+ body {
+   padding: 50px;
+-  font: 16px "Helvetica Neue", Helvetica, Arial;
++  font: 16px "Helvetica Neue", Helvetica, Arial, sans-serif;
+ }
+ a {
+   color: #107aff;
+diff --git a/examples/static-files/public/js/app.js b/examples/static-files/public/js/app.js
+index 257cc5642c..775eb734b0 100644
+--- a/examples/static-files/public/js/app.js
++++ b/examples/static-files/public/js/app.js
+@@ -1,1 +1,1 @@
+-foo
++// foo
+diff --git a/lib/express.js b/lib/express.js
+index 594007b5b4..d188a16db7 100644
+--- a/lib/express.js
++++ b/lib/express.js
+@@ -77,7 +77,9 @@ exports.Router = Router;
+ 
+ exports.json = bodyParser.json
+ exports.query = require('./middleware/query');
++exports.raw = bodyParser.raw
+ exports.static = require('serve-static');
++exports.text = bodyParser.text
+ exports.urlencoded = bodyParser.urlencoded
+ 
+ /**
+diff --git a/lib/request.js b/lib/request.js
+index 8bb86a9acc..a9400ef99d 100644
+--- a/lib/request.js
++++ b/lib/request.js
+@@ -430,6 +430,10 @@ defineGetter(req, 'hostname', function hostname(){
+ 
+   if (!host || !trust(this.connection.remoteAddress, 0)) {
+     host = this.get('Host');
++  } else if (host.indexOf(',') !== -1) {
++    // Note: X-Forwarded-Host is normally only ever a
++    //       single value, but this is to be safe.
++    host = host.substring(0, host.indexOf(',')).trimRight()
+   }
+ 
+   if (!host) return;
+diff --git a/lib/response.js b/lib/response.js
+index 2e445ac02c..a4f10cbb2e 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -64,6 +64,10 @@ var charsetRegExp = /;\s*charset\s*=/;
+  */
+ 
+ res.status = function status(code) {
++  if (code === undefined || code === null) {
++    throw new TypeError('code argument is required to res.status')
++  }
++
+   this.statusCode = code;
+   return this;
+ };
+@@ -411,6 +415,10 @@ res.sendFile = function sendFile(path, options, callback) {
+     throw new TypeError('path argument is required to res.sendFile');
+   }
+ 
++  if (typeof path !== 'string') {
++    throw new TypeError('path must be a string to res.sendFile')
++  }
++
+   // support function as second arg
+   if (typeof options === 'function') {
+     done = options;
+@@ -814,7 +822,7 @@ res.clearCookie = function clearCookie(name, options) {
+  *    // "Remember Me" for 15 minutes
+  *    res.cookie('rememberme', '1', { expires: new Date(Date.now() + 900000), httpOnly: true });
+  *
+- *    // save as above
++ *    // same as above
+  *    res.cookie('rememberme', '1', { maxAge: 900000, httpOnly: true })
+  *
+  * @param {String} name
+@@ -1127,6 +1135,7 @@ function stringify (value, replacer, spaces, escape) {
+           return '\\u003e'
+         case 0x26:
+           return '\\u0026'
++        /* istanbul ignore next: unreachable default */
+         default:
+           return c
+       }
+diff --git a/package.json b/package.json
+index 74196ad68e..87b80ce33d 100644
+--- a/package.json
++++ b/package.json
+@@ -27,48 +27,48 @@
+     "api"
+   ],
+   "dependencies": {
+-    "accepts": "~1.3.5",
++    "accepts": "~1.3.7",
+     "array-flatten": "1.1.1",
+-    "body-parser": "1.18.3",
+-    "content-disposition": "0.5.2",
++    "body-parser": "1.19.0",
++    "content-disposition": "0.5.3",
+     "content-type": "~1.0.4",
+-    "cookie": "0.3.1",
++    "cookie": "0.4.0",
+     "cookie-signature": "1.0.6",
+     "debug": "2.6.9",
+     "depd": "~1.1.2",
+     "encodeurl": "~1.0.2",
+     "escape-html": "~1.0.3",
+     "etag": "~1.8.1",
+-    "finalhandler": "1.1.1",
++    "finalhandler": "~1.1.2",
+     "fresh": "0.5.2",
+     "merge-descriptors": "1.0.1",
+     "methods": "~1.1.2",
+     "on-finished": "~2.3.0",
+-    "parseurl": "~1.3.2",
++    "parseurl": "~1.3.3",
+     "path-to-regexp": "0.1.7",
+-    "proxy-addr": "~2.0.4",
+-    "qs": "6.5.2",
+-    "range-parser": "~1.2.0",
++    "proxy-addr": "~2.0.5",
++    "qs": "6.7.0",
++    "range-parser": "~1.2.1",
+     "safe-buffer": "5.1.2",
+-    "send": "0.16.2",
+-    "serve-static": "1.13.2",
+-    "setprototypeof": "1.1.0",
+-    "statuses": "~1.4.0",
+-    "type-is": "~1.6.16",
++    "send": "0.17.1",
++    "serve-static": "1.14.1",
++    "setprototypeof": "1.1.1",
++    "statuses": "~1.5.0",
++    "type-is": "~1.6.18",
+     "utils-merge": "1.0.1",
+     "vary": "~1.1.2"
+   },
+   "devDependencies": {
+     "after": "0.8.2",
+-    "connect-redis": "3.4.0",
+-    "cookie-parser": "~1.4.3",
+-    "cookie-session": "1.3.2",
++    "connect-redis": "3.4.1",
++    "cookie-parser": "~1.4.4",
++    "cookie-session": "1.3.3",
+     "ejs": "2.6.1",
+     "eslint": "2.13.1",
+-    "express-session": "1.15.6",
+-    "hbs": "4.0.1",
++    "express-session": "1.16.1",
++    "hbs": "4.0.4",
+     "istanbul": "0.4.5",
+-    "marked": "0.5.1",
++    "marked": "0.6.2",
+     "method-override": "3.0.0",
+     "mocha": "5.2.0",
+     "morgan": "1.9.1",
+diff --git "a/test/fixtures/snow \342\230\203/.gitkeep" "b/test/fixtures/snow \342\230\203/.gitkeep"
+new file mode 100644
+index 0000000000..e69de29bb2

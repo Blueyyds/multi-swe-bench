@@ -1,0 +1,182 @@
+diff --git a/examples/jade/index.js b/examples/jade/index.js
+index a64e6f179b..b12cd00873 100644
+--- a/examples/jade/index.js
++++ b/examples/jade/index.js
+@@ -12,7 +12,7 @@ var pub = __dirname + '/public';
+ // Auto-compile sass to css with "compiler"
+ // and then serve with connect's staticProvider
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ app.use(app.router);
+ app.use(express.static(pub));
+ app.use(express.errorHandler());
+diff --git a/examples/partials/app.js b/examples/partials/app.js
+index d5210512f3..9364e45849 100644
+--- a/examples/partials/app.js
++++ b/examples/partials/app.js
+@@ -5,7 +5,7 @@
+ 
+ var express = require('../../lib/express');
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ 
+ // Optional since express defaults to CWD/views
+ 
+diff --git a/examples/route-middleware/app.js b/examples/route-middleware/app.js
+index 19b5d602f3..e0391eafe6 100644
+--- a/examples/route-middleware/app.js
++++ b/examples/route-middleware/app.js
+@@ -4,7 +4,7 @@
+ 
+ var express = require('../../lib/express');
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ 
+ // Example requests:
+ //     curl http://localhost:3000/user/0
+diff --git a/examples/route-separation/app.js b/examples/route-separation/app.js
+index 5ade53e2fe..9a268f3bfd 100644
+--- a/examples/route-separation/app.js
++++ b/examples/route-separation/app.js
+@@ -4,7 +4,7 @@
+  */
+ 
+ var express = require('../../lib/express')
+-  , app = express.createServer()
++  , app = module.exports = express()
+   , site = require('./site')
+   , post = require('./post')
+   , user = require('./user');
+diff --git a/examples/say/app.js b/examples/say/app.js
+index 53674039a3..9d89b063e6 100644
+--- a/examples/say/app.js
++++ b/examples/say/app.js
+@@ -33,7 +33,7 @@ function errorHandler(voice) {
+   }
+ }
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ 
+ app.get('/', function(request, response){
+   if (request.is(foo)) response.end('bar');
+diff --git a/examples/session/app.js b/examples/session/app.js
+index cee194aea6..fbc379a0bf 100644
+--- a/examples/session/app.js
++++ b/examples/session/app.js
+@@ -5,7 +5,7 @@
+ 
+ var express = require('../../lib/express');
+ 
+-var app = express.createServer(
++var app = module.exports = express(
+   express.logger(),
+ 
+   // Required by session() middleware
+diff --git a/examples/session/redis.js b/examples/session/redis.js
+index af58585374..336e679a62 100644
+--- a/examples/session/redis.js
++++ b/examples/session/redis.js
+@@ -9,7 +9,7 @@ var express = require('../../lib/express');
+ // allowing it to inherit from express.session.Store
+ var RedisStore = require('connect-redis')(express);
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ 
+ app.use(express.favicon());
+ 
+diff --git a/examples/stylus/app.js b/examples/stylus/app.js
+index 121e56d359..b19692df78 100644
+--- a/examples/stylus/app.js
++++ b/examples/stylus/app.js
+@@ -6,7 +6,7 @@
+ var express = require('../../lib/express')
+   , stylus = require('stylus');
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ 
+ // $ npm install stylus
+ 
+diff --git a/examples/vhost/app.js b/examples/vhost/app.js
+index fd7751b3fc..b2da02cd76 100644
+--- a/examples/vhost/app.js
++++ b/examples/vhost/app.js
+@@ -9,7 +9,7 @@ var express = require('../../lib/express');
+ 
+ // First app
+ 
+-var one = express.createServer();
++var one = express();
+ 
+ one.use(express.logger());
+ 
+@@ -23,7 +23,7 @@ one.get('/:sub', function(req, res){
+ 
+ // App two
+ 
+-var two = express.createServer();
++var two = express();
+ 
+ two.get('/', function(req, res){
+   res.send('Hello from app two!')
+@@ -31,7 +31,7 @@ two.get('/', function(req, res){
+ 
+ // Redirect app
+ 
+-var redirect = express.createServer();
++var redirect = express();
+ 
+ redirect.all('*', function(req, res){
+   console.log(req.subdomains);
+@@ -40,7 +40,7 @@ redirect.all('*', function(req, res){
+ 
+ // Main app
+ 
+-var app = express.createServer();
++var app = module.exports = express();
+ 
+ app.use(express.vhost('*.localhost', redirect))
+ app.use(express.vhost('localhost', one));
+diff --git a/examples/web-service/index.js b/examples/web-service/index.js
+index 045adaa863..49239dc9b9 100644
+--- a/examples/web-service/index.js
++++ b/examples/web-service/index.js
+@@ -60,7 +60,7 @@ app.use(function(err, req, res, next){
+ // it will be the last middleware called, if all others
+ // invoke next() and do not respond.
+ app.use(function(req, res){
+-  res.send(404, { error: "Lame, can't find that" });
++  res.send({ error: "Lame, can't find that" }, 404);
+ });
+ 
+ // map of valid api keys, typically mapped to
+diff --git a/lib/response.js b/lib/response.js
+index 98a0612019..4a172004ff 100644
+--- a/lib/response.js
++++ b/lib/response.js
+@@ -52,7 +52,7 @@ res.status = function(code){
+  *     res.send(new Buffer('wahoo'));
+  *     res.send({ some: 'json' });
+  *     res.send('<p>some html</p>');
+- *     res.send(404, 'Sorry, cant find that');
++ *     res.send('Sorry, cant find that', 404);
+  *     res.send(404);
+  *
+  * @param {Mixed} body or status
+@@ -66,10 +66,7 @@ res.send = function(body){
+     , head = 'HEAD' == req.method;
+ 
+   // allow status / body
+-  if (2 == arguments.length) {
+-    this.statusCode = body;
+-    body = arguments[1];
+-  }
++  if (2 == arguments.length) this.statusCode = arguments[1];
+ 
+   switch (typeof body) {
+     // response status
